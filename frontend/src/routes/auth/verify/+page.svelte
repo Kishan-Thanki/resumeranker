@@ -22,7 +22,7 @@
 	});
 </script>
 
-<div class="bg-background flex min-h-screen items-center justify-center px-4 py-12">
+<div class="bg-background flex flex-1 items-center justify-center px-4 py-12">
 	<div class="text-center">
 		{#if error}
 			<p class="text-sm font-medium">{error}</p>
@@ -30,7 +30,7 @@
 				<Button href="/auth" variant="outline">Back to sign in</Button>
 			</div>
 		{:else}
-			<div class="text-muted-foreground flex items-center justify-center gap-1.5">
+			<div class="flex items-center justify-center gap-1.5 text-indigo-500">
 				<span class="bg-current size-2 animate-pulse rounded-full"></span>
 				<span class="bg-current size-2 animate-pulse rounded-full [animation-delay:120ms]"></span>
 				<span class="bg-current size-2 animate-pulse rounded-full [animation-delay:240ms]"></span>

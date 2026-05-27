@@ -72,7 +72,7 @@
 								<a
 									href={`/app/analysis/${a.id}`}
 									aria-label={`Open analysis: ${a.jdTitle}`}
-									class="focus-visible:ring-ring rounded-sm before:absolute before:inset-0 before:content-[''] focus-visible:ring-2 focus-visible:outline-hidden"
+									class="focus-visible:ring-ring rounded-sm font-medium transition-colors before:absolute before:inset-0 before:content-[''] hover:text-indigo-600 focus-visible:ring-2 focus-visible:outline-hidden dark:hover:text-indigo-400"
 								>
 									{a.jdTitle}
 								</a>

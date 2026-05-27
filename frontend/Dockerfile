@@ -11,6 +11,14 @@ RUN pnpm install --frozen-lockfile
 
 # --- build stage: produce the SvelteKit Node output ---
 FROM base AS build
+# The backend origin is BAKED IN at build time — Vite inlines
+# `import.meta.env.VITE_API_BASE_URL` into the JS bundle, and
+# svelte.config.js reads it into the CSP `connect-src`. It cannot be
+# changed at runtime. Defaults to localhost for local dev; production
+# builds MUST pass the real API origin:
+#   docker build --build-arg VITE_API_BASE_URL=https://api.example.com .
+ARG VITE_API_BASE_URL=http://localhost:8000
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN pnpm build

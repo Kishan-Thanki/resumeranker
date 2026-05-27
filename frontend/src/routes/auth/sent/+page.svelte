@@ -3,6 +3,7 @@
 	import { toast } from 'svelte-sonner';
 	import { api } from '$lib/api';
 	import { CURRENT_POLICY_VERSION } from '$lib/policy';
+	import Wordmark from '$lib/components/Wordmark.svelte';
 
 	const email = $derived(page.url.searchParams.get('email') ?? '');
 
@@ -20,10 +21,10 @@
 	}
 </script>
 
-<div class="bg-background flex min-h-screen items-center justify-center px-4 py-12">
+<div class="bg-background flex flex-1 items-center justify-center px-4 py-12">
 	<div class="w-full max-w-sm space-y-6">
-		<div class="space-y-2 text-center">
-			<a href="/" class="text-sm font-semibold tracking-tight">Resume Ranker</a>
+		<div class="flex flex-col items-center space-y-2 text-center">
+			<Wordmark href="/" />
 			<h1 class="text-xl font-semibold">Check your email</h1>
 			<p class="text-muted-foreground text-sm">
 				We sent a sign-in link to

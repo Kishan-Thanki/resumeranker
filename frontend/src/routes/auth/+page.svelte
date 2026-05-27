@@ -5,6 +5,7 @@
 	import { Label } from '$lib/components/ui/label';
 	import { api } from '$lib/api';
 	import { CURRENT_POLICY_VERSION } from '$lib/policy';
+	import Wordmark from '$lib/components/Wordmark.svelte';
 
 	let email = $state('');
 	let acceptedPolicy = $state(false);
@@ -30,10 +31,10 @@
 	}
 </script>
 
-<div class="bg-background flex min-h-screen items-center justify-center px-4 py-12">
+<div class="bg-background flex flex-1 items-center justify-center px-4 py-12">
 	<form onsubmit={handleSubmit} class="w-full max-w-sm space-y-6">
-		<div class="space-y-2 text-center">
-			<a href="/" class="text-sm font-semibold tracking-tight">Resume Ranker</a>
+		<div class="flex flex-col items-center space-y-2 text-center">
+			<Wordmark href="/" />
 			<h1 class="text-xl font-semibold">Sign in or create account</h1>
 			<p class="text-muted-foreground text-sm">
 				Enter your email &mdash; we'll send a one-time link. New accounts are

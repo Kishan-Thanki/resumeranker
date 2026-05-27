@@ -1,11 +1,12 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { Moon, Sun, LogOut, Trash2, User } from '@lucide/svelte';
-	import { toggleMode, mode } from 'mode-watcher';
+	import { LogOut, Trash2, User } from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
 	import { Button } from '$lib/components/ui/button';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
+	import Wordmark from '$lib/components/Wordmark.svelte';
+	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 	import { deleteAccount, signOut } from '$lib/stores/auth';
 	import { clearAnalyses } from '$lib/stores/analyses';
 
@@ -43,20 +44,9 @@
 
 <header class="border-border bg-background sticky top-0 z-10 border-b">
 	<div class="mx-auto flex h-14 max-w-5xl items-center justify-between px-4 sm:px-6">
-		<a href="/app" class="text-sm font-semibold tracking-tight">Resume Ranker</a>
+		<Wordmark href="/app" />
 		<div class="flex items-center gap-1">
-			<Button
-				variant="ghost"
-				size="icon"
-				onclick={toggleMode}
-				aria-label="Toggle color theme"
-			>
-				{#if mode.current === 'dark'}
-					<Sun class="size-4" />
-				{:else}
-					<Moon class="size-4" />
-				{/if}
-			</Button>
+			<ThemeToggle />
 			<DropdownMenu.Root>
 				<DropdownMenu.Trigger>
 					{#snippet child({ props })}

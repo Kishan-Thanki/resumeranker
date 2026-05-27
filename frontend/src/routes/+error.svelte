@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { Button } from '$lib/components/ui/button';
+	import Wordmark from '$lib/components/Wordmark.svelte';
 	import { isAuthed } from '$lib/stores/auth';
 
 	const home = $derived($isAuthed ? '/app' : '/');
@@ -12,8 +13,9 @@
 	);
 </script>
 
-<div class="bg-background flex min-h-screen items-center justify-center px-4 py-12">
-	<div class="w-full max-w-md space-y-4 text-center">
+<div class="bg-background flex flex-1 items-center justify-center px-4 py-12">
+	<div class="flex w-full max-w-md flex-col items-center space-y-4 text-center">
+		<Wordmark href={home} />
 		<p class="text-muted-foreground font-mono text-xs tracking-wider">
 			HTTP {page.status}
 		</p>

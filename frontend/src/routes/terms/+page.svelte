@@ -1,4 +1,6 @@
 <script lang="ts">
+	import Wordmark from '$lib/components/Wordmark.svelte';
+
 	// Static page — no data fetch, no auth required.
 	// Update the "Last updated" line in tandem with any substantive content
 	// change. Bump CURRENT_POLICY_VERSION in src/routes/auth/+page.svelte and
@@ -12,9 +14,9 @@
 	<meta name="description" content="The terms under which you may use Resume Ranker." />
 </svelte:head>
 
-<div class="bg-background min-h-screen">
+<div class="bg-background flex-1">
 	<header class="mx-auto flex h-14 max-w-3xl items-center justify-between px-4 sm:px-6">
-		<a href="/" class="text-sm font-semibold tracking-tight">Resume Ranker</a>
+		<Wordmark href="/" />
 	</header>
 
 	<main class="mx-auto max-w-2xl px-4 pt-8 pb-24 sm:px-6 sm:pt-12">

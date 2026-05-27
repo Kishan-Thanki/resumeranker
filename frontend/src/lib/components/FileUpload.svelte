@@ -90,10 +90,10 @@
 		ondragleave={handleDragLeave}
 		class={cn(
 			'border-border bg-card hover:bg-muted/40 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-md border border-dashed px-4 py-10 text-center transition-colors',
-			dragging && 'border-primary bg-muted/60'
+			dragging && 'border-indigo-400 bg-indigo-50/60 dark:border-indigo-500 dark:bg-indigo-950/30'
 		)}
 	>
-		<Upload class="text-muted-foreground size-5" />
+		<Upload class={cn('size-5 transition-colors', dragging ? 'text-indigo-500' : 'text-muted-foreground')} />
 		<p class="text-sm">
 			<span class="font-medium">Click to upload</span>
 			<span class="text-muted-foreground">or drag and drop</span>

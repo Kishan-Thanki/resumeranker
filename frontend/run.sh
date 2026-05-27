@@ -48,8 +48,12 @@ case "${1:-up}" in
     # `docker compose up -d` behavior).
     docker rm -f "$NAME" 2>/dev/null || true
 
-    echo "Building $IMAGE ..."
-    docker build -t "$IMAGE" .
+    # VITE_API_BASE_URL is baked into the bundle + CSP at build time.
+    # Defaults to localhost for dev; for production build with e.g.
+    #   VITE_API_BASE_URL=https://api.resume-ranker.kishanthanki.dev ./run.sh
+    API_BASE="${VITE_API_BASE_URL:-http://localhost:8000}"
+    echo "Building $IMAGE (VITE_API_BASE_URL=$API_BASE) ..."
+    docker build --build-arg VITE_API_BASE_URL="$API_BASE" -t "$IMAGE" .
 
     echo "Starting $NAME ..."
     docker run -d \

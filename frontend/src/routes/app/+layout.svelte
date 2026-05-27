@@ -44,9 +44,9 @@
 </script>
 
 {#if ready}
-	<div class="bg-background min-h-screen">
+	<div class="bg-background flex flex-1 flex-col">
 		<TopBar />
-		<main class="mx-auto max-w-5xl px-4 py-8 sm:px-6">
+		<main class="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
 			{@render children()}
 		</main>
 	</div>

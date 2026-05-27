@@ -16,7 +16,11 @@
 	class="border-border bg-card flex flex-col items-center gap-3 rounded-md border border-dashed px-6 py-12 text-center"
 >
 	{#if Icon}
-		<Icon class="text-muted-foreground size-6" />
+		<div
+			class="flex size-12 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400"
+		>
+			<Icon class="size-6" />
+		</div>
 	{/if}
 	<div class="space-y-1">
 		<p class="text-sm font-medium">{title}</p>

@@ -4,6 +4,7 @@
 	import { Label } from '$lib/components/ui/label';
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { api } from '$lib/api';
+	import Wordmark from '$lib/components/Wordmark.svelte';
 
 	let name = $state('');
 	let email = $state('');
@@ -41,9 +42,9 @@
 	<meta name="description" content="Send a message to Resume Ranker." />
 </svelte:head>
 
-<div class="bg-background min-h-screen">
+<div class="bg-background flex-1">
 	<header class="mx-auto flex h-14 max-w-3xl items-center justify-between px-4 sm:px-6">
-		<a href="/" class="text-sm font-semibold tracking-tight">Resume Ranker</a>
+		<Wordmark href="/" />
 	</header>
 
 	<main class="mx-auto max-w-md px-4 pt-8 pb-24 sm:px-6 sm:pt-12">

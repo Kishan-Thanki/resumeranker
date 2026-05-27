@@ -1,4 +1,6 @@
 <script lang="ts">
+	import Wordmark from '$lib/components/Wordmark.svelte';
+
 	// Static "about" page. Intentionally light on personal identifiers —
 	// who runs this and where to reach them stays vague until a real
 	// support / contact channel is published.
@@ -9,9 +11,9 @@
 	<meta name="description" content="What Resume Ranker is and why it exists." />
 </svelte:head>
 
-<div class="bg-background min-h-screen">
+<div class="bg-background flex-1">
 	<header class="mx-auto flex h-14 max-w-3xl items-center justify-between px-4 sm:px-6">
-		<a href="/" class="text-sm font-semibold tracking-tight">Resume Ranker</a>
+		<Wordmark href="/" />
 	</header>
 
 	<main class="mx-auto max-w-2xl px-4 pt-8 pb-24 sm:px-6 sm:pt-12">
