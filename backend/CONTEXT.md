@@ -18,7 +18,7 @@ Python 3.12 · FastAPI · SQLAlchemy 2 async + asyncpg · Postgres 16 (pgvector)
 
 ## Containers & names
 
-```
+```text
 api        FastAPI / uvicorn :8000
 worker     arq queue consumer (same image as api, different CMD)
 postgres   pgvector/pgvector:pg16, volume resume-ranker-postgres-data
@@ -66,7 +66,7 @@ Two "stub modes" are the default for safe local dev. They're toggled by
 env-var values in `.env`:
 
 | Env var | `replace-me` → stub mode | Real value → live mode |
-|---|---|---|
+| --- | --- | --- |
 | `LLM_API_KEY` | Worker pulls canned fixtures from `app/services/llm_stub.py` | Real litellm calls to whichever provider `LLM_MODEL` points at (e.g. `gemini/gemini-2.5-flash`) |
 | `RESEND_API_KEY` | Magic-link URLs print to `docker logs api` | Real email via Resend |
 
@@ -83,11 +83,10 @@ from real (anti-fingerprint). See `SECURITY.md`.
 3. **Singleton Redis client also resets per test.** `app/tests/conftest.py`
    handles it. Same pattern.
 
-
 ## Files I should always read on cold start
 
 | Path | Purpose |
-|---|---|
+| --- | --- |
 | `AGENTS.md` | The 15 rules. Source of truth for style/architecture. |
 | `HANDOFF.md` | Stack, deploy, deviations, open items. |
 | `SECURITY.md` | Defenses + deliberate trade-offs (opaque tokens, no JWT). |

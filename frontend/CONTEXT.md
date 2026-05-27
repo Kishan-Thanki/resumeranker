@@ -20,7 +20,7 @@ TailwindCSS 4 · shadcn-svelte · bits-ui · `@lucide/svelte` · svelte-sonner
 
 ## Container & workflow
 
-```
+```text
 resume-ranker-frontend     adapter-node server, host :5173 → container :3000
 ```
 
@@ -72,15 +72,14 @@ docker exec resume-ranker-frontend pnpm exec vitest run
 ## Env vars
 
 | Var | Read at | Default |
-|---|---|---|
+| --- | --- | --- |
 | `VITE_API_BASE_URL` | build (Vite inlines into bundle + CSP) | `http://localhost:8000` |
 | `HOST` / `PORT` | runtime (adapter-node) | `0.0.0.0` / `3000` |
-
 
 ## Files I should always read on cold start
 
 | Path | Purpose |
-|---|---|
+| --- | --- |
 | `AGENTS.md` | The 14 rules. Style + architecture. |
 | `HANDOFF.md` | Stack, deploy, deviations, env vars table. |
 | `SECURITY.md` | CSP, headers, anti-fingerprint, deliberate trade-offs. |

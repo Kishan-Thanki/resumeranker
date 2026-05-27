@@ -31,7 +31,7 @@ A student or early-career job seeker. They have a resume and they're looking at 
 - SvelteKit (latest, TypeScript strict mode)
 - `@sveltejs/adapter-node` (NOT `adapter-auto`) — this project deploys as a self-hosted Node server in Docker; the static and platform-specific adapters are wrong for this use case
 - Tailwind CSS
-- `shadcn-svelte` for component primitives (https://shadcn-svelte.com)
+- `shadcn-svelte` for component primitives (<https://shadcn-svelte.com>)
 - `lucide-svelte` for icons (this is shadcn-svelte's default icon set; do not mix in other icon sets)
 - `mode-watcher` for dark mode (shadcn-svelte standard)
 - **Docker for both development and production** (see Docker section below)
@@ -147,7 +147,7 @@ CMD ["node", "build"]
 
 ### .dockerignore
 
-```
+```text
 node_modules
 .svelte-kit
 build
@@ -211,7 +211,7 @@ docker compose logs -f web
 
 ## Routes
 
-```
+```text
 PUBLIC
   /                          Landing page
   /auth                      Email entry for magic link
@@ -397,7 +397,7 @@ Build these as your own composite components in `src/lib/components/`:
 
 ## File structure
 
-```
+```text
 resume-ranker-frontend/
 ├── Dockerfile                          # Production multi-stage build
 ├── Dockerfile.dev                      # Development image with HMR

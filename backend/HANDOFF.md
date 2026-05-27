@@ -17,7 +17,7 @@ Security posture: see [`SECURITY.md`](SECURITY.md) in this directory.
 ## Status
 
 | | Status |
-|---|---|
+| --- | --- |
 | API + worker stack | **Live in dev compose.** All endpoints implemented and verified end-to-end. |
 | Auth flow | Magic-link → session works (with stdout email fallback when `RESEND_API_KEY` is unset). |
 | Analysis pipeline | `POST /analyses` → arq queue → worker → `completed` with populated `SectionScore[]`. |
@@ -38,7 +38,7 @@ pdfplumber · Resend (stdout fallback) · Alembic · uv · `python:3.12-slim`.
 
 ## Repo placement
 
-```
+```text
 resume-ranker/
 ├── frontend/                  (SvelteKit, complete)
 └── backend/                   ← this
@@ -90,7 +90,7 @@ group already disambiguates them — Docker Desktop shows the group at the
 top and the four short containers inside it.
 
 | Resource | Name |
-|---|---|
+| --- | --- |
 | Compose project (group in Docker Desktop) | `resume-ranker-backend` |
 | Container (api) | `api` |
 | Container (worker) | `worker` |
@@ -109,6 +109,7 @@ or revert to prefixed names in `compose.yml`.
 | Image (prod) | `resume-ranker-backend:prod` (~550 MB) |
 
 Host port mappings (changed from brief because 5432 is in use on this dev box):
+
 - Postgres `localhost:15432` → container `5432`
 - Redis `localhost:16379` → container `6379`
 - API `localhost:8000` → container `8000`
@@ -119,7 +120,7 @@ shared `resume-ranker-backend` network.
 ## HTTP API (everything implemented and verified)
 
 | Method | Path | Auth | Notes |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | GET | `/health` | none | 200 with `db: ok / redis: ok`, 503 otherwise. |
 | POST | `/auth/request-link` | none | Always 200 `{ok: true}`. Rate-limited 5/hr per email + 20/hr per IP. Email goes to stdout in stub mode. |
 | POST | `/auth/verify` | none | Body `{token}`. Returns `{sessionToken, user}` (camelCase). 400 with same generic message on any failure. |
@@ -186,7 +187,7 @@ docker compose exec api uv run python -m app.tests.evals._seed
 ## Deviations from the brief (intentional)
 
 | Deviation | Why |
-|---|---|
+| --- | --- |
 | `Dockerfile.dev` runs `uv sync` at **build time** as the brief specified — this works because the venv lives in a named volume (`resume-ranker-backend-venv`) so the bind mount doesn't clobber it. | No frontend-style "runtime install" needed; uv's behavior plays nicer with Docker than pnpm's did. |
 | Host ports remapped to **15432 / 16379** for postgres/redis | Default 5432 was in use on the dev box. Inside-container ports unchanged. |
 | `app/db.py` uses `NullPool` when running under pytest | The default SQLAlchemy pool binds connections to whichever event loop first uses them; pytest-asyncio's per-test loops then crash with "Event loop is closed". |
@@ -207,6 +208,7 @@ docker compose exec api uv run python -m app.tests.evals._seed
 See `AGENTS.md` — 15 rules, copied verbatim from the brief.
 
 The most load-bearing ones:
+
 - API never calls litellm. Worker only. (#10)
 - All LLM responses are typed via `instructor` + Pydantic. No free text. (#11)
 - Prompt changes bump `PROMPT_VERSION` in `app/domain/tech.py`. (#12)

@@ -8,7 +8,7 @@ those folders.
 
 ## Layout
 
-```
+```text
 resume-ranker/
 ├── backend/                 FastAPI + arq + Postgres + Redis (own image)
 ├── frontend/                SvelteKit (adapter-node)         (own image)
@@ -68,7 +68,7 @@ Backend exposes `http://localhost:8000`. Frontend serves `http://localhost:5173`
 ## Where to find more
 
 | Topic | File |
-|---|---|
+| --- | --- |
 | Backend rules (15) | `backend/AGENTS.md` |
 | Backend handoff (stack, deploy, deviations) | `backend/HANDOFF.md` |
 | Backend security posture | `backend/SECURITY.md` |

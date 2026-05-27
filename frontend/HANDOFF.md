@@ -18,7 +18,7 @@ Security posture: see [`SECURITY.md`](SECURITY.md) in this directory.
 ## Status
 
 | | Status |
-|---|---|
+| --- | --- |
 | Routes | **Done.** 6 routes + `+error.svelte`, wired to backend, polling, dark mode, mobile. |
 | API client | `src/lib/api.ts` covers magic-link auth, sessions, analyses CRUD, file upload. |
 | Tests | 40 vitest tests across 6 files. All green. |
@@ -34,7 +34,7 @@ Everything runs in Docker via `node:22-alpine`.
 
 ## Repo placement
 
-```
+```text
 resume-ranker/
 ├── backend/                  (FastAPI + arq + Postgres + Redis)
 └── frontend/                 ← this
@@ -74,7 +74,7 @@ folder, even when the project has only one container. Bypassing compose
 keeps the container flat in the UI.
 
 | Resource | Name |
-|---|---|
+| --- | --- |
 | Container | `resume-ranker-frontend` |
 | Image | `resume-ranker-frontend:latest` |
 | Network | Docker default `bridge` (no custom network needed — the browser, not the container, talks to the backend) |
@@ -94,7 +94,7 @@ deliberately generous-with-headroom.
 The frontend is configured by **two** build-time variables. Everything else is built into the image.
 
 | Var | Read where | Read when | Default | Required in prod? |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | `VITE_API_BASE_URL` | `src/lib/api.ts` (inlined into the JS bundle) | Build time (`pnpm build`) | `http://localhost:8000` | **Yes** |
 | `VITE_API_BASE_URL` | `svelte.config.js` (written into CSP `connect-src`) | Build time | `http://localhost:8000` | **Yes** |
 | `HOST` | adapter-node | Runtime | `0.0.0.0` (set in Dockerfile) | — |
@@ -163,7 +163,7 @@ Assumes the backend is up on `http://localhost:8000` and this frontend on `http:
 ## Deviations from the brief (intentional)
 
 | Item | Brief | Reality | Why |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Dev / prod image split | Brief had separate `Dockerfile.dev` + `compose.prod.yml` | **Single image, no overlays** | One version, production-parity locally. Rebuild for changes (~30 s). |
 | Tailwind base color | `slate` or `zinc` | `zinc` | shadcn-svelte CLI dropped `slate`. |
 | Icon package | `lucide-svelte` | `@lucide/svelte` | Renamed scoped package; same icon set. |
@@ -180,6 +180,7 @@ Assumes the backend is up on `http://localhost:8000` and this frontend on `http:
 ## Rules in force
 
 See `AGENTS.md` — 14 rules. Most load-bearing:
+
 - Svelte auto-escape only. **No `{@html ...}`** anywhere.
 - All data fetching goes through `src/lib/api.ts`. No ad-hoc `fetch()` in components.
 - Docker-first; no host-side `pnpm` / `node` for runtime workflows.
