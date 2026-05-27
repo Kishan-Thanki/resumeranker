@@ -1,0 +1,46 @@
+# Caddy reverse proxy for Resume Ranker — two sub-domains, one origin.
+#
+#   resume-ranker.kishanthanki.dev      -> frontend (SvelteKit node, :3000)
+#   api.resume-ranker.kishanthanki.dev  -> backend  (FastAPI/uvicorn, :8000)
+#
+# TLS: we use a Cloudflare Origin Certificate (primary path below) so this
+# works immediately with Cloudflare's orange-cloud proxy ON and SSL mode
+# "Full (strict)". Caddy presents the origin cert; Cloudflare trusts it;
+# the browser sees Cloudflare's edge cert. No ACME challenge has to reach
+# the box, so it's robust regardless of proxy status.
+#
+# Generate the origin cert once in the Cloudflare dashboard
+# (SSL/TLS -> Origin Server -> Create Certificate, hostnames
+# `*.kishanthanki.dev` + `kishanthanki.dev`, 15-year). Save the two PEM
+# blocks to deploy/certs/origin.pem and deploy/certs/origin-key.pem.
+#
+# --- Alternative (no Cloudflare proxy / grey cloud): delete the `tls`
+#     lines and Caddy will auto-issue Let's Encrypt certs via HTTP-01.
+#     Then you can turn the orange cloud on with SSL mode "Full (strict)".
+
+{
+	# Drop the admin API surface; we don't use it.
+	admin off
+	# Replace with a real address for expiry/issue notices if you switch
+	# to ACME. Harmless to leave for origin-cert mode.
+	email security@kishanthanki.dev
+}
+
+resume-ranker.kishanthanki.dev {
+	tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin-key.pem
+	encode zstd gzip
+	reverse_proxy frontend:3000
+
+	# Defense in depth: the frontend already sets CSP + security headers
+	# in hooks.server.ts. Caddy strips its own identifying header.
+	header -Server
+}
+
+api.resume-ranker.kishanthanki.dev {
+	tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin-key.pem
+	encode zstd gzip
+	# `reverse_proxy` sets X-Forwarded-Proto=https, which uvicorn honors
+	# (via --proxy-headers in compose.yml) so the HTTPS redirect doesn't loop.
+	reverse_proxy api:8000
+	header -Server
+}

@@ -1,0 +1,218 @@
+= Deploying Resume Ranker
+:toc: macro
+:icons: font
+
+Single-host production deploy: Caddy + 5 containers, behind Cloudflare.
+Targets a 1 GB free VPS (Oracle AMD) with swap, but works on any VPS.
+
+Topology:
+
+----
+Browser ──HTTPS──> Cloudflare (proxy) ──HTTPS──> Caddy ──┬─> frontend:3000
+                                                          └─> api:8000 ─> postgres / redis
+                                                                worker ──┘ (no inbound)
+----
+
+* `resume-ranker.kishanthanki.dev` → frontend
+* `api.resume-ranker.kishanthanki.dev` → backend
+* Same registrable domain ⇒ same-site ⇒ the `SameSite=Lax` HttpOnly
+  session cookie works across the two sub-domains; CORS only needs the
+  frontend origin allow-listed (handled by `APP_BASE_URL`).
+
+toc::[]
+
+== 0. One-time: the 1 GB box needs swap
+
+The worker spikes during PDF parse + LLM call. Without swap it OOM-kills.
+With a 4 GB swapfile the spike lands in swap (slow, not fatal). Skip this
+on a 4 GB+ host.
+
+[source,bash]
+----
+sudo fallocate -l 4G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+free -h   # confirm swap is active
+----
+
+Install Docker + compose plugin if not present, and enable it on boot:
+
+[source,bash]
+----
+curl -fsSL https://get.docker.com | sudo sh
+sudo systemctl enable --now docker
+----
+
+== 1. Build images OFF the box, push to GHCR
+
+NEVER `docker build` on the 1 GB box — the SvelteKit build needs ~1.5 GB
+and will fail. Build on your Mac (or CI) for `linux/amd64` and push.
+
+[source,bash]
+----
+# from the repo root, on your dev machine
+export REG=ghcr.io/kishan-thanki          # your GHCR namespace (lowercase)
+export TAG=$(git rev-parse --short HEAD)   # or a version like v1.0.0
+
+echo "$GHCR_TOKEN" | docker login ghcr.io -u Kishan-Thanki --password-stdin
+
+# Backend (api + worker share this image)
+docker build --platform linux/amd64 \
+  -t "$REG/resume-ranker-backend:$TAG" -t "$REG/resume-ranker-backend:latest" \
+  ./backend
+docker push "$REG/resume-ranker-backend:$TAG"
+docker push "$REG/resume-ranker-backend:latest"
+
+# Frontend — the prod API origin is BAKED IN here via the build arg
+docker build --platform linux/amd64 \
+  --build-arg VITE_API_BASE_URL=https://api.resume-ranker.kishanthanki.dev \
+  -t "$REG/resume-ranker-frontend:$TAG" -t "$REG/resume-ranker-frontend:latest" \
+  ./frontend
+docker push "$REG/resume-ranker-frontend:$TAG"
+docker push "$REG/resume-ranker-frontend:latest"
+----
+
+NOTE: On a 4 GB+ host you may build on-box instead; just run the same
+`docker build` commands there. The `--build-arg` for the frontend is
+mandatory either way.
+
+== 2. Put the deploy files + production .env on the box
+
+[source,bash]
+----
+# on the server
+mkdir -p ~/resume-ranker && cd ~/resume-ranker
+# copy deploy/compose.yml, deploy/Caddyfile, and deploy/certs/ here
+# (scp, or sparse-checkout just the deploy/ dir)
+----
+
+Create `.env` next to `compose.yml`. Start from `backend/.env.example`,
+then set the production values:
+
+[source,dotenv]
+----
+ENVIRONMENT=production
+APP_BASE_URL=https://resume-ranker.kishanthanki.dev   # frontend origin (CORS + magic-link)
+
+POSTGRES_USER=resumeranker
+POSTGRES_PASSWORD=<the rotated 64-char value — keep it secret>
+POSTGRES_DB=resumeranker
+DATABASE_URL=postgresql+asyncpg://resumeranker:<same-password>@postgres:5432/resumeranker
+
+REDIS_URL=redis://redis:6379/0
+
+LLM_API_KEY=<real Gemini key>
+LLM_MODEL=gemini/gemini-2.5-flash
+
+RESEND_API_KEY=<real Resend key>
+RESEND_FROM_EMAIL=login@mail.kishanthanki.dev
+CONTACT_TO_EMAIL=support@kishanthanki.dev
+
+# MUST persist forever — losing this makes every stored analysis unreadable.
+RESUME_ENCRYPTION_KEY=<the real 44-char Fernet key>
+
+MAX_RESUMES_PER_USER_PER_DAY=10
+MAX_FILE_SIZE_MB=10
+MAX_ANALYSES_PER_DAY_GLOBAL=25
+----
+
+WARNING: `.env` holds live secrets — `chmod 600 .env`, never commit it.
+The `RESUME_ENCRYPTION_KEY` must be the same value forever; back it up
+somewhere safe (a password manager), because the encrypted resume/JD
+columns are unrecoverable without it.
+
+== 3. TLS: Cloudflare Origin Certificate
+
+. Cloudflare dashboard → SSL/TLS → *Origin Server* → Create Certificate.
+  Hostnames: `*.kishanthanki.dev` and `kishanthanki.dev`. 15-year.
+. Save the certificate → `deploy/certs/origin.pem`,
+  the private key → `deploy/certs/origin-key.pem` (on the box, `chmod 600`).
+. Cloudflare → SSL/TLS → Overview → set encryption mode to *Full (strict)*.
+
+(Alternative without the proxy: delete the `tls` lines in the Caddyfile,
+point DNS grey-cloud, let Caddy auto-issue Let's Encrypt, then re-enable
+the orange cloud. See the Caddyfile comments.)
+
+== 4. Cloudflare DNS + firewall
+
+* DNS → add two *A records* → the server's public IP, both *Proxied*
+  (orange cloud):
+** `resume-ranker` → <IP>
+** `api.resume-ranker` → <IP>
+* Open only 80 + 443 to the world. On Oracle this means the VCN Security
+  List / NSG ingress rules AND the instance's local firewall:
++
+[source,bash]
+----
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 80 -j ACCEPT
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 443 -j ACCEPT
+sudo netfilter-persistent save     # Oracle Ubuntu images keep iptables rules
+----
+* (Hardening, optional) restrict 80/443 ingress to Cloudflare's published
+  IP ranges so the origin can't be hit directly.
+
+== 5. First run
+
+[source,bash]
+----
+cd ~/resume-ranker
+docker compose pull
+docker compose up -d
+docker compose ps          # all healthy?
+
+# Apply migrations to the fresh database. WITHOUT this every DB endpoint
+# returns 500. (uv is NOT in the runtime image — call alembic directly.)
+docker compose exec api alembic upgrade head
+----
+
+== 6. Smoke test (do this before recording the demo)
+
+[source,bash]
+----
+# API up behind Caddy/Cloudflare
+curl -sS -o /dev/null -w "%{http_code}\n" https://api.resume-ranker.kishanthanki.dev/health   # 200
+
+# No HTTPS redirect loop (should NOT be a 3xx ping-pong)
+curl -sSI https://api.resume-ranker.kishanthanki.dev/health | head -1
+
+# Frontend loads
+curl -sS -o /dev/null -w "%{http_code}\n" https://resume-ranker.kishanthanki.dev/            # 200
+----
+
+Then in a real browser:
+
+. Open `https://resume-ranker.kishanthanki.dev` — loads, theme toggle works.
+. Sign in with your email + accept the terms checkbox.
+. *A real magic-link email arrives* (Resend is live now, not stdout) →
+  click it → land on `/app`.
+. New analysis: upload a resume PDF + paste a JD → wait for the worker →
+  results render with the color-coded section bars.
+. Open an analysis → delete it (confirm it's gone).
+. Account menu → Delete account → confirm cascade + sign-out.
+
+If the email doesn't arrive: check `docker compose logs api | grep -i resend`
+and that the Resend domain is verified. If analyses hang in `queued`:
+`docker compose logs worker` (and confirm it didn't OOM — `dmesg | tail`).
+
+== 7. Updating later
+
+[source,bash]
+----
+# rebuild + push new images off-box (step 1), then on the server:
+cd ~/resume-ranker
+docker compose pull
+docker compose up -d
+docker compose exec api alembic upgrade head   # if there are new migrations
+----
+
+== Notes specific to the Oracle AMD free tier
+
+* *Idle reclaim:* Oracle may stop an Always-Free AMD instance left idle
+  ~7 days. Data survives on the boot volume; just start it again. A tiny
+  cron that curls `/health` every few hours keeps it "active".
+* *Auto-start on reboot:* `restart: unless-stopped` + `systemctl enable
+  docker` brings the whole stack back after a reboot/reclaim.
+* *Performance:* 1/8 OCPU — analyses work but aren't snappy. The daily
+  caps (`MAX_ANALYSES_PER_DAY_GLOBAL`) keep load bounded.

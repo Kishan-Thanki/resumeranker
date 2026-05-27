@@ -1,0 +1,4 @@
+# Production secrets — never commit these. They live only on the server.
+.env
+.env.*
+certs/

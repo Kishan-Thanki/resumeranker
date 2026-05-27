@@ -1,0 +1,163 @@
+# Production compose for Resume Ranker — single host (Oracle AMD free /
+# Hetzner / any VPS). Differs from backend/compose.yml (dev):
+#   - frontend + caddy added (full stack in one file)
+#   - Postgres/Redis ports NOT published (internal network only)
+#   - images are PULLED, not built (build off-box; see deploy/DEPLOY.adoc)
+#   - mem_limits tuned for a 1 GB box + swap (relax on larger hosts)
+#
+# Usage (on the server, from this directory):
+#   cp .env .            # the production env file (see DEPLOY.adoc)
+#   docker compose pull
+#   docker compose up -d
+#   docker compose exec api alembic upgrade head
+#
+# IMAGE_REGISTRY / IMAGE_TAG let you pin versions; defaults shown.
+
+name: resume-ranker
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: caddy
+    restart: unless-stopped
+    # The only publicly published ports in the whole stack.
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./certs:/etc/caddy/certs:ro      # Cloudflare Origin cert (see DEPLOY.adoc)
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - api
+      - frontend
+    networks:
+      - resume-ranker
+    mem_limit: 64m
+
+  frontend:
+    image: ${IMAGE_REGISTRY:-ghcr.io/kishan-thanki}/resume-ranker-frontend:${IMAGE_TAG:-latest}
+    container_name: frontend
+    restart: unless-stopped
+    # No published ports — Caddy reaches it over the internal network.
+    # VITE_API_BASE_URL is baked in at BUILD time (off-box), not here.
+    expose:
+      - "3000"
+    networks:
+      - resume-ranker
+    mem_limit: 128m
+    mem_reservation: 48m
+    pids_limit: 100
+
+  api:
+    image: ${IMAGE_REGISTRY:-ghcr.io/kishan-thanki}/resume-ranker-backend:${IMAGE_TAG:-latest}
+    container_name: api
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # `--proxy-headers --forwarded-allow-ips=*` is REQUIRED behind Caddy:
+    # without it uvicorn sees scheme=http on the internal hop and the
+    # HTTPSRedirectMiddleware (active when ENVIRONMENT=production) would
+    # 307-redirect forever. Trusting all proxies is safe here — the API is
+    # only reachable via Caddy on the internal network, never published.
+    command:
+      - uvicorn
+      - app.main:app
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "8000"
+      - --no-server-header
+      - --no-date-header
+      - --proxy-headers
+      - --forwarded-allow-ips
+      - "*"
+    expose:
+      - "8000"
+    networks:
+      - resume-ranker
+    mem_limit: 320m
+    mem_reservation: 128m
+    pids_limit: 200
+
+  worker:
+    image: ${IMAGE_REGISTRY:-ghcr.io/kishan-thanki}/resume-ranker-backend:${IMAGE_TAG:-latest}
+    container_name: worker
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      api:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["arq", "app.worker.WorkerSettings"]
+    networks:
+      - resume-ranker
+    # Tuned down from the dev 1g for a 1 GB box. Docker lets a container
+    # use up to mem_limit RAM + an equal amount of swap by default, so the
+    # worker's PDF/LLM spike lands in swap (slow) instead of OOM-killing.
+    # On a 4 GB+ host, raise to 1g and drop the swap reliance.
+    mem_limit: 640m
+    mem_reservation: 128m
+    pids_limit: 200
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER must be set in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB must be set in .env}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    # NO ports — database is never reachable from the public internet.
+    networks:
+      - resume-ranker
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    mem_limit: 256m
+    mem_reservation: 96m
+    pids_limit: 200
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    # NO ports — internal only.
+    networks:
+      - resume-ranker
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    mem_limit: 96m
+    mem_reservation: 24m
+    pids_limit: 100
+
+networks:
+  resume-ranker:
+    name: resume-ranker
+
+volumes:
+  postgres-data:
+    name: resume-ranker-postgres-data
+  redis-data:
+    name: resume-ranker-redis-data
+  caddy-data:
+    name: resume-ranker-caddy-data
+  caddy-config:
+    name: resume-ranker-caddy-config
