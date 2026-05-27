@@ -1,0 +1,29 @@
+# Pre-commit hook config — see https://pre-commit.com
+#
+# Activation (one-time, after `git init`):
+#   brew install pre-commit
+#   pre-commit install
+#
+# After that, every `git commit` runs the hooks below on staged files.
+# To run on the whole repo on demand:
+#   pre-commit run --all-files
+#
+# To skip the hook for one commit (use sparingly, and only for a clear
+# reason like reverting a known-good prior commit):
+#   git commit --no-verify
+#
+# Current hooks:
+#   - gitleaks   blocks commits that contain likely secrets
+#                (API keys, private certs, .env contents, etc.)
+#
+# Add more later (eslint, trufflehog, ruff, mypy) as needed.
+
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks
+        name: gitleaks (scan staged changes for secrets)
+        # gitleaks' own default rules cover AWS / Anthropic / OpenAI /
+        # Stripe / GitHub / Resend / generic high-entropy strings.
+        # Add a `.gitleaks.toml` in the repo root if you need to tune.

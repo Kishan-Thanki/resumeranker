@@ -1,0 +1,23 @@
+Sam Patel — Recent Graduate
+
+Education
+BSc Computer Science, University of Waterloo (2021–2025).
+GPA 3.7 / 4.0. Coursework: Algorithms, Databases, Distributed Systems,
+Linear Algebra.
+
+Projects
+- Built a multi-user todo app with Flask + SQLite for my final-year
+  software-engineering course.
+- Built a SQL-driven movie recommender for a databases course assignment.
+  Wrote ~15 queries against the IMDB dataset using window functions
+  and CTEs.
+- Contributed a small bug fix to a Python testing library on GitHub
+  (one merged PR).
+
+Internships
+- Software Engineering Intern, smaller startup (May 2024 – Aug 2024, 4
+  months). Wrote Python scripts to migrate customer data; gained some
+  exposure to Airflow.
+
+Skills
+Python, SQL, Java (school only), Git, basic Docker.

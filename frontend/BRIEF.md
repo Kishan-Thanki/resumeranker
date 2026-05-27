@@ -1,0 +1,507 @@
+# Resume-Ranker — Frontend Brief (v1, Candidate-side)
+
+## What this is
+
+A web tool that lets a job-seeking candidate upload their resume and a job description (JD) and receive a structured analysis of how well the resume matches the JD, with evidence quotes and gap analysis.
+
+This brief covers ONLY the frontend for v1. The backend is mocked — the UI must work end-to-end with hardcoded mock data and a simulated async pipeline.
+
+## Who uses it
+
+A student or early-career job seeker. They have a resume and they're looking at a job they want to apply for. They want to know:
+
+- Where do I match this JD?
+- Where do I not match?
+- What specifically in my resume corresponds to what in the JD?
+
+## Out of scope for v1 (do not build)
+
+- Recruiter flow — candidate side only
+- A top-line single match score (e.g. "78% match") — **deliberately excluded, do not add**
+- "Courses to learn" or any prescriptive learning recommendations
+- Chatbot or follow-up Q&A
+- Real backend integration (mock everything)
+- Account management UI (profile, settings, billing)
+- Multi-domain UI (assume tech roles only)
+- File formats other than PDF and plain text
+- Social or sharing features
+
+## Stack
+
+- SvelteKit (latest, TypeScript strict mode)
+- `@sveltejs/adapter-node` (NOT `adapter-auto`) — this project deploys as a self-hosted Node server in Docker; the static and platform-specific adapters are wrong for this use case
+- Tailwind CSS
+- `shadcn-svelte` for component primitives (https://shadcn-svelte.com)
+- `lucide-svelte` for icons (this is shadcn-svelte's default icon set; do not mix in other icon sets)
+- `mode-watcher` for dark mode (shadcn-svelte standard)
+- **Docker for both development and production** (see Docker section below)
+- **pnpm** as the package manager (NOT npm or yarn)
+
+### shadcn-svelte usage rules
+
+- Install components via the CLI as needed: `npx shadcn-svelte@latest add button`, etc. Do not paste components manually.
+- Installed components live in `src/lib/components/ui/` — this directory is owned by shadcn-svelte. Edit components there freely (that's the point of shadcn) but do not reorganize.
+- Your own composite components (`SectionScoreCard`, `RequirementRow`, etc. — see Components section) live in `src/lib/components/` directly, NOT inside `ui/`. Keep the separation clean.
+- When a needed component doesn't exist in shadcn-svelte, build it yourself in the same style (Tailwind classes, `cn()` utility, Radix-style API where applicable). Do not introduce a second component library.
+- Use the default "slate" or "zinc" base color. Do not pick a colorful theme.
+
+## Docker
+
+The entire frontend runs in Docker for both development and production. Do not run `pnpm dev` directly on the host — always go through Docker Compose. This matches the eventual deployment target (k3s on Oracle Cloud, ARM Ampere) and prevents environment drift.
+
+### Files at the repo root
+
+- `Dockerfile` — multi-stage production build
+- `Dockerfile.dev` — development image with HMR
+- `compose.yml` — Docker Compose configuration for development (the modern filename, replaces `docker-compose.yml`)
+- `.dockerignore` — must exist, must exclude `node_modules`, `.git`, `.svelte-kit`, `build`
+
+### Dockerfile.dev (development)
+
+```dockerfile
+FROM node:22-alpine
+
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+WORKDIR /app
+
+# Copy lockfile first for Docker layer caching
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+
+# Source is mounted as a volume in compose.yml; nothing copied here
+EXPOSE 5173
+
+# --host 0.0.0.0 is REQUIRED so Vite is reachable from outside the container
+CMD ["pnpm", "dev", "--host", "0.0.0.0"]
+```
+
+### compose.yml (development)
+
+```yaml
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: resume-ranker-web
+    ports:
+      - "5173:5173"
+    volumes:
+      # Source code mounted for HMR
+      - .:/app
+      # Anonymous volume prevents host node_modules (wrong platform binaries)
+      # from clobbering the container's node_modules
+      - /app/node_modules
+    environment:
+      # File watching reliability across host filesystems
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+    restart: unless-stopped
+```
+
+### Dockerfile (production, multi-stage)
+
+```dockerfile
+# syntax=docker/dockerfile:1.7
+
+FROM node:22-alpine AS base
+RUN corepack enable && corepack prepare pnpm@latest --activate
+WORKDIR /app
+
+# --- deps stage: install all deps (including dev) for the build ---
+FROM base AS deps
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+
+# --- build stage: produce the SvelteKit Node output ---
+FROM base AS build
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN pnpm build
+
+# --- prod-deps stage: install ONLY production deps for the runtime image ---
+FROM base AS prod-deps
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile --prod
+
+# --- runtime stage: minimal final image ---
+FROM node:22-alpine AS runner
+WORKDIR /app
+
+# Non-root user for security
+RUN addgroup -S app && adduser -S app -G app
+USER app
+
+COPY --from=prod-deps --chown=app:app /app/node_modules ./node_modules
+COPY --from=build --chown=app:app /app/build ./build
+COPY --chown=app:app package.json ./
+
+ENV NODE_ENV=production
+ENV HOST=0.0.0.0
+ENV PORT=3000
+EXPOSE 3000
+
+CMD ["node", "build"]
+```
+
+### .dockerignore
+
+```
+node_modules
+.svelte-kit
+build
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+Dockerfile
+Dockerfile.dev
+compose.yml
+README.md
+.vscode
+.idea
+*.log
+```
+
+### Daily commands
+
+```bash
+# Start dev environment (first run builds the image)
+docker compose up
+
+# Stop
+docker compose down
+
+# Rebuild image after Dockerfile or package.json changes
+docker compose up --build
+
+# Run a one-off command inside the container
+docker compose exec web pnpm add some-package
+docker compose exec web pnpm dlx shadcn-svelte@latest add button
+
+# View logs
+docker compose logs -f web
+```
+
+### Important rules
+
+- **Never run `pnpm install` or `pnpm add` on the host.** All package operations go through `docker compose exec web pnpm ...`. The host has no `node_modules` and shouldn't.
+- **The `pnpm-lock.yaml` IS committed** and is the source of truth. The Dockerfile uses `--frozen-lockfile` to fail if it drifts.
+- **When you add or remove a dependency**, the image needs to be rebuilt: `docker compose up --build`.
+- **HMR (hot reload) works through the mounted volume.** If it ever stops working, restart with `docker compose restart web`.
+- **For OCI ARM deployment later**, the production Dockerfile must be built with `docker buildx build --platform linux/arm64` (or linux/amd64,linux/arm64 for multi-arch). This is a v2 concern but the Dockerfile is already compatible.
+
+## Core philosophy (non-negotiable)
+
+1. **No top-line score.** The UI must never display a single overall percentage. Always show section-level breakdown (Skills, Experience, Education, Leadership Signals).
+2. **Evidence is the killer feature.** Every claim of a match must show *what text in the resume* matched *what requirement in the JD*. Direct quotes, side by side.
+3. **Factual gaps, not advice.** When the resume doesn't match a requirement, state the fact: "The JD requires Kubernetes; your resume doesn't mention it." Do not suggest courses, learning paths, or what to add.
+4. **Honest, not flashy.** No animations celebrating high scores. No gamification. Aesthetic is clean and technical, slightly clinical. Reference: Linear, Vercel, Stripe docs — not Duolingo.
+
+## Visual direction
+
+- Neutral base: white background, near-black text. Dark mode is a nice-to-have but optional in v1.
+- Single accent color for primary actions. Suggest a muted indigo or slate.
+- Match status colors used sparingly and muted: green (strong), amber (partial), red (weak), neutral gray (missing). Never saturated.
+- Typography: one sans-serif (Inter is fine). One monospace for evidence quotes (JetBrains Mono or system mono).
+- Generous whitespace. Tight typography. No drop shadows. Borders > shadows.
+- No emojis in UI copy.
+
+## Routes
+
+```
+PUBLIC
+  /                          Landing page
+  /auth                      Email entry for magic link
+  /auth/sent?email=          "Check your email" confirmation
+  /auth/verify?token=        Token verification (mocked, redirects to /app)
+
+AUTHENTICATED
+  /app                       Home — analysis history list + "New analysis" CTA
+  /app/new                   Upload JD + resume
+  /app/analysis/[id]         Analysis detail (processing state OR results)
+
+ERROR
+  +error.svelte              404 / generic error handler (not a route, a special file)
+```
+
+Seven routes total. `/app` doubles as home AND history — there's no separate `/app/history`. Empty state on first use; populated list on return visits.
+
+## Data shapes
+
+```typescript
+// src/lib/types.ts
+
+export type AnalysisStatus = 'queued' | 'processing' | 'completed' | 'failed';
+
+export type SectionId = 'skills' | 'experience' | 'education' | 'leadership';
+
+export type MatchStrength = 'strong' | 'partial' | 'weak' | 'none';
+
+export interface Evidence {
+  text: string;            // The exact quote
+  source: 'jd' | 'resume';
+  location?: string;       // Optional: "Skills section" or "page 1"
+}
+
+export interface RequirementMatch {
+  id: string;
+  requirement: string;     // e.g. "5+ years Python experience"
+  jdEvidence: Evidence;    // Where in the JD this requirement came from
+  matched: boolean;
+  matchStrength: MatchStrength;
+  resumeEvidence: Evidence[]; // Empty if not matched
+  note?: string;           // Optional system note, factual only
+}
+
+export interface SectionScore {
+  id: SectionId;
+  label: string;           // "Skills", "Experience", "Education", "Leadership Signals"
+  score: number;           // 0-100, section-level only
+  requirements: RequirementMatch[];
+}
+
+export interface AnalysisResult {
+  id: string;
+  createdAt: string;       // ISO 8601
+  jdTitle: string;         // Extracted from JD, e.g. "Senior Backend Engineer at Acme"
+  resumeName: string;      // Original filename
+  status: AnalysisStatus;
+  sections: SectionScore[]; // Empty until status === 'completed'
+  errorMessage?: string;
+}
+```
+
+## Mock data
+
+`src/lib/mock/analyses.ts` — three realistic completed analyses:
+
+1. **Strong match.** Backend Engineer JD, experienced backend resume. Most requirements matched.
+2. **Partial match.** Platform Engineer JD, resume with adjacent skills, missing Kubernetes and observability experience.
+3. **Weak match.** Senior ML Engineer JD, junior generalist resume. Few matches.
+
+Each analysis must have 8-12 requirements distributed across the four sections, with realistic evidence quotes (write actual JD text and actual resume text, not Lorem Ipsum).
+
+`src/lib/stores/analyses.ts` — a Svelte store wrapping the mock data, with:
+
+- `getAll()` — return all analyses sorted by createdAt desc
+- `getById(id)` — return one
+- `create(jdInput, resumeFile)` — create a new analysis with status `queued`, return the id, then transition to `processing` after 1s and `completed` after 4-6s. Use `setTimeout` and update the store. The "completed" result is selected randomly from the three mock templates or a generic one.
+
+## Pages — what each should contain
+
+### `/` Landing
+
+- Hero: clear value proposition in two short sentences. Example: "See exactly how your resume matches a job description. Section-by-section scoring with evidence from your own resume."
+- Three explainer blocks (NOT a feature grid with checkmarks): **Upload** → **Analyze** → **See evidence**. One sentence each.
+- One primary CTA: "Get started" → `/auth`.
+- Footer with one link: GitHub.
+- No testimonials, no fake logos, no "trusted by", no waitlist counter.
+
+### `/auth` Magic link request
+
+- Email input + "Send magic link" button.
+- On submit: navigate to `/auth/sent?email=...`.
+- No password field, no social login, no signup/login distinction.
+
+### `/auth/sent`
+
+- "Check your email" with the email address shown back.
+- "Didn't get it? Resend" link (mocked, no-op + toast).
+- Dev-only helper for now: a "Simulate click" button → `/auth/verify?token=mock`. Make this visually distinct (dashed border, "DEV ONLY" label).
+
+### `/auth/verify`
+
+- Loading state with "Verifying..."
+- After 1s, store a fake auth token in `localStorage` and redirect to `/app`.
+
+### `/app` Authenticated home (also serves as history)
+
+This single page is both the landing-after-login AND the full history list. No separate `/app/history` route.
+
+- Top bar: app name on the left, sign-out menu on the right (use shadcn `DropdownMenu`). Sign-out clears `localStorage` and redirects to `/`.
+- Primary CTA at the top: "New analysis" button → `/app/new`. Visually prominent.
+- Below the CTA: the analyses table.
+  - Columns: Date, JD Title, Resume Name, Status.
+  - Status column shows a small badge (Queued / Processing / Completed / Failed).
+  - Click row → navigate to `/app/analysis/[id]`.
+  - Sorted by `createdAt` descending (newest first).
+  - No filters, no search, no pagination in v1.
+- Empty state (first-time user, no analyses yet): use `EmptyState` component with a brief message and a duplicate "Start your first analysis" CTA.
+
+### `/app/new` Upload flow
+
+- Two upload sections, vertical stack:
+  1. **Job Description.** Toggle: "Upload PDF" / "Paste text". PDF: drag-and-drop with click fallback. Plain text: textarea with character count.
+  2. **Resume.** PDF only. Drag-and-drop with click fallback. If user tries to paste (a "Paste instead?" link), show a one-line factual explanation: "Resume must be uploaded as PDF for v1. Plain text input may be added later."
+- Validation: both inputs must be present before "Analyze" enables.
+- On Analyze click: call `analyses.create(...)`, get the new id, navigate to `/app/analysis/[id]`.
+
+### `/app/analysis/[id]` Detail page
+
+**Processing state** (status `queued` or `processing`):
+
+- Show JD title and resume name at the top.
+- Subtle animated indicator (three pulsing dots, or skeleton blocks for the four section cards). Not a spinner with confetti.
+- Status text: "Queued", then "Analyzing your resume against the job description".
+- Subscribe to the store and re-render when status changes.
+
+**Completed state**:
+
+- Header: JD title, resume name, analysis date.
+- Four section cards stacked vertically, full width. Each shows:
+  - Section label and score (e.g. "Skills — 70%")
+  - A horizontal score bar (0-100)
+  - Expandable list of requirements
+- For each requirement:
+  - Requirement text
+  - Match status badge: Strong / Partial / Weak / Missing
+  - On expand: JD evidence quote on the left, resume evidence quote(s) on the right. Side-by-side on desktop, stacked on mobile. If missing, show the JD quote alone with "Not found in resume" beneath.
+- **Gaps summary** at the bottom: bullet list of all unmatched requirements, factual phrasing. No advice.
+
+**Failed state**:
+
+- Clean error message, "Try again" button → `/app/new`.
+
+## Components
+
+shadcn-svelte provides the primitives. Install these via CLI as you need them:
+
+- `button` — primary, secondary, ghost, destructive variants
+- `input` — text input
+- `textarea`
+- `label`
+- `card` — for section breakdown containers
+- `badge` — base for `MatchBadge`
+- `separator`
+- `dialog` / `sheet` — for any modal-ish behavior
+- `dropdown-menu` — for the top bar user menu
+- `progress` — base for `ScoreBar`
+- `tooltip`
+- `sonner` — for toast notifications
+
+Build these as your own composite components in `src/lib/components/`:
+
+- `FileUpload.svelte` — drag-and-drop area, click fallback, shows filename + size after select, accepts a MIME type prop. Built on top of a plain `<input type="file">` styled with Tailwind.
+- `SectionScoreCard.svelte` — section breakdown card with expandable requirements. Built on shadcn `Card`.
+- `RequirementRow.svelte` — single requirement with expand/collapse behavior.
+- `EvidenceBlock.svelte` — quote block with source attribution and optional location. Monospace font.
+- `MatchBadge.svelte` — Strong / Partial / Weak / Missing pill. Thin wrapper around shadcn `Badge` with color variants.
+- `ScoreBar.svelte` — horizontal progress bar with a label above. Built on shadcn `Progress` or plain Tailwind.
+- `EmptyState.svelte` — generic empty state with icon + text + optional CTA.
+- `TopBar.svelte` — authenticated top bar with app name + sign out via `DropdownMenu`.
+
+**Rule:** if it's a generic primitive (button, input, dialog), use shadcn-svelte. If it's specific to this product (a requirement row, an evidence block), build it yourself in `src/lib/components/` using shadcn primitives underneath.
+
+## File structure
+
+```
+resume-ranker-frontend/
+├── Dockerfile                          # Production multi-stage build
+├── Dockerfile.dev                      # Development image with HMR
+├── compose.yml                         # Docker Compose for dev
+├── .dockerignore
+├── .gitignore
+├── package.json
+├── pnpm-lock.yaml                      # Committed, source of truth
+├── svelte.config.js                    # Must use adapter-node
+├── vite.config.ts
+├── tailwind.config.ts
+├── tsconfig.json                       # strict: true
+├── components.json                     # shadcn-svelte config
+├── BRIEF.md                            # This file
+├── AGENTS.md                           # Rules for AI assistant
+└── src/
+    ├── app.html
+    ├── app.css                         # Tailwind directives + shadcn vars
+    ├── routes/
+    │   ├── +layout.svelte
+    │   ├── +error.svelte               # 404 / generic error
+    │   ├── +page.svelte                # Landing
+    │   ├── auth/
+    │   │   ├── +page.svelte            # Email entry
+    │   │   ├── sent/+page.svelte
+    │   │   └── verify/+page.svelte
+    │   └── app/
+    │       ├── +layout.svelte          # Auth guard + top bar
+    │       ├── +page.svelte            # Home (history list + new CTA)
+    │       ├── new/+page.svelte
+    │       └── analysis/[id]/+page.svelte
+    └── lib/
+        ├── types.ts
+        ├── utils.ts                    # shadcn-svelte's cn() helper, etc.
+        ├── components/
+        │   ├── ui/                     # shadcn-svelte (owned by CLI)
+        │   │   ├── button/
+        │   │   ├── card/
+        │   │   ├── badge/
+        │   │   └── ...
+        │   ├── FileUpload.svelte       # Composite components
+        │   ├── SectionScoreCard.svelte
+        │   ├── RequirementRow.svelte
+        │   ├── EvidenceBlock.svelte
+        │   ├── MatchBadge.svelte
+        │   ├── ScoreBar.svelte
+        │   ├── EmptyState.svelte
+        │   └── TopBar.svelte
+        ├── stores/
+        │   ├── auth.ts                 # localStorage-backed
+        │   └── analyses.ts             # Mock analyses store
+        └── mock/
+            └── analyses.ts             # Hardcoded example analyses
+```
+
+## Rules (these go in AGENTS.md)
+
+1. **No `any` in TypeScript.** Anywhere. Use `unknown` and narrow, or define proper types.
+2. **Strict mode in `tsconfig.json`.** No exceptions.
+3. **No file deletion.** If a file becomes obsolete, leave it and ask. Never delete without explicit permission.
+4. **Components live in component files.** A route `+page.svelte` is for composition and data flow, not markup beyond ~100 lines.
+5. **Mock data only in `src/lib/mock/`.** No hardcoded mock arrays inline in components.
+6. **shadcn-svelte is the only external component library.** Do not introduce Skeleton, Bits UI, Flowbite, or any other component library alongside it. If a component you need isn't in shadcn-svelte, build it yourself in the shadcn style.
+7. **Accessibility:** every interactive element has a label or `aria-label`. Focus states must be visible. Forms must be keyboard-navigable. No `div` with `onclick` — use real buttons.
+8. **Mobile works.** Every page must render usably at 380px viewport. Mobile is not optional.
+9. **`lucide-svelte` is the only icon set.** It is shadcn-svelte's default. Do not introduce other icon libraries.
+10. **Understand before using.** If a library or pattern is unfamiliar, explain it in a code comment or ask before adding it.
+11. **No `console.log` left in committed code.** Remove or convert to comments.
+12. **Prefer composition over abstraction.** Don't extract a component until it has two real callers.
+13. **Docker-first workflow.** Never run `pnpm dev` directly on the host. All commands go through `docker compose exec web ...`. The host has no `node_modules` directory.
+14. **Pin Node and pnpm versions.** Use `node:22-alpine` in Dockerfiles. Add `"packageManager": "pnpm@<version>"` to `package.json` so the lockfile and the image stay in sync.
+
+## Definition of done
+
+- All routes navigable
+- All mock analyses display correctly
+- New-analysis flow works end-to-end with simulated async state transitions
+- `/app` lists all stored analyses with correct sort order
+- Sign-out clears state and returns to landing
+- No console errors or warnings
+- No TypeScript errors with `docker compose exec web pnpm exec tsc --noEmit`
+- Renders correctly at 380px, 768px, and 1280px viewports
+- Keyboard navigation works on every page
+- `docker compose up` starts the dev environment cleanly from a fresh clone
+- `docker build -t resume-ranker-frontend:prod .` produces a working production image
+- Production image runs and serves the built site on `:3000`
+
+## Working order (suggested)
+
+1. Scaffold SvelteKit with TypeScript: `pnpm create svelte@latest .`. Choose: Skeleton project, TypeScript syntax, Tailwind add-on, ESLint, Prettier.
+2. Set up `@sveltejs/adapter-node` in `svelte.config.js` (replace whatever the scaffolder picked).
+3. **Set up Docker first**: write `Dockerfile.dev`, `compose.yml`, `.dockerignore` per the Docker section. Verify `docker compose up` starts SvelteKit at `http://localhost:5173`. Do NOT proceed until this works.
+4. Initialize shadcn-svelte INSIDE the container: `docker compose exec web pnpm dlx shadcn-svelte@latest init` (default style, slate/zinc base color, CSS variables enabled).
+5. Install initial shadcn components: `docker compose exec web pnpm dlx shadcn-svelte@latest add button input textarea label card badge progress dropdown-menu sonner separator`.
+6. Set `tsconfig.json` to strict mode if scaffolder didn't.
+7. Define `src/lib/types.ts`.
+8. Build mock data (`src/lib/mock/analyses.ts`) and the analyses store (`src/lib/stores/analyses.ts`).
+9. Build composite components: `MatchBadge`, `ScoreBar`, `EvidenceBlock`, `FileUpload`, `EmptyState`, `TopBar`.
+10. Build the auth flow: `/`, `/auth`, `/auth/sent`, `/auth/verify`.
+11. Build `/app` layout with auth guard and `TopBar`.
+12. Build `/app` home (the merged home + history view).
+13. Build `/app/new` upload page.
+14. Build `/app/analysis/[id]` — processing state first, then completed state. This is where `SectionScoreCard` and `RequirementRow` get built.
+15. Write the production `Dockerfile` (multi-stage) and verify `docker build -t resume-ranker-frontend:prod .` produces a working image. Run with `docker run -p 3000:3000 resume-ranker-frontend:prod` and verify the built site loads.
+16. Polish: empty states, error states, focus styles, mobile passes at 380px, dark mode toggle, `+error.svelte` page.
+
+At each step, the project should run cleanly with `docker compose up` and the new page should be reachable. **Never break a previous step's behavior** — if step 11 stops step 10 from working, fix it before moving on.

@@ -1,0 +1,17 @@
+# Project-wide ignores. Language-specific rules live in backend/.gitignore
+# and frontend/.gitignore.
+
+# Per-machine Claude Code overrides — never commit secrets or local settings.
+.claude/settings.local.json
+backend/.claude/settings.local.json
+frontend/.claude/settings.local.json
+
+# OS
+.DS_Store
+._*
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo

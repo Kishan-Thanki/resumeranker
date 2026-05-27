@@ -1,0 +1,19 @@
+Junior Data Engineer at Brightline Analytics
+
+About the role
+You will build and maintain ETL pipelines moving data from our application
+databases into the warehouse. You'll write SQL transforms, monitor
+pipeline runs, and triage failures.
+
+Requirements
+- 0–2 years professional experience. Recent graduates encouraged to apply.
+- Solid SQL fundamentals; can write a multi-CTE query and reason about
+  query plans.
+- Working knowledge of Python for scripting and data manipulation.
+- Familiarity with at least one orchestration tool (Airflow, Dagster,
+  Prefect — any of them is fine).
+- Undergraduate degree in Computer Science, Mathematics, or similar.
+
+About you
+- You want to learn data engineering at a place where senior engineers
+  actually review your code.

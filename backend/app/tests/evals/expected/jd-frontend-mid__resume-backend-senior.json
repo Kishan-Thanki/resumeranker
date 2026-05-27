@@ -1,0 +1,28 @@
+{
+  "jd": "jd-frontend-mid",
+  "resume": "resume-backend-senior",
+  "section_ranges": {
+    "skills": {
+      "min": 5,
+      "max": 30
+    },
+    "experience": {
+      "min": 15,
+      "max": 45
+    },
+    "education": {
+      "min": 75,
+      "max": 100
+    },
+    "leadership": {
+      "min": 40,
+      "max": 75
+    }
+  },
+  "min_requirements_per_section": {
+    "skills": 1,
+    "experience": 1,
+    "education": 1,
+    "leadership": 1
+  }
+}

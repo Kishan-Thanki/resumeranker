@@ -1,0 +1,28 @@
+{
+  "jd": "jd-platform-eng",
+  "resume": "resume-recent-grad",
+  "section_ranges": {
+    "skills": {
+      "min": 5,
+      "max": 30
+    },
+    "experience": {
+      "min": 0,
+      "max": 20
+    },
+    "education": {
+      "min": 70,
+      "max": 100
+    },
+    "leadership": {
+      "min": 0,
+      "max": 25
+    }
+  },
+  "min_requirements_per_section": {
+    "skills": 1,
+    "experience": 1,
+    "education": 1,
+    "leadership": 1
+  }
+}

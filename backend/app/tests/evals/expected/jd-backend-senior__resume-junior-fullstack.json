@@ -1,0 +1,28 @@
+{
+  "jd": "jd-backend-senior",
+  "resume": "resume-junior-fullstack",
+  "section_ranges": {
+    "skills": {
+      "min": 25,
+      "max": 55
+    },
+    "experience": {
+      "min": 10,
+      "max": 40
+    },
+    "education": {
+      "min": 70,
+      "max": 95
+    },
+    "leadership": {
+      "min": 5,
+      "max": 35
+    }
+  },
+  "min_requirements_per_section": {
+    "skills": 1,
+    "experience": 1,
+    "education": 1,
+    "leadership": 1
+  }
+}

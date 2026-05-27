@@ -1,0 +1,29 @@
+Priya Sharma — Senior Backend Engineer
+
+Experience
+Backend Engineer, Stride Financial — Python, Django, PostgreSQL
+(Sep 2021 – present, 4.5 years)
+- Sole owner of the reconciliation service: design, implementation,
+  on-call rotation (every fourth week), incident postmortems.
+- Stride Financial is a UK FCA-authorised lender; all production changes
+  go through a documented change-control process.
+- Onboarded two graduate hires in 2024; pair-programmed during their
+  first month.
+
+Projects
+- Owned the 2 TB Postgres cluster powering ledger reconciliation; rewrote
+  three hot queries with composite indexes and CTEs, cutting p95 from
+  4.1s to 280ms.
+- Migrated 12 services from bare-metal to multi-stage Docker images;
+  reduced average image size by 64%.
+- Day-to-day work in AWS: ECS Fargate, RDS, S3, CloudWatch. Wrote the
+  Terraform that provisions our staging environment.
+- Led the migration from synchronous webhook delivery to a queued,
+  retried system. Required sign-off from Risk, Compliance and Platform.
+
+Education
+BSc Computer Science, University of Manchester (2017–2020),
+First Class Honours.
+
+Skills
+Python, PostgreSQL, Docker, AWS, Terraform, Django, SQLAlchemy.

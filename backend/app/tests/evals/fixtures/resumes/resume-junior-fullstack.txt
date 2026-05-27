@@ -1,0 +1,17 @@
+Alex Chen — Software Engineer
+
+Experience
+Software Engineer, Brightline Analytics (Jan 2025 – present, 4 months)
+Software Engineer Intern, Brightline Analytics (Jun 2024 – Dec 2024,
+6 months, returning intern).
+- Python (Flask) is the primary stack at Brightline; I write Python for
+  both backend services and analysis scripts.
+- Shipped a churn-prediction notebook shared with the analytics team.
+
+Education
+BSc Computer Science, Auckland University of Technology (2019–2022).
+Coursework: Linear Algebra, Calculus I–II, Probability & Statistics
+(undergraduate, 2022).
+
+Skills
+Python, Flask, JavaScript, React, scikit-learn, pandas, SQL, Git.

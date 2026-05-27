@@ -1,0 +1,28 @@
+{
+  "jd": "jd-data-eng-junior",
+  "resume": "resume-devops-generalist",
+  "section_ranges": {
+    "skills": {
+      "min": 35,
+      "max": 65
+    },
+    "experience": {
+      "min": 45,
+      "max": 75
+    },
+    "education": {
+      "min": 55,
+      "max": 85
+    },
+    "leadership": {
+      "min": 30,
+      "max": 65
+    }
+  },
+  "min_requirements_per_section": {
+    "skills": 1,
+    "experience": 1,
+    "education": 1,
+    "leadership": 1
+  }
+}

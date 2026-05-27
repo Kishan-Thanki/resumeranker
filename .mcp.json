@@ -1,0 +1,18 @@
+{
+  "_comment": "Project-local MCP servers for resume-ranker. Empty today. The user has Gmail / Google Drive / Google Calendar via Claude.ai's global MCP config (not this file). When the repo lands on GitHub, the highest-value addition here is the GitHub MCP server — it lets Claude Code create issues, PRs, and review code from chat. Example below is commented out; uncomment and fill GITHUB_PERSONAL_ACCESS_TOKEN to activate.",
+  "_example_github": {
+    "command": "docker",
+    "args": [
+      "run",
+      "-i",
+      "--rm",
+      "-e",
+      "GITHUB_PERSONAL_ACCESS_TOKEN",
+      "ghcr.io/github/github-mcp-server"
+    ],
+    "env": {
+      "GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_..."
+    }
+  },
+  "mcpServers": {}
+}

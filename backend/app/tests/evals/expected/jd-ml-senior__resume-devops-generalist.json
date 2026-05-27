@@ -1,0 +1,28 @@
+{
+  "jd": "jd-ml-senior",
+  "resume": "resume-devops-generalist",
+  "section_ranges": {
+    "skills": {
+      "min": 5,
+      "max": 30
+    },
+    "experience": {
+      "min": 10,
+      "max": 35
+    },
+    "education": {
+      "min": 30,
+      "max": 60
+    },
+    "leadership": {
+      "min": 30,
+      "max": 60
+    }
+  },
+  "min_requirements_per_section": {
+    "skills": 1,
+    "experience": 1,
+    "education": 1,
+    "leadership": 1
+  }
+}

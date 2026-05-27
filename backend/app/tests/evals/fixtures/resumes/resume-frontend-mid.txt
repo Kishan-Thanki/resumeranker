@@ -1,0 +1,21 @@
+Maya Lopez — Frontend Engineer
+
+Experience
+Frontend Engineer, Quill Press (Mar 2022 – present, 3 years).
+- Built features in the reader app: TypeScript + React + Tailwind.
+- Reviewed pull requests from two junior engineers; mentored both
+  through their first six months.
+- Set up Playwright end-to-end testing for the reader app.
+
+Projects
+- Migrated the design-system repo from styled-components to Tailwind +
+  shadcn primitives. Coordinated rollout across four product teams.
+- Owned a11y compliance for the new checkout flow: keyboard navigation,
+  screen-reader testing with VoiceOver and NVDA, focus management.
+
+Skills
+TypeScript, React, Tailwind CSS, Vite, pnpm, Playwright, shadcn,
+HTML / CSS, accessibility tooling.
+
+Education
+BA Design and Computing, Goldsmiths (2017–2020).

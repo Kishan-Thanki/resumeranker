@@ -1,0 +1,24 @@
+Senior Machine Learning Engineer at Lumen AI
+
+About the role
+You will work directly with our research team on PyTorch (and increasingly
+JAX) training code. You'll own ML projects end-to-end: scoping, dataset
+work, training, evaluation, deployment. You will set the technical
+direction for two junior MLEs joining in the next quarter.
+
+Requirements
+- Practical experience with distributed training: DDP, FSDP, or DeepSpeed
+  across at least 8 GPUs.
+- Has shipped a model to production users and operated it under real load
+  (SageMaker, Triton, or similar).
+- At least 5 years in a role focused primarily on machine learning, deep
+  learning, or research engineering.
+- MSc or PhD in CS, Math, Physics, or a related quantitative field.
+  Equivalent demonstrated research output also accepted.
+- Strong Python is expected — the whole team writes Python every day.
+
+About you
+- You can point to a feature in a shipping product where the ML you built
+  is doing the work.
+- You should be able to read a recent NeurIPS paper and reason about the
+  loss function.

@@ -1,0 +1,28 @@
+{
+  "jd": "jd-backend-senior",
+  "resume": "resume-devops-generalist",
+  "section_ranges": {
+    "skills": {
+      "min": 40,
+      "max": 70
+    },
+    "experience": {
+      "min": 40,
+      "max": 70
+    },
+    "education": {
+      "min": 50,
+      "max": 80
+    },
+    "leadership": {
+      "min": 30,
+      "max": 65
+    }
+  },
+  "min_requirements_per_section": {
+    "skills": 1,
+    "experience": 1,
+    "education": 1,
+    "leadership": 1
+  }
+}

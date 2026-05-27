@@ -1,0 +1,20 @@
+Senior Backend Engineer at Acme Financial
+
+About the role
+You will own one or more production services in our payments stack. You'll
+participate in the on-call rotation and write blameless postmortems when
+things go wrong. You will coordinate with Risk and Compliance on
+infrastructure changes.
+
+Requirements
+- 4+ years of professional Python experience writing production code.
+- Comfortable designing PostgreSQL schemas and writing performant queries
+  against large tables.
+- Familiarity with Docker; you should be able to write a Dockerfile without
+  help.
+- Practical experience deploying services to AWS (ECS/Fargate or EKS).
+- BSc in Computer Science or equivalent practical experience.
+
+Nice to have
+- Prior work in fintech, payments, or another regulated industry.
+- A blog, conference talk, or open-source contribution we can read.

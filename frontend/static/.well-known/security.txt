@@ -1,0 +1,16 @@
+# Security disclosure for Resume Ranker
+# Format: RFC 9116 (https://datatracker.ietf.org/doc/html/rfc9116)
+#
+# If you believe you have found a security vulnerability in this service,
+# please report it via the contact form linked below. We aim to
+# acknowledge reports within 72 hours.
+
+Contact: http://localhost:5173/contact
+Expires: 2027-01-01T00:00:00.000Z
+Preferred-Languages: en
+Policy: http://localhost:5173/privacy
+
+# NOTE: The absolute URLs above use localhost while the service is in
+# local dev. Before deploying publicly, replace both with the production
+# origin (e.g. https://resume-ranker.example/contact and /privacy). RFC
+# 9116 requires absolute URLs in these directives.

@@ -1,0 +1,19 @@
+Mid-level Frontend Engineer at Quill Publishing
+
+About the role
+You will build customer-facing features in our reader app and contribute to
+our shared design system. You'll review pull requests from junior
+engineers and pair on tricky UI work.
+
+Requirements
+- 3+ years building production React applications with TypeScript.
+- Comfortable working inside a design-system repo (we use shadcn-style
+  primitives and Tailwind).
+- Has shipped accessible UI work — keyboard navigation, screen-reader
+  testing, focus management.
+- Comfortable with modern frontend tooling (Vite, pnpm, Playwright).
+- Bachelor's degree or equivalent self-directed learning.
+
+Nice to have
+- Experience mentoring more junior engineers and reviewing their work.
+- Open-source contributions to a design system or component library.

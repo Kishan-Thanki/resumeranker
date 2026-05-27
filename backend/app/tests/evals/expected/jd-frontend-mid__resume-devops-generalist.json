@@ -1,0 +1,28 @@
+{
+  "jd": "jd-frontend-mid",
+  "resume": "resume-devops-generalist",
+  "section_ranges": {
+    "skills": {
+      "min": 0,
+      "max": 20
+    },
+    "experience": {
+      "min": 15,
+      "max": 40
+    },
+    "education": {
+      "min": 50,
+      "max": 80
+    },
+    "leadership": {
+      "min": 25,
+      "max": 55
+    }
+  },
+  "min_requirements_per_section": {
+    "skills": 1,
+    "experience": 1,
+    "education": 1,
+    "leadership": 1
+  }
+}

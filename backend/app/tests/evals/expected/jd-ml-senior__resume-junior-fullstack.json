@@ -1,0 +1,28 @@
+{
+  "jd": "jd-ml-senior",
+  "resume": "resume-junior-fullstack",
+  "section_ranges": {
+    "skills": {
+      "min": 10,
+      "max": 35
+    },
+    "experience": {
+      "min": 5,
+      "max": 30
+    },
+    "education": {
+      "min": 30,
+      "max": 60
+    },
+    "leadership": {
+      "min": 0,
+      "max": 25
+    }
+  },
+  "min_requirements_per_section": {
+    "skills": 1,
+    "experience": 1,
+    "education": 1,
+    "leadership": 1
+  }
+}

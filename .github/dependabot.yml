@@ -1,0 +1,62 @@
+# Dependabot — automated dependency-update PRs.
+#
+# Activates the moment this repo is pushed to GitHub. No setup steps;
+# GitHub reads this file directly from the default branch.
+#
+# Coverage:
+#   - backend Python deps (pyproject.toml + uv.lock)
+#   - frontend Node deps  (package.json + pnpm-lock.yaml)
+#   - GitHub Actions versions used in our own workflows
+#   - Docker base images referenced in each Dockerfile
+#
+# Each ecosystem opens at most 5 update PRs at a time, so the inbox
+# doesn't drown after a quiet month.
+
+version: 2
+updates:
+  # ── Backend Python ───────────────────────────────────────────────
+  - package-ecosystem: pip
+    directory: /backend
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels: [dependencies, backend]
+    groups:
+      python-minor:
+        update-types: [minor, patch]
+
+  # ── Frontend Node ────────────────────────────────────────────────
+  - package-ecosystem: npm   # Dependabot's npm ecosystem reads pnpm-lock.yaml too
+    directory: /frontend
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels: [dependencies, frontend]
+    groups:
+      node-minor:
+        update-types: [minor, patch]
+
+  # ── GitHub Actions versions in our own workflows ─────────────────
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    labels: [dependencies, ci]
+
+  # ── Docker base images ───────────────────────────────────────────
+  - package-ecosystem: docker
+    directory: /backend
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    labels: [dependencies, docker, backend]
+
+  - package-ecosystem: docker
+    directory: /frontend
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    labels: [dependencies, docker, frontend]

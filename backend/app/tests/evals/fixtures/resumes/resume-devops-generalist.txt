@@ -1,0 +1,24 @@
+James Okafor — DevOps Engineer
+
+Experience
+DevOps Engineer, Quill Press — 3 years 2 months (Feb 2023 – present).
+- Secondary on-call for the publishing platform; primary on-call sits
+  with the application engineering team.
+- Wrote three blameless postmortems in the last year. Two were for
+  incidents I primarily resolved.
+
+Projects
+- Wrote Terraform modules for VPC, RDS, and ALB across two AWS accounts.
+  ~12 modules total.
+- Designed and maintained the GitHub Actions workflows for 8 services:
+  lint, type-check, unit, integration, deploy. Cut average CI time from
+  18 min to 6 min.
+- Maintained CloudWatch dashboards and alerts for the publishing platform.
+
+Skills
+Python, Bash, Docker, Docker Compose, Terraform, AWS, GitHub Actions,
+CloudWatch.
+
+Education
+BSc Geography, University of Leeds (2018–2021). Self-taught into
+infrastructure; completed AWS Solutions Architect Associate (2023).

@@ -1,0 +1,28 @@
+{
+  "jd": "jd-data-eng-junior",
+  "resume": "resume-junior-fullstack",
+  "section_ranges": {
+    "skills": {
+      "min": 40,
+      "max": 70
+    },
+    "experience": {
+      "min": 30,
+      "max": 65
+    },
+    "education": {
+      "min": 75,
+      "max": 100
+    },
+    "leadership": {
+      "min": 0,
+      "max": 30
+    }
+  },
+  "min_requirements_per_section": {
+    "skills": 1,
+    "experience": 1,
+    "education": 1,
+    "leadership": 1
+  }
+}

@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# SvelteKit / build / adapter output
+.svelte-kit/
+build/
+.output/
+.vercel/
+.netlify/
+.wrangler/
+
+# Local env — keep committed templates
+.env
+.env.*
+!.env.example
+!.env.test
+
+# Vite
+vite.config.*.timestamp-*

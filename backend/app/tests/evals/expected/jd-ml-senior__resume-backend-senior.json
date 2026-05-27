@@ -1,0 +1,28 @@
+{
+  "jd": "jd-ml-senior",
+  "resume": "resume-backend-senior",
+  "section_ranges": {
+    "skills": {
+      "min": 15,
+      "max": 40
+    },
+    "experience": {
+      "min": 15,
+      "max": 45
+    },
+    "education": {
+      "min": 40,
+      "max": 70
+    },
+    "leadership": {
+      "min": 45,
+      "max": 75
+    }
+  },
+  "min_requirements_per_section": {
+    "skills": 1,
+    "experience": 1,
+    "education": 1,
+    "leadership": 1
+  }
+}

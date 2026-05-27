@@ -1,0 +1,20 @@
+Platform Engineer at Nexus Robotics
+
+About the role
+You will be operating multi-cluster Kubernetes on AWS EKS and on-prem.
+You'll participate in the on-call rotation for customer-facing services
+and write blameless postmortems for incidents.
+
+Requirements
+- At least 3 years in an SRE, platform, or DevOps role.
+- You should have hands-on Terraform experience and be comfortable
+  refactoring a 50-module repo.
+- Comfortable instrumenting services with Prometheus metrics and authoring
+  Grafana dashboards.
+- Most of our internal tooling is Go. Prior Go experience is required.
+- Track record of owning CI/CD pipelines — failure budgets, flaky-test
+  triage, deploy gates.
+- Degree in a relevant field or demonstrable self-taught equivalent.
+
+Nice to have
+- Examples of introducing a new tool or workflow that other teams adopted.

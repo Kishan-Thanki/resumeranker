@@ -1,0 +1,133 @@
+# Security CI — runs on every push to main, every PR, and weekly.
+#
+# Five jobs, all independent. Any failure marks the run red so a PR
+# can't merge with a known HIGH/CRITICAL CVE.
+#
+#   pip-audit       Backend Python deps vs PyPI advisory DB
+#   pnpm-audit      Frontend Node deps vs npm advisory DB
+#   trivy-backend   Built backend image, OS + lang packages, HIGH/CRITICAL
+#   trivy-frontend  Built frontend image, same
+#   gitleaks        Full-history secret scan (mirrors the pre-commit hook)
+
+name: security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Mondays 03:17 UTC — off-hours, off the top of the hour so we
+    # don't pile onto GitHub's runner-scheduling cliff.
+    - cron: '17 3 * * 1'
+  workflow_dispatch:  # manual "Run workflow" button in the Actions tab
+
+# Cancel an in-progress run if a newer push to the same branch lands.
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # ── Backend Python deps ──────────────────────────────────────────
+  pip-audit:
+    name: pip-audit (backend)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Sync backend deps
+        working-directory: backend
+        run: uv sync --frozen
+
+      - name: Run pip-audit
+        working-directory: backend
+        # `uv run` puts pip-audit inside the synced venv so it sees
+        # exactly what `uv sync` resolved. --strict turns ANY known
+        # vuln into a failure.
+        run: uv run --with pip-audit pip-audit --strict
+
+  # ── Frontend Node deps ───────────────────────────────────────────
+  pnpm-audit:
+    name: pnpm audit (frontend)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Audit
+        working-directory: frontend
+        # `--audit-level=moderate` ignores the known low-severity
+        # cookie@0.6.0 transitive from @sveltejs/kit. Bump back to
+        # `low` once SvelteKit ships the fix.
+        run: pnpm audit --audit-level=moderate --prod
+
+  # ── Backend image scan ───────────────────────────────────────────
+  trivy-backend:
+    name: trivy (backend image)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t local/backend:scan ./backend
+
+      - name: Trivy scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: local/backend:scan
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+          format: table
+
+  # ── Frontend image scan ──────────────────────────────────────────
+  trivy-frontend:
+    name: trivy (frontend image)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t local/frontend:scan ./frontend
+
+      - name: Trivy scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: local/frontend:scan
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+          format: table
+
+  # ── Secret scan across git history ───────────────────────────────
+  gitleaks:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history so gitleaks can scan every commit
+
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
