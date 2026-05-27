@@ -19,7 +19,7 @@ If you find a vulnerability, see **Reporting** at the bottom.
 | Uploaded resumes | PII disclosure (we extract text and discard the file, but the text is persisted) |
 | Job descriptions | Low — typically not sensitive |
 | LLM API key (when configured) | Cost abuse, exfiltration of analyses |
-| Postgres data at rest | Bulk PII disclosure if DB is exfiltrated |
+| Postgres data at rest | Reduced — resume/JD text is app-layer encrypted (Fernet); a raw DB dump yields ciphertext without the key |
 | Backend RCE / SQLi | Full system compromise |
 
 Adversaries we design against, in rough order of concern:
@@ -47,13 +47,20 @@ Out of scope for v1:
 - **15-minute expiry** — short window for stolen-link risk.
 - **Single error response** for not-found / expired / consumed — no enumeration.
 - **Session tokens** — same 32-byte random, hashed, 30-day sliding expiry, revocable on sign-out.
-- **Bearer-token in `Authorization` header** — no cookies, **CSRF is structurally impossible**.
+- **HttpOnly session cookie** — the session token is delivered via `Set-Cookie` on `/auth/verify`, never in the response body. Attributes: `HttpOnly` (JavaScript can't read it, so an XSS injection can't exfiltrate it), `SameSite=Lax` (the cookie isn't sent on cross-site POST/DELETE, so CSRF is mitigated for state-changing requests), and `Secure` in production. Set and cleared centrally in `app/security/cookies.py`.
+
+### Encryption at rest
+
+- **Resume and JD text are Fernet-encrypted** (AES-128-CBC + HMAC-SHA256) before being written to Postgres, via a SQLAlchemy `TypeDecorator` in `app/models/encrypted.py`. A raw DB dump / stolen backup yields ciphertext only.
+- **The key lives in `RESUME_ENCRYPTION_KEY` (env), not the database** — so DB-level exposure (volume snapshot, `SELECT *`, backup file) doesn't reveal plaintext. Note this does *not* protect against full host compromise, where both ciphertext and key are reachable; a managed KMS would be the next step.
+- **Stub mode** — when no real key is set, the column passes through plaintext so local dev / CI boots without a key. Production must set one.
 
 ### Rate limiting (Redis sliding-window)
 
 - **Global per-IP cap**: 100 requests / minute across every endpoint. Catches abusive flooding that bypasses endpoint-specific limits (e.g. `/health` floods, `/auth/verify` brute force, `/me` token-oracle probing). Returns the generic `{"error": "rate_limited"}` shape so attackers can't infer the limiter type. Implemented in `app/middleware/global_rate_limit.py` against Redis.
 - `POST /auth/request-link`: 5/hour per email, 20/hour per IP. Even when blocked, the response is still 200 `{"ok": true}` so attackers can't enumerate.
-- `POST /analyses`: 10/day per user (`MAX_RESUMES_PER_USER_PER_DAY`).
+- `POST /analyses`: 10/day per user (`MAX_RESUMES_PER_USER_PER_DAY`), plus a service-wide daily cap (`MAX_ANALYSES_PER_DAY_GLOBAL`) checked first — when the whole service hits its ceiling it returns 503 (keeps cost under the LLM provider's free tier).
+- `POST /contact`: 3/hour per IP, plus a honeypot field. Success, rate-limited, and honeypot-tripped all return the same 200 so spammers/probers learn nothing.
 
 ### Input validation
 
@@ -80,7 +87,14 @@ Out of scope for v1:
 ### CORS
 
 - Single allow-list: `settings.app_base_url`. No wildcards.
-- `allow_credentials=True` but credentials are bearer headers, not cookies — origin must match exactly.
+- `allow_credentials=True` so the browser may send the session cookie; the exact origin must match (no `*`). Combined with the cookie's `SameSite=Lax`, a cross-site page can't ride the session on state-changing requests.
+
+### Audit logging
+
+- **Security-relevant events are recorded** in an `audit_events` table via `app/services/audit_service.py`: magic-link requested, sign-in / sign-in-failed, sign-out, account created / deleted, policy re-accepted, rate-limit hits, contact submitted / honeypot.
+- **Written on an independent DB session** so a caller's rollback never erases the trail (e.g. a failed `/auth/verify` still logs the failure).
+- **Survives user deletion** — the `user_id` FK is `ON DELETE SET NULL` and the email is duplicated onto the row, so the record of an account deletion outlives the account.
+- **Never blocks the audited action** — any logging error is swallowed and written to stdout instead.
 
 ### Observability
 
@@ -104,6 +118,7 @@ Out of scope for v1:
 ### Production deployment hardening
 
 - `/docs`, `/redoc`, `/openapi.json` are only mounted when `ENVIRONMENT=development`. Production returns 404.
+- **HTTPS redirect** — `HTTPSRedirectMiddleware` is enabled whenever `ENVIRONMENT != development`. Behind a TLS-terminating proxy that forwards `X-Forwarded-Proto`, plain-HTTP requests get a 307 to the https origin.
 - Postgres and Redis host port publishing is for local-dev convenience only; behind a Coolify/Caddy reverse proxy in production they're internal-only.
 - `APP_BASE_URL` must be set to the public HTTPS origin for magic-link emails to point at the right URL.
 - **Hosting opacity (recommended at deploy time):** Cloudflare in front of the origin. DNS A-record proxied (orange cloud) → origin IP never resolves publicly. Cloudflare's ASN replaces the origin's. Lock the VM firewall to allow only Cloudflare's published IP ranges on :80/:443.
@@ -116,7 +131,7 @@ Out of scope for v1:
 | --- | --- | --- |
 | Trivy flags some unfixable OS-level CVEs (no patch available upstream) | Various | Cannot patch until upstream issues fixes. Re-scan periodically. |
 | No WAF in front | Medium | Add Cloudflare in front of the VM during deploy (free tier). |
-| No audit log table (who signed in when, who created what analysis) | Low | Backend stdout is the de-facto audit log; ship to a log service in production. |
+| Encryption key co-located with the app (env var, not a KMS) | Medium | Protects against DB-level exposure, not full host compromise. Move to a managed KMS if storing higher-sensitivity data. |
 | No automated dep-update bot (Dependabot / Renovate) | Low | Manual `pip-audit` for now. Add Dependabot when repo lands on GitHub. |
 | No fuzzing of file upload path | Low | `pdfplumber` is well-tested; size cap limits blast radius. |
 | Per-user session limit unenforced | Low | A user can have unlimited concurrent sessions. Add max-N per user in v2. |

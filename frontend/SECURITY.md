@@ -15,7 +15,7 @@ If you find a vulnerability, see **Reporting** at the bottom.
 
 | Asset | Worst-case impact |
 |---|---|
-| Session token in `localStorage` | Account takeover via XSS / phishing |
+| Session cookie (HttpOnly) | Account takeover via phishing or a stolen device — not via XSS, since JS can't read it |
 | Resume / JD text rendered in the UI | XSS if not auto-escaped |
 | Frontend bundle | Source disclosure (file paths, internal logic) via leaked source maps |
 | The Node server itself | Limited blast radius — it's stateless and only serves the SPA shell |
@@ -30,7 +30,7 @@ Out of scope for v1:
 
 - Targeted attacks by well-resourced adversaries.
 - Side-channel / timing attacks.
-- Compromised user device (we can't protect `localStorage` from a hostile extension).
+- Compromised user device (a hostile browser extension with cookie permissions, or local malware, is out of our control).
 
 ---
 
@@ -42,9 +42,10 @@ Out of scope for v1:
 - API responses are typed (`src/lib/types.ts`); fields render through `{value}` interpolation only.
 
 ### Auth surface
-- **Bearer token in `Authorization` header**, stored in `localStorage` under `resume-ranker:session-token`.
-- **No cookies** → **CSRF is structurally impossible**.
-- Trade-off: `localStorage` is XSS-reachable. CSP (below) is the primary mitigation; Svelte auto-escape is the second layer.
+
+- **HttpOnly session cookie** set by the backend at `/auth/verify`; JavaScript can't read it, so an XSS injection can't exfiltrate the session.
+- **`SameSite=Lax`** — the cookie isn't sent on cross-site POST/DELETE, so CSRF is mitigated for state-changing requests. `Secure` is set in production.
+- All API calls use `credentials: 'include'` (`src/lib/api.ts`); the browser attaches the cookie automatically. No token is ever held in JS-readable storage.
 
 ### HTTP security headers
 Set by `src/hooks.server.ts` on every response:
@@ -86,7 +87,7 @@ Set by `src/hooks.server.ts` on every response:
 | `cookie@0.6.0` transitive vuln from `@sveltejs/kit` | Low | Upstream pins `cookie ^0.6.0`. Patched on `Vary` cookie parsing. SvelteKit will bump eventually. |
 | Trivy flags some unfixable OS-level CVEs in `node:22-alpine` (no patch upstream) | Various | Cannot patch until upstream issues fixes. Re-scan periodically. |
 | No automated dep-update bot (Dependabot / Renovate) | Low | Manual `pnpm audit` for now. Add when repo lands on GitHub. |
-| Session token in `localStorage` (XSS-reachable) | Low–Medium | Trade-off for "no cookies → no CSRF". CSP + Svelte auto-escape are the mitigations. A hostile extension can always read `localStorage`. |
+| Session cookie is a bearer credential (no token binding) | Low | A stolen cookie works until expiry / sign-out. HttpOnly + SameSite=Lax + Secure + CSP are the mitigations; device pinning / token binding is out of scope for v1. |
 | `VITE_API_BASE_URL` is inlined at build time | Low | Same image can't be repointed without rebuild. Move to runtime `window.__ENV__` if multi-env single-image is needed. |
 
 ---

@@ -23,7 +23,7 @@ Security posture: see [`SECURITY.md`](SECURITY.md) in this directory.
 | Analysis pipeline | `POST /analyses` → arq queue → worker → `completed` with populated `SectionScore[]`. |
 | LLM | **Stub mode** active by default. Real calls activate when `LLM_API_KEY` is set; provider determined by `LLM_MODEL` (default `gemini/gemini-2.5-flash`). |
 | Tests | 8 unit/integration tests + 25 eval pairs (eval suite is `@pytest.mark.eval`-gated). All green. |
-| `mypy --strict` | **Clean** (43 source files, 0 issues). |
+| `mypy --strict` | **Clean** (54 source files, 0 issues). |
 | `ruff` | **Clean.** |
 | Production image | Builds at 554 MB. Verified to start. |
 
@@ -119,16 +119,24 @@ shared `resume-ranker-backend` network.
 
 ## HTTP API (everything implemented and verified)
 
+Auth is a **HttpOnly session cookie** set by `/auth/verify` (not a bearer
+header). The browser sends it automatically on same-site requests; the
+frontend uses `credentials: 'include'`.
+
 | Method | Path | Auth | Notes |
 | --- | --- | --- | --- |
 | GET | `/health` | none | 200 with `db: ok / redis: ok`, 503 otherwise. |
-| POST | `/auth/request-link` | none | Always 200 `{ok: true}`. Rate-limited 5/hr per email + 20/hr per IP. Email goes to stdout in stub mode. |
-| POST | `/auth/verify` | none | Body `{token}`. Returns `{sessionToken, user}` (camelCase). 400 with same generic message on any failure. |
-| POST | `/auth/sign-out` | bearer | 204. |
-| GET | `/me` | bearer | Returns `{id, email}`. 401 if invalid/expired/revoked. |
-| GET | `/analyses` | bearer | `AnalysisResult[]`, newest first. Camel-case JSON matches frontend types. |
-| GET | `/analyses/{id}` | bearer | `AnalysisResult` or 404 (same response for missing-vs-not-owned). |
-| POST | `/analyses` | bearer | Multipart: `resume` (PDF), `jd_input_type=pdf\|text`, `jd_pdf` or `jd_text`. Returns 201 with `queued` row. Daily quota `MAX_RESUMES_PER_USER_PER_DAY=10`. |
+| POST | `/auth/request-link` | none | Body `{email, acceptedPolicyVersion}`. Always 200 `{ok: true}`. Rate-limited 5/hr per email + 20/hr per IP. Email goes to stdout in stub mode. |
+| POST | `/auth/verify` | none | Body `{token}`. Sets the session cookie via `Set-Cookie`; returns `{user}` (no token in the body). 400 with same generic message on any failure. |
+| POST | `/auth/sign-out` | cookie | 204. Clears the session cookie. |
+| GET | `/me` | cookie | Returns `{id, email, acceptedPolicyVersion}`. 401 if invalid/expired/revoked. |
+| POST | `/me/accept-policy` | cookie | Body `{acceptedPolicyVersion}`. Records re-acceptance; returns the updated `/me` payload. |
+| DELETE | `/me` | cookie | 204. Hard-deletes the user; cascades to sessions, magic_links, analyses; clears the cookie. |
+| GET | `/analyses` | cookie | `AnalysisResult[]`, newest first. Camel-case JSON matches frontend types. |
+| GET | `/analyses/{id}` | cookie | `AnalysisResult` or 404 (same response for missing-vs-not-owned). |
+| POST | `/analyses` | cookie | Multipart: `resume` (PDF), `jd_input_type=pdf\|text`, `jd_pdf` or `jd_text`. Returns 201 with `queued` row. Per-user quota `MAX_RESUMES_PER_USER_PER_DAY=10` + service-wide `MAX_ANALYSES_PER_DAY_GLOBAL`. |
+| DELETE | `/analyses/{id}` | cookie | 204. Owner-scoped hard delete; 404 for missing-or-not-owned (no existence leak). |
+| POST | `/contact` | none | Body `{name, email, message, website}`. Always 200; honeypot + 3/hr per-IP limit. |
 
 ## LLM stub mode
 

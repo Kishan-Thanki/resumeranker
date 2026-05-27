@@ -21,7 +21,7 @@ Security posture: see [`SECURITY.md`](SECURITY.md) in this directory.
 | --- | --- |
 | Routes | **Done.** 6 routes + `+error.svelte`, wired to backend, polling, dark mode, mobile. |
 | API client | `src/lib/api.ts` covers magic-link auth, sessions, analyses CRUD, file upload. |
-| Tests | 40 vitest tests across 6 files. All green. |
+| Tests | 38 vitest tests across 6 files. All green. |
 | `svelte-check` | **Clean** (0 errors, 0 warnings). |
 | Production bundle | Source maps OFF; minified by Vite's default `oxc-minify`. |
 
@@ -145,7 +145,7 @@ serves the SPA shell; the browser then makes cross-origin calls to
 
 - **CORS:** the backend allow-list must include this frontend's origin
   (`settings.app_base_url` in `backend/app/config.py`).
-- **Auth:** session token is in `localStorage` (`resume-ranker:session-token`) and sent as `Authorization: Bearer <token>` on every authed call. No cookies → CSRF is structurally impossible.
+- **Auth:** the session lives in an HttpOnly cookie set by the backend at `/auth/verify` (not readable by JS). Every API call uses `credentials: 'include'` so the browser attaches it; `SameSite=Lax` mitigates CSRF on state-changing requests. No token is held in `localStorage`.
 - **Polling:** `src/routes/app/analysis/[id]/+page.svelte` polls `GET /analyses/{id}` every **2 s** while status is `queued` or `processing`; gives up after **2 minutes** with a "still working" hint.
 
 ## E2E walkthrough (manual, real browser)
