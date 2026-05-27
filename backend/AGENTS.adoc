@@ -1,0 +1,37 @@
+= Rules for AI assistant on this backend
+
+Follow these rules when editing this repo. They come from the v1 backend
+brief; if `BACKEND_BRIEF.md` is present at this directory it is the source
+of truth, otherwise the brief lives in the conversation that created this
+scaffold.
+
+. _No untyped code._ `mypy --strict` must pass. No `Any` without an
+   explicit reason in a comment.
+. _Services have no FastAPI imports._ Routes call services; services
+   don't know about HTTP.
+. _No file deletion_ without explicit permission. If a file becomes
+   obsolete, leave it and ask.
+. _All DB access is async_ via SQLAlchemy async session. No sync calls
+   anywhere in request or worker paths.
+. _Pydantic for every boundary._ Request bodies, response bodies, LLM
+   responses, env config. No free dicts crossing boundaries.
+. _Migrations are immutable once committed._ Never edit an applied
+   migration; add a new one.
+. _Never log secrets._ No tokens, no API keys, no full session tokens
+   in logs. Log token IDs / prefixes only.
+. _Never log full PII unprompted._ Email addresses can be logged.
+   Resume contents cannot.
+. _Routes are thin._ Validation + dependency injection + one service
+   call. Business logic lives in services.
+. _Worker is the only place LLM calls happen._ Routes never call
+    litellm directly.
+. _All LLM responses go through `instructor` + a Pydantic model._ No
+    free-text outputs.
+. _Prompt changes bump `PROMPT_VERSION`._ This invalidates caches and
+    triggers eval re-runs.
+. _Docker-first workflow._ Never run `uv` or `python` on the host. All
+    commands through `docker compose exec`.
+. _Test for the contract, not the implementation._ Pydantic response
+    shapes are tested; internal service signatures aren't.
+. _One commit per working-order step_ when working with AI assistants.
+    Easier to revert, easier to review.

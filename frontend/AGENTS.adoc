@@ -1,0 +1,20 @@
+= Rules for AI assistant on this project
+
+Follow these rules when editing this repo. They come from the v1 frontend
+brief; if `BRIEF.md` is present at the repo root it is the source of truth,
+otherwise the brief lives in the conversation that created this scaffold.
+
+. _No `any` in TypeScript._ Anywhere. Use `unknown` and narrow, or define proper types.
+. _Strict mode in `tsconfig.json`._ No exceptions.
+. _No file deletion._ If a file becomes obsolete, leave it and ask. Never delete without explicit permission.
+. _Components live in component files._ A route `+page.svelte` is for composition and data flow, not markup beyond ~100 lines.
+. _Mock data only in `src/lib/mock/`._ No hardcoded mock arrays inline in components.
+. _shadcn-svelte is the only external component library._ Do not introduce Skeleton, Bits UI (directly), Flowbite, or any other component library alongside it. If a component you need isn't in shadcn-svelte, build it yourself in the shadcn style.
+. _Accessibility:_ every interactive element has a label or `aria-label`. Focus states must be visible. Forms must be keyboard-navigable. No `div` with `onclick` — use real buttons.
+. _Mobile works._ Every page must render usably at 380px viewport. Mobile is not optional.
+. _`lucide-svelte` (or `@lucide/svelte`) is the only icon set._ It is shadcn-svelte's default. Do not introduce other icon libraries.
+. _Understand before using._ If a library or pattern is unfamiliar, explain it in a code comment or ask before adding it.
+. _No `console.log` left in committed code._ Remove or convert to comments.
+. _Prefer composition over abstraction._ Don't extract a component until it has two real callers.
+. _Docker-first workflow._ Never run `pnpm dev` directly on the host. All commands go through `docker compose exec web ...`. The host has no `node_modules` directory.
+. _Pin Node and pnpm versions._ Use `node:22-alpine` in Dockerfiles. The `"packageManager"` field in `package.json` pins pnpm so the lockfile and the image stay in sync.
