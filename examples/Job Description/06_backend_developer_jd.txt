@@ -1,0 +1,11 @@
+Backend Engineer (Python/FastAPI)
+
+About the Role:
+We are hiring a Backend Engineer to build scalable APIs for our core platform. You will tackle complex data challenges and optimize high-throughput systems.
+
+Requirements:
+- 3+ years of backend development experience.
+- Strong proficiency in Python.
+- Experience with modern web frameworks like FastAPI or Starlette.
+- Solid understanding of SQL and relational databases (PostgreSQL).
+- Experience with caching strategies (Redis).

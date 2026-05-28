@@ -1,0 +1,11 @@
+Frontend Engineer (Svelte/React)
+
+About the Role:
+Looking for an experienced Frontend Engineer to join our growing team. You will lead the development of our next-generation web client.
+
+Requirements:
+- 3+ years of frontend experience.
+- Strong expertise in JavaScript/TypeScript.
+- Deep knowledge of modern frameworks like Svelte or React.
+- Experience with CSS frameworks (TailwindCSS preferred).
+- Understanding of web accessibility and core web vitals.

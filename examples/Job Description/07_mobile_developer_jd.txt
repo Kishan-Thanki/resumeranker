@@ -1,0 +1,11 @@
+React Native Developer
+
+About the Role:
+Join our mobile team to build high-performance cross-platform applications. You will be responsible for translating designs into responsive mobile interfaces.
+
+Requirements:
+- 2+ years of mobile development experience.
+- Strong expertise in React Native and JavaScript/TypeScript.
+- Experience publishing apps to the App Store and Google Play.
+- Familiarity with native build tools (XCode, Android Studio).
+- Focus on performance profiling and optimization.

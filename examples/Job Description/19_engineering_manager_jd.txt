@@ -1,0 +1,18 @@
+Software Engineering Manager
+
+Job Summary:
+We are seeking an Engineering Manager to lead and scale our product engineering teams. You will be responsible for the growth, health, and output of your team, ensuring they have the context and tools needed to build exceptional software.
+
+Key Responsibilities:
+• Manage, coach, and develop a team of software engineers, ranging from junior to staff levels.
+• Partner closely with Product Management and Design to plan, scope, and deliver impactful features.
+• Drive engineering excellence by establishing best practices for code quality, testing, and deployment.
+• Act as a technical sounding board, helping the team navigate complex architectural decisions without micromanaging the implementation.
+• Recruit and onboard top engineering talent to grow the organization.
+
+Qualifications & Skills:
+• 2+ years of experience directly managing software engineering teams.
+• 5+ years of prior experience as an individual contributor (software engineer).
+• Proven track record of delivering complex software projects in an agile environment.
+• Excellent communication skills and high emotional intelligence (EQ).
+• Deep understanding of modern software architecture and development lifecycles.

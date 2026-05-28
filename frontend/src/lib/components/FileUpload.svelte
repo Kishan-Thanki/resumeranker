@@ -89,12 +89,14 @@
 		ondragover={handleDragOver}
 		ondragleave={handleDragLeave}
 		class={cn(
-			'border-border bg-card hover:bg-muted/40 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-md border border-dashed px-4 py-10 text-center transition-colors',
-			dragging && 'border-indigo-400 bg-indigo-50/60 dark:border-indigo-500 dark:bg-indigo-950/30'
+			'border-border hover:bg-muted/30 group flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed px-4 py-12 text-center transition-all duration-300',
+			dragging ? 'border-indigo-400 bg-indigo-500/10 backdrop-blur-sm dark:border-indigo-500 dark:bg-indigo-500/10' : 'bg-card'
 		)}
 	>
-		<Upload class={cn('size-5 transition-colors', dragging ? 'text-indigo-500' : 'text-muted-foreground')} />
-		<p class="text-sm">
+		<div class={cn("rounded-full p-3 transition-transform duration-300", dragging ? 'bg-indigo-500/20 scale-110' : 'bg-muted group-hover:scale-105')}>
+			<Upload class={cn('size-6 transition-colors', dragging ? 'text-indigo-600 dark:text-indigo-400' : 'text-muted-foreground')} />
+		</div>
+		<p class="mt-2 text-sm">
 			<span class="font-medium">Click to upload</span>
 			<span class="text-muted-foreground">or drag and drop</span>
 		</p>

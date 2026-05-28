@@ -1,0 +1,11 @@
+Senior Data Scientist
+
+About the Role:
+We need a Senior Data Scientist to spearhead our advanced analytics initiatives. You will work closely with product teams to build predictive models.
+
+Requirements:
+- 4+ years of experience in data science.
+- Advanced proficiency in Python and SQL.
+- Experience with ML frameworks like TensorFlow or PyTorch.
+- Ability to communicate complex findings to non-technical stakeholders.
+- Degree in Statistics, Mathematics, or Computer Science.

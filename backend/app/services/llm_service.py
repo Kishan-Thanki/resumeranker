@@ -46,6 +46,23 @@ async def _stub_latency() -> None:
 class LLMError(Exception):
     """Raised when the LLM provider call fails after retries."""
 
+def _format_llm_error(phase: str, exc: Exception) -> str:
+    """Map raw provider errors into human-friendly messages for the UI."""
+    exc_name = type(exc).__name__
+    if "ServiceUnavailable" in exc_name or "503" in str(exc):
+        return f"{phase} failed: The AI model is currently experiencing high demand. Please try again in a few moments."
+    if "RateLimit" in exc_name or "429" in str(exc):
+        return f"{phase} failed: We're sending too many requests to the AI right now. Please wait a bit and try again."
+    if "Timeout" in exc_name:
+        return f"{phase} failed: The AI model took too long to respond. Please try again."
+    if "APIConnection" in exc_name:
+        return f"{phase} failed: Could not connect to the AI service. Please try again."
+    
+    # If it's an unrecognized error, show a generic message to avoid leaking raw JSON/stacktraces
+    # but still log the raw error for debugging.
+    logger.error("Raw LLM error in %s: %s", phase, exc, exc_info=exc)
+    return f"{phase} failed: An unexpected error occurred with the AI provider."
+
 
 # --- Internal types (NOT in the wire contract) -------------------------------
 
@@ -152,7 +169,7 @@ async def extract_jd_requirements(
             max_retries=2,
         )
     except Exception as exc:
-        raise LLMError(f"JD extraction failed: {exc}") from exc
+        raise LLMError(_format_llm_error("JD extraction", exc)) from exc
 
     await _record_call_from_response(analysis_id, settings.llm_model, response)
     payload = [r.model_dump(mode="json") for r in response]
@@ -203,7 +220,7 @@ async def extract_resume_claims(
             max_retries=2,
         )
     except Exception as exc:
-        raise LLMError(f"Resume extraction failed: {exc}") from exc
+        raise LLMError(_format_llm_error("Resume extraction", exc)) from exc
 
     await _record_call_from_response(analysis_id, settings.llm_model, response)
     payload = [r.model_dump(mode="json") for r in response]
@@ -254,7 +271,7 @@ async def score_requirements_against_claims(
             max_retries=2,
         )
     except Exception as exc:
-        raise LLMError(f"Scoring failed: {exc}") from exc
+        raise LLMError(_format_llm_error("Scoring", exc)) from exc
 
     await _record_call_from_response(analysis_id, settings.llm_model, response)
     payload_out = [s.model_dump(mode="json") for s in response]

@@ -1,0 +1,11 @@
+Cloud / DevOps Engineer
+
+About the Role:
+Looking for a DevOps Engineer to modernize our infrastructure. You will be responsible for scaling our cloud architecture and improving developer velocity.
+
+Requirements:
+- 3+ years in a DevOps or SRE role.
+- Strong experience with AWS or GCP.
+- Proficiency in containerization (Docker, Kubernetes).
+- Experience with Infrastructure as Code (Terraform preferred).
+- Scripting skills in Python or Bash.

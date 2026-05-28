@@ -42,7 +42,7 @@ async def _get_or_create_user(
     db: AsyncSession,
     email: str,
     accepted_policy_version: str | None = None,
-) -> User:
+) -> tuple[User, bool]:
     """Fetch the user by email, creating them if missing.
 
     When the user is newly created and `accepted_policy_version` is
@@ -53,21 +53,16 @@ async def _get_or_create_user(
     """
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
+    is_new = False
     if user is None:
+        is_new = True
         user = User(email=email)
         if accepted_policy_version is not None:
             user.accepted_policy_version = accepted_policy_version
             user.accepted_policy_at = _now()
         db.add(user)
         await db.flush()
-        # First time we've seen this email — that's a signup.
-        await audit_service.log_event(
-            audit_service.EventType.ACCOUNT_CREATED,
-            user_id=user.id,
-            email=email,
-            details={"accepted_policy_version": accepted_policy_version},
-        )
-    return user
+    return user, is_new
 
 
 async def create_magic_link(
@@ -109,12 +104,21 @@ async def verify_magic_link(db: AsyncSession, raw_token: str) -> User:
     if link.expires_at < now:
         raise AuthError("invalid")
 
-    user = await _get_or_create_user(
+    user, is_new = await _get_or_create_user(
         db, link.email, accepted_policy_version=link.accepted_policy_version
     )
     link.user_id = user.id
     link.consumed_at = now
     await db.commit()
+
+    if is_new:
+        await audit_service.log_event(
+            audit_service.EventType.ACCOUNT_CREATED,
+            user_id=user.id,
+            email=link.email,
+            details={"accepted_policy_version": link.accepted_policy_version},
+        )
+
     return user
 
 

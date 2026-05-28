@@ -1,0 +1,19 @@
+Senior Backend Engineer (Python/Go)
+
+Job Summary:
+We are seeking a highly skilled Senior Backend Engineer to join our Core Infrastructure team. You will play a pivotal role in designing, building, and scaling the backbone of our high-volume transactional systems. You will collaborate closely with product managers and frontend teams to deliver robust APIs and mentor junior members of the engineering org.
+
+Key Responsibilities:
+• Design, develop, and deploy scalable microservices using Python (FastAPI/Django) and Go.
+• Architect robust data models and optimize queries in PostgreSQL.
+• Drive the adoption of cloud-native patterns and manage containerized deployments via Kubernetes.
+• Lead technical design discussions and conduct thorough code reviews to maintain high engineering standards.
+• Troubleshoot and resolve complex performance bottlenecks in distributed systems.
+
+Qualifications & Skills:
+• 5+ years of professional software engineering experience, with a focus on backend systems.
+• Deep expertise in Python; experience with Go is a significant plus.
+• Strong understanding of relational databases, caching strategies, and event-driven architectures (e.g., Kafka, RabbitMQ).
+• Hands-on experience with AWS, Docker, and Kubernetes.
+• Excellent problem-solving skills and a proven track record of mentoring engineers.
+• B.S. or M.S. in Computer Science or a related technical field.

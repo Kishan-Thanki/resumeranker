@@ -1,0 +1,19 @@
+Senior iOS Engineer (Swift/SwiftUI)
+
+Job Summary:
+We are seeking a Senior iOS Engineer to lead the development of our core mobile application. You will be pushing the boundaries of what's possible on iOS, crafting beautiful interfaces and robust underlying architectures.
+
+Key Responsibilities:
+• Design and build advanced features for our iOS application using Swift and SwiftUI.
+• Architect scalable, maintainable, and testable code using modern design patterns (MVVM/TCA).
+• Work closely with product designers to implement pixel-perfect, highly animated user interfaces.
+• Identify and resolve performance bottlenecks using Xcode Instruments and memory profiling.
+• Lead code reviews, enforce coding standards, and mentor mid-level engineers.
+
+Qualifications & Skills:
+• 5+ years of native iOS development experience.
+• Exceptional proficiency in Swift and deep knowledge of the iOS SDK.
+• Extensive experience building production apps using SwiftUI and UIKit.
+• Strong understanding of reactive programming (Combine) and local persistence (Core Data).
+• Experience publishing apps to the App Store and utilizing automated deployment tools (Fastlane).
+• Strong UI/UX intuition and collaboration skills.

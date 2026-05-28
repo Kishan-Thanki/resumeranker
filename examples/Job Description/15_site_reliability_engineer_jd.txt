@@ -1,0 +1,19 @@
+Site Reliability Engineer (SRE)
+
+Job Summary:
+We are seeking a Site Reliability Engineer to ensure our cloud infrastructure is scalable, secure, and highly available. You will bridge the gap between development and operations, using software engineering principles to solve operational challenges.
+
+Key Responsibilities:
+• Design, build, and maintain our production infrastructure on AWS using Terraform.
+• Manage and scale our Kubernetes clusters and container orchestration platform.
+• Implement and refine monitoring, alerting, and logging systems to ensure system health and rapid incident response.
+• Participate in a tiered on-call rotation and lead blameless post-mortems for critical incidents.
+• Automate deployment pipelines and operational toil to improve engineering velocity.
+
+Qualifications & Skills:
+• 4+ years of experience in SRE, DevOps, or Systems Engineering roles.
+• Deep expertise in Linux systems administration and networking fundamentals.
+• Extensive hands-on experience with AWS and Kubernetes.
+• Proficiency in Infrastructure as Code (Terraform) and configuration management.
+• Strong coding skills in Python or Go for automation and tooling.
+• Experience with modern observability stacks (e.g., Prometheus, Datadog).

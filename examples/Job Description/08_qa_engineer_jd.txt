@@ -1,0 +1,11 @@
+QA Automation Engineer (Cypress/Playwright)
+
+About the Role:
+We need a QA Automation Engineer to ensure the reliability of our web applications. You will champion quality and build comprehensive test suites.
+
+Requirements:
+- 3+ years in QA automation.
+- Hands-on experience with modern testing tools (Cypress or Playwright).
+- Ability to write test scripts in JavaScript/TypeScript.
+- Experience integrating tests with CI pipelines (GitHub Actions).
+- Strong understanding of software testing methodologies.

@@ -1,0 +1,19 @@
+Data Engineer (Spark/Airflow)
+
+Job Summary:
+We are looking for a Data Engineer to build the foundation of our analytics infrastructure. You will be responsible for creating robust data pipelines that collect, clean, and transform data from diverse sources into our central data warehouse.
+
+Key Responsibilities:
+• Build, scale, and maintain ETL/ELT pipelines processing high volumes of batch and streaming data.
+• Architect and optimize data models within our cloud data warehouse (Snowflake) for performant querying.
+• Write advanced SQL transformations and orchestrate workflows using Apache Airflow and dbt.
+• Ensure data quality, reliability, and security across the data platform.
+• Collaborate with Data Scientists and BI Analysts to provide them with accessible, reliable data sets.
+
+Qualifications & Skills:
+• 3+ years of experience in Data Engineering or a closely related field.
+• Expert-level SQL skills and strong programming experience in Python.
+• Hands-on experience with cloud data warehouses (Snowflake, BigQuery, or Redshift).
+• Experience with workflow orchestration tools (Airflow) and data transformation tools (dbt).
+• Knowledge of distributed data processing frameworks like Apache Spark.
+• Understanding of data modeling concepts (Kimball methodology).

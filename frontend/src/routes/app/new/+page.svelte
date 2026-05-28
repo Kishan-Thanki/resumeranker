@@ -46,7 +46,7 @@
 	}
 </script>
 
-<div class="mx-auto max-w-2xl space-y-8">
+<div class="mx-auto max-w-5xl space-y-8">
 	<a
 		href="/app"
 		class="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm"
@@ -62,78 +62,86 @@
 		</p>
 	</div>
 
-	<section class="space-y-3">
-		<div class="flex items-center justify-between">
-			<Label>Job description</Label>
-			<div class="bg-muted text-muted-foreground inline-flex rounded-md p-0.5 text-xs">
-				<button
-					type="button"
-					class={[
-						'rounded-sm px-2.5 py-1 transition-colors',
-						jdMode === 'text' ? 'bg-background text-foreground shadow-sm' : 'hover:text-foreground'
-					].join(' ')}
-					onclick={() => (jdMode = 'text')}
-				>
-					Paste text
-				</button>
-				<button
-					type="button"
-					class={[
-						'rounded-sm px-2.5 py-1 transition-colors',
-						jdMode === 'pdf' ? 'bg-background text-foreground shadow-sm' : 'hover:text-foreground'
-					].join(' ')}
-					onclick={() => (jdMode = 'pdf')}
-				>
-					Upload PDF
-				</button>
+	<div class="grid gap-8 lg:grid-cols-2 lg:gap-12">
+		<section class="bg-card border-border flex flex-col space-y-4 rounded-xl border p-6 shadow-sm">
+			<div class="flex items-center justify-between">
+				<Label class="text-base font-semibold">Job description</Label>
+				<div class="bg-muted text-muted-foreground inline-flex rounded-md p-0.5 text-xs">
+					<button
+						type="button"
+						class={[
+							'rounded-sm px-2.5 py-1 transition-colors',
+							jdMode === 'text' ? 'bg-background text-foreground shadow-sm' : 'hover:text-foreground'
+						].join(' ')}
+						onclick={() => (jdMode = 'text')}
+					>
+						Paste text
+					</button>
+					<button
+						type="button"
+						class={[
+							'rounded-sm px-2.5 py-1 transition-colors',
+							jdMode === 'pdf' ? 'bg-background text-foreground shadow-sm' : 'hover:text-foreground'
+						].join(' ')}
+						onclick={() => (jdMode = 'pdf')}
+					>
+						Upload PDF
+					</button>
+				</div>
 			</div>
-		</div>
 
-		{#if jdMode === 'text'}
-			<Textarea
-				bind:value={jdText}
-				placeholder="Paste the full job description here. The first line will be used as the title."
-				class="min-h-48 font-mono text-sm"
-			/>
-			<p class="text-muted-foreground text-right text-xs">
-				{jdText.length} character{jdText.length === 1 ? '' : 's'}
-			</p>
-		{:else}
-			<FileUpload
-				id="jd-file"
-				accept="application/pdf,.pdf"
-				acceptLabel="PDF only"
-				file={jdFile}
-				onChange={(f) => (jdFile = f)}
-			/>
-		{/if}
-	</section>
+			{#if jdMode === 'text'}
+				<div class="flex flex-1 flex-col">
+					<Textarea
+						bind:value={jdText}
+						placeholder="Paste the full job description here. The first line will be used as the title."
+						class="min-h-48 flex-1 font-mono text-sm"
+					/>
+					<p class="text-muted-foreground mt-2 text-right text-xs">
+						{jdText.length} character{jdText.length === 1 ? '' : 's'}
+					</p>
+				</div>
+			{:else}
+				<div class="flex flex-1 flex-col justify-center">
+					<FileUpload
+						id="jd-file"
+						accept="application/pdf,.pdf"
+						acceptLabel="PDF only"
+						file={jdFile}
+						onChange={(f) => (jdFile = f)}
+					/>
+				</div>
+			{/if}
+		</section>
 
-	<Separator />
-
-	<section class="space-y-3">
-		<Label>Resume</Label>
-		<FileUpload
-			id="resume-file"
-			accept="application/pdf,.pdf"
-			acceptLabel="PDF only"
-			file={resumeFile}
-			onChange={(f) => (resumeFile = f)}
-		/>
-		{#if !showResumeTextNote}
-			<button
-				type="button"
-				class="text-muted-foreground hover:text-foreground focus-visible:ring-ring rounded-sm text-xs underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:outline-hidden"
-				onclick={() => (showResumeTextNote = true)}
-			>
-				Paste instead?
-			</button>
-		{:else}
-			<p class="text-muted-foreground text-xs">
-				Resume must be uploaded as PDF for v1. Plain text input may be added later.
-			</p>
-		{/if}
-	</section>
+		<section class="bg-card border-border flex flex-col space-y-4 rounded-xl border p-6 shadow-sm">
+			<Label class="text-base font-semibold">Resume</Label>
+			<div class="flex flex-1 flex-col justify-center gap-4">
+				<FileUpload
+					id="resume-file"
+					accept="application/pdf,.pdf"
+					acceptLabel="PDF only"
+					file={resumeFile}
+					onChange={(f) => (resumeFile = f)}
+				/>
+				<div class="text-center">
+					{#if !showResumeTextNote}
+						<button
+							type="button"
+							class="text-muted-foreground hover:text-foreground focus-visible:ring-ring rounded-sm text-xs underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:outline-hidden"
+							onclick={() => (showResumeTextNote = true)}
+						>
+							Paste instead?
+						</button>
+					{:else}
+						<p class="text-muted-foreground text-xs">
+							Resume must be uploaded as PDF for v1. Plain text input may be added later.
+						</p>
+					{/if}
+				</div>
+			</div>
+		</section>
+	</div>
 
 	{#if error}
 		<p class="text-destructive text-sm">{error}</p>

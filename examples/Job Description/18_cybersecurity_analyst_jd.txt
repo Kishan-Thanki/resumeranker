@@ -1,0 +1,18 @@
+Security Operations Analyst
+
+Job Summary:
+We are looking for a Security Operations Analyst to monitor, detect, and respond to cyber threats. You will be the first line of defense in our SOC, investigating alerts and ensuring the security posture of our infrastructure.
+
+Key Responsibilities:
+• Monitor security alerts using SIEM tools and conduct initial triage and investigation of potential incidents.
+• Respond to security incidents in real-time, executing established playbooks for containment and eradication.
+• Perform vulnerability assessments and coordinate patch management efforts with IT and DevOps teams.
+• Analyze malware, network traffic, and system logs to identify indicators of compromise (IOCs).
+• Assist in the continuous improvement of security monitoring rules and detection engineering.
+
+Qualifications & Skills:
+• 3+ years of experience in a SOC or similar security monitoring role.
+• Strong understanding of network protocols, operating system internals (Windows/Linux), and attack vectors.
+• Hands-on experience with SIEM platforms (Splunk, QRadar) and EDR tools.
+• Relevant security certifications (e.g., Security+, CySA+, GSEC) are highly preferred.
+• Excellent analytical skills and ability to perform well under pressure during incidents.

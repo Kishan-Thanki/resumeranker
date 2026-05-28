@@ -1,0 +1,19 @@
+Machine Learning Engineer (NLP Focus)
+
+Job Summary:
+We are seeking an ML Engineer to help us leverage large language models and NLP to extract insights from unstructured text data. You will work alongside data scientists to productionize models and build reliable inference APIs that serve millions of users.
+
+Key Responsibilities:
+• Design, train, and fine-tune NLP models for text classification, entity extraction, and sentiment analysis.
+• Productionize machine learning models by building highly available APIs using Python frameworks (FastAPI).
+• Build and maintain MLOps pipelines for continuous training, evaluation, and deployment of models.
+• Optimize model inference performance for latency and throughput in containerized environments.
+• Collaborate with backend engineers to integrate ML capabilities into core product workflows.
+
+Qualifications & Skills:
+• 3+ years of experience in machine learning and software engineering.
+• Strong programming skills in Python and SQL.
+• Hands-on experience with deep learning frameworks (PyTorch or TensorFlow) and NLP libraries (HuggingFace, spaCy).
+• Experience deploying ML models to production using Docker, Kubernetes, and cloud platforms (AWS/GCP).
+• Familiarity with MLOps best practices and tools like MLflow or Kubeflow.
+• Advanced degree in Computer Science, Data Science, or related quantitative field.

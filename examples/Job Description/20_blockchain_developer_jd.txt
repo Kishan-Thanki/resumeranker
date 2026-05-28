@@ -1,0 +1,18 @@
+Senior Smart Contract Engineer
+
+Job Summary:
+We are looking for a Senior Smart Contract Engineer to help build our next-generation decentralized finance protocol. You will be responsible for writing secure, highly optimized smart contracts that handle significant financial value.
+
+Key Responsibilities:
+• Design, develop, and deploy smart contracts on Ethereum and EVM-compatible chains using Solidity.
+• Write comprehensive test suites (unit, integration, and fuzzing) using modern frameworks like Foundry or Hardhat.
+• Architect decentralized protocols with a deep understanding of gas optimization and attack vectors (e.g., reentrancy, flash loan attacks).
+• Work closely with frontend engineers to integrate smart contracts into web applications using Web3 libraries.
+• Manage the smart contract audit process with external security firms.
+
+Qualifications & Skills:
+• 2+ years of production experience writing Solidity smart contracts.
+• Strong understanding of the EVM, cryptography, and blockchain fundamentals.
+• Experience with smart contract testing and deployment frameworks.
+• Deep knowledge of DeFi protocols and common smart contract vulnerabilities.
+• Solid software engineering background with experience in traditional backend development.

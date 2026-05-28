@@ -30,6 +30,23 @@
 	let deleteDialogOpen = $state(false);
 	let deleting = $state(false);
 
+	let loadingStage = $state(0);
+	const loadingLabels = [
+		'Parsing job description requirements...',
+		'Extracting resume claims...',
+		'Evaluating cross-matches...',
+		'Finalizing report...'
+	];
+
+	$effect(() => {
+		if (isPending) {
+			const interval = setInterval(() => {
+				loadingStage = (loadingStage + 1) % loadingLabels.length;
+			}, 2500);
+			return () => clearInterval(interval);
+		}
+	});
+
 	async function handleDelete() {
 		deleting = true;
 		try {
@@ -102,7 +119,7 @@
 	// Drive the polling loop only while the analysis is queued/processing.
 	$effect(() => {
 		if (isPending && pollTimer === null && !pollingStalled) {
-			pollStartedAt = Date.now();
+			if (!pollStartedAt) pollStartedAt = Date.now();
 			schedulePoll();
 		}
 		if (!isPending) {
@@ -164,14 +181,10 @@
 				<p class="text-muted-foreground inline-flex items-center gap-2 text-sm">
 					<span class="text-current inline-flex items-center gap-1">
 						<span class="bg-current size-1.5 animate-pulse rounded-full"></span>
-						<span class="bg-current size-1.5 animate-pulse rounded-full [animation-delay:120ms]"
-						></span>
-						<span class="bg-current size-1.5 animate-pulse rounded-full [animation-delay:240ms]"
-						></span>
+						<span class="bg-current size-1.5 animate-pulse rounded-full [animation-delay:120ms]"></span>
+						<span class="bg-current size-1.5 animate-pulse rounded-full [animation-delay:240ms]"></span>
 					</span>
-					{analysis.status === 'queued'
-						? 'Queued'
-						: 'Analyzing your resume against the job description'}
+					{analysis.status === 'queued' ? 'Queued' : loadingLabels[loadingStage]}
 				</p>
 				{#if pollingStalled}
 					<p class="text-muted-foreground text-xs">
@@ -206,26 +219,49 @@
 				<Button href="/app/new">Try again</Button>
 			</div>
 		{:else}
-			<div class="space-y-4">
-				{#each analysis.sections as section (section.id)}
-					<SectionScoreCard {section} />
-				{/each}
-			</div>
+			{#if analysis.sections.length === 0}
+				<Card class="flex flex-col items-center justify-center p-12 text-center">
+					<p class="text-base font-medium">No sections found</p>
+					<p class="text-muted-foreground text-sm">We couldn't extract any actionable sections from this resume and job description.</p>
+				</Card>
+			{:else}
+				<!-- Visual Summary Panel -->
+				<div class="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+					{#each analysis.sections as section (section.id)}
+						<Card class="flex flex-col items-center justify-center p-4 text-center">
+							<span class="text-muted-foreground mb-1 text-xs font-medium uppercase tracking-wider">{section.label}</span>
+							<span class="text-2xl font-bold {section.score >= 67 ? 'text-emerald-500' : section.score >= 34 ? 'text-amber-500' : 'text-red-500'}">{section.score}%</span>
+						</Card>
+					{/each}
+				</div>
+
+				<div class="space-y-4">
+					{#each analysis.sections as section (section.id)}
+						<SectionScoreCard {section} />
+					{/each}
+				</div>
+			{/if}
 
 			{#if unmatched.length > 0}
-				<section class="space-y-3">
-					<h2 class="text-base font-semibold">Gaps</h2>
-					<p class="text-muted-foreground text-sm">
-						Requirements in the job description that this resume doesn't address.
-					</p>
-					<ul class="border-border space-y-2 rounded-md border p-4 text-sm">
+				<section class="border-border bg-card overflow-hidden rounded-xl border shadow-sm">
+					<div class="bg-muted/40 border-border border-b px-6 py-4">
+						<h2 class="text-base font-semibold">Action Plan</h2>
+						<p class="text-muted-foreground mt-1 text-sm">
+							High-impact areas where your resume missed the mark. Address these to improve your ATS match.
+						</p>
+					</div>
+					<ul class="divide-border divide-y text-sm">
 						{#each unmatched as r (r.id)}
-							<li class="flex gap-2">
-								<span class="text-muted-foreground select-none">—</span>
-								<span>
-									The JD requires <span class="font-medium">{r.requirement}</span>;
-									your resume doesn't mention it.
-								</span>
+							<li class="flex items-start gap-3 px-6 py-4">
+								<div class="bg-destructive/10 text-destructive mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full">
+									<span class="text-xs font-bold">!</span>
+								</div>
+								<div>
+									<p class="font-medium text-foreground">Missing Keyword: {r.requirement}</p>
+									<p class="text-muted-foreground mt-1 text-sm">
+										The JD explicitly requires this, but it wasn't detected in your resume. Consider adding a bullet point demonstrating your experience with this.
+									</p>
+								</div>
 							</li>
 						{/each}
 					</ul>

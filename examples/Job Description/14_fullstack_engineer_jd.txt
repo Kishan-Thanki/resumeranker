@@ -1,0 +1,19 @@
+Full Stack Engineer (React/Node)
+
+Job Summary:
+We are looking for a highly capable Full Stack Engineer to build and maintain features across our entire technology stack. You will be responsible for creating seamless user experiences and the robust APIs that power them.
+
+Key Responsibilities:
+• Develop user-facing features using React.js and modern CSS frameworks.
+• Build and maintain scalable backend services and REST APIs using Node.js and Express.
+• Design and optimize database schemas in PostgreSQL to support new product features.
+• Write clean, maintainable, and well-tested code (unit and integration tests).
+• Participate actively in agile ceremonies, sprint planning, and code reviews.
+
+Qualifications & Skills:
+• 3+ years of proven experience in full stack web development.
+• Strong proficiency in JavaScript/TypeScript across both the client and server.
+• Hands-on experience with React and state management libraries.
+• Solid understanding of server-side logic using Node.js.
+• Experience with relational databases (PostgreSQL) and ORMs (Prisma, Sequelize).
+• Familiarity with cloud platforms (AWS) and containerization.

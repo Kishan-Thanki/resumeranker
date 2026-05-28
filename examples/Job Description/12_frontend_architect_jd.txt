@@ -1,0 +1,18 @@
+Staff Frontend Engineer / Architect
+
+Job Summary:
+We are looking for a Staff Frontend Engineer to define the technical vision for our client-side applications. You will be responsible for standardizing our frontend architecture, building a cohesive design system, and ensuring our web apps are performant, accessible, and delightful to use.
+
+Key Responsibilities:
+• Architect and build highly responsive, scalable web applications using React and Next.js.
+• Lead the creation and maintenance of a robust, reusable UI component library.
+• Analyze and optimize front-end performance, focusing on Core Web Vitals and efficient rendering strategies.
+• Establish frontend best practices, tooling, and testing standards across multiple engineering squads.
+• Collaborate tightly with product design teams to bridge the gap between UI/UX vision and technical implementation.
+
+Qualifications & Skills:
+• 7+ years of dedicated frontend development experience.
+• Expert-level proficiency in JavaScript, TypeScript, React, and modern CSS strategies (e.g., Tailwind, CSS-in-JS).
+• Proven experience building and maintaining design systems or component libraries.
+• Deep understanding of browser rendering behavior, web performance profiling, and web accessibility standards.
+• Strong leadership capabilities with experience guiding technical direction across teams.
