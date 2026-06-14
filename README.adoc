@@ -1,0 +1,44 @@
+= ResumeRanker
+:toc: macro
+
+ResumeRanker is an AI-powered resume screening and analysis tool. It extracts structured requirements from Job Descriptions (JDs), parses candidate resumes, and uses an asynchronous LLM pipeline to score claims against those requirements to help recruiters and candidates identify gaps.
+
+toc::[]
+
+== Architecture Overview
+
+The project is designed as a Docker-first monorepo consisting of three main stacks:
+
+* **`backend/`**: A FastAPI REST API paired with an `arq` (Redis) asynchronous worker and a PostgreSQL database. It handles user authentication via Resend magic links and executes the three-step LLM extraction pipeline (JD Extraction → Resume Extraction → Scoring) securely in the background.
+* **`frontend/`**: A SvelteKit 2 (Svelte 5 Runes) client utilizing TailwindCSS 4 and shadcn-svelte. It provides the public landing page, authentication flow, and dynamic dashboard to view real-time analysis results.
+* **`admin/`**: A newly added SvelteKit 2 internal dashboard using Drizzle ORM for database connectivity. It manages Role-Based Access Control (IAM) and provides CMS capabilities for administrators.
+
+== Getting Started
+
+The project relies entirely on Docker for production, but uses `uv` (for Python) and `pnpm` (for Node.js) for local development.
+
+For detailed, stack-specific development workflows, refer to:
+
+* `CONTEXT.adoc` (Root project rules)
+* `backend/CONTEXT.adoc` (Backend setup & stub modes)
+* `frontend/CONTEXT.adoc` (Frontend styling & routing)
+
+== Deployment
+
+The entire application is deployed using Docker Compose behind a Caddy reverse proxy. The infrastructure is designed to run efficiently on small VPS environments (like a 1GB Oracle Cloud instance with swap).
+
+For comprehensive production deployment instructions, SSL configuration, and environment variable setup, read the deployment guide:
+* `deploy/DEPLOY.adoc`
+
+== Security
+
+ResumeRanker enforces strict security boundaries:
+
+* All sensitive data (resume texts, JD texts) is encrypted at rest using Fernet encryption.
+* Authentication relies exclusively on strict, HttpOnly, SameSite=Lax session cookies (no JWTs in LocalStorage).
+* The API server never directly contacts the LLM provider; all external network requests are deferred to the isolated async worker.
+* Full GitHub Actions CI pipeline runs Trivy, gitleaks, and pip-audit on every push.
+
+== License
+
+This project is licensed under the MIT License - see the `LICENSE` file for details.
