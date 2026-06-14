@@ -51,7 +51,7 @@ jobs:
         # `uv run` puts pip-audit inside the synced venv so it sees
         # exactly what `uv sync` resolved. --strict turns ANY known
         # vuln into a failure.
-        run: uv run --with pip-audit pip-audit --strict
+        run: uv run --with pip-audit pip-audit --strict --skip-editable
 
   # ── Frontend Node deps ───────────────────────────────────────────
   pnpm-audit:
