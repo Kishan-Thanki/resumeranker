@@ -37,7 +37,7 @@ services:
     mem_limit: 64m
 
   frontend:
-    image: ${IMAGE_REGISTRY:-ghcr.io/kishan-thanki}/resume-ranker-frontend:${IMAGE_TAG:-latest}
+    image: ${IMAGE_REGISTRY:-ghcr.io/username}/resume-ranker-frontend:${IMAGE_TAG:-latest}
     container_name: frontend
     restart: unless-stopped
     # No published ports — Caddy reaches it over the internal network.
@@ -51,7 +51,7 @@ services:
     pids_limit: 100
 
   api:
-    image: ${IMAGE_REGISTRY:-ghcr.io/kishan-thanki}/resume-ranker-backend:${IMAGE_TAG:-latest}
+    image: ${IMAGE_REGISTRY:-ghcr.io/username}/resume-ranker-backend:${IMAGE_TAG:-latest}
     container_name: api
     restart: unless-stopped
     env_file: .env
@@ -86,7 +86,7 @@ services:
     pids_limit: 200
 
   worker:
-    image: ${IMAGE_REGISTRY:-ghcr.io/kishan-thanki}/resume-ranker-backend:${IMAGE_TAG:-latest}
+    image: ${IMAGE_REGISTRY:-ghcr.io/username}/resume-ranker-backend:${IMAGE_TAG:-latest}
     container_name: worker
     restart: unless-stopped
     env_file: .env

@@ -21,14 +21,4 @@ describe('/auth/sent', () => {
 		expect(screen.getByText(/check your email/i)).toBeInTheDocument();
 		resetPage();
 	});
-
-	it('shows the dev-only stdout-grep instructions', () => {
-		setPage({ url: new URL('http://localhost:5173/auth/sent?email=a@b.com') });
-		render(Page);
-		expect(screen.getByText(/dev only/i)).toBeInTheDocument();
-		expect(
-			screen.getByText(/docker compose -p resume-ranker.*logs api/i)
-		).toBeInTheDocument();
-		resetPage();
-	});
 });

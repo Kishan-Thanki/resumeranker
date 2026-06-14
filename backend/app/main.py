@@ -7,7 +7,7 @@ from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 from app import error_handlers
 from app.config import settings
 from app.middleware.global_rate_limit import GlobalRateLimitMiddleware
-from app.routes import analyses, auth, contact, health
+from app.routes import analyses, auth, contact, health, iam
 
 # Application logging setup.
 #
@@ -56,7 +56,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.app_base_url],
+    allow_origins=[settings.app_base_url, "http://localhost:5174", "http://127.0.0.1:5174"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -83,3 +83,4 @@ app.include_router(auth.router)
 app.include_router(auth.me_router)
 app.include_router(analyses.router)
 app.include_router(contact.router)
+app.include_router(iam.router)

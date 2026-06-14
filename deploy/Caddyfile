@@ -1,7 +1,7 @@
 # Caddy reverse proxy for Resume Ranker — two sub-domains, one origin.
 #
-#   resume-ranker.kishanthanki.dev      -> frontend (SvelteKit node, :3000)
-#   api.resume-ranker.kishanthanki.dev  -> backend  (FastAPI/uvicorn, :8000)
+#   resume-ranker.example.com      -> frontend (SvelteKit node, :3000)
+#   api.resume-ranker.example.com  -> backend  (FastAPI/uvicorn, :8000)
 #
 # TLS: we use a Cloudflare Origin Certificate (primary path below) so this
 # works immediately with Cloudflare's orange-cloud proxy ON and SSL mode
@@ -11,7 +11,7 @@
 #
 # Generate the origin cert once in the Cloudflare dashboard
 # (SSL/TLS -> Origin Server -> Create Certificate, hostnames
-# `*.kishanthanki.dev` + `kishanthanki.dev`, 15-year). Save the two PEM
+# `*.example.com` + `example.com`, 15-year). Save the two PEM
 # blocks to deploy/certs/origin.pem and deploy/certs/origin-key.pem.
 #
 # --- Alternative (no Cloudflare proxy / grey cloud): delete the `tls`
@@ -23,10 +23,10 @@
 	admin off
 	# Replace with a real address for expiry/issue notices if you switch
 	# to ACME. Harmless to leave for origin-cert mode.
-	email security@kishanthanki.dev
+	email security@example.com
 }
 
-resume-ranker.kishanthanki.dev {
+resume-ranker.example.com {
 	tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin-key.pem
 	encode zstd gzip
 	reverse_proxy frontend:3000
@@ -36,7 +36,7 @@ resume-ranker.kishanthanki.dev {
 	header -Server
 }
 
-api.resume-ranker.kishanthanki.dev {
+api.resume-ranker.example.com {
 	tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin-key.pem
 	encode zstd gzip
 	# `reverse_proxy` sets X-Forwarded-Proto=https, which uvicorn honors

@@ -55,6 +55,7 @@ class AnalysisResult(BaseModel):
     id: str
     created_at: datetime = Field(serialization_alias="createdAt")
     jd_title: str = Field(serialization_alias="jdTitle")
+    jd_text: str = Field(serialization_alias="jdText")
     resume_name: str = Field(serialization_alias="resumeName")
     status: AnalysisStatus
     sections: list[SectionScore] = Field(default_factory=list)

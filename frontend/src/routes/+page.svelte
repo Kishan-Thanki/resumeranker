@@ -2,7 +2,14 @@
 	import { FileText, Sparkles, Quote } from '@lucide/svelte';
 	import { Button } from '$lib/components/ui/button';
 	import Wordmark from '$lib/components/Wordmark.svelte';
+	import MockActionPlan from '$lib/components/MockActionPlan.svelte';
+	let { data } = $props();
 </script>
+
+<svelte:head>
+	<title>{data.page.title}</title>
+	<meta name="description" content={data.page.metaDescription} />
+</svelte:head>
 
 <div class="bg-background">
 	<header class="mx-auto flex h-14 max-w-5xl items-center justify-between px-4 sm:px-6">
@@ -18,17 +25,18 @@
 		</div>
 
 		<h1 class="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-			See exactly how your resume matches a
-			<span class="text-indigo-600 dark:text-indigo-400">job description</span>.
+			{@html data.content.hero_title}
 		</h1>
 		<p class="text-muted-foreground mt-4 max-w-2xl text-base text-pretty sm:text-lg">
-			Section-by-section scoring with evidence from your own resume. No magic match
-			percentage &mdash; only what the JD asks for and what your resume already says.
+			{@html data.content.hero_subtitle}
 		</p>
 
 		<div class="mt-8">
 			<Button size="lg" href="/auth">Get started</Button>
 		</div>
+
+		<!-- Mock UI Hook -->
+		<MockActionPlan />
 
 		<section class="mt-20 grid gap-8 sm:mt-24 sm:grid-cols-3">
 			<div>

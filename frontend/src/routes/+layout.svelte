@@ -23,7 +23,7 @@
 	<title>Resume Ranker</title>
 </svelte:head>
 
-<ModeWatcher />
+<ModeWatcher defaultMode="system" track={true} />
 <Toaster />
 
 <!--

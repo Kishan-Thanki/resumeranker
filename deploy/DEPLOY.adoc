@@ -13,8 +13,8 @@ Browser ──HTTPS──> Cloudflare (proxy) ──HTTPS──> Caddy ──┬
                                                                 worker ──┘ (no inbound)
 ----
 
-* `resume-ranker.kishanthanki.dev` → frontend
-* `api.resume-ranker.kishanthanki.dev` → backend
+* `resume-ranker.example.com` → frontend
+* `api.resume-ranker.example.com` → backend
 * Same registrable domain ⇒ same-site ⇒ the `SameSite=Lax` HttpOnly
   session cookie works across the two sub-domains; CORS only needs the
   frontend origin allow-listed (handled by `APP_BASE_URL`).
@@ -53,10 +53,10 @@ and will fail. Build on your Mac (or CI) for `linux/amd64` and push.
 [source,bash]
 ----
 # from the repo root, on your dev machine
-export REG=ghcr.io/kishan-thanki          # your GHCR namespace (lowercase)
+export REG=ghcr.io/username          # your GHCR namespace (lowercase)
 export TAG=$(git rev-parse --short HEAD)   # or a version like v1.0.0
 
-echo "$GHCR_TOKEN" | docker login ghcr.io -u Kishan-Thanki --password-stdin
+echo "$GHCR_TOKEN" | docker login ghcr.io -u Username --password-stdin
 
 # Backend (api + worker share this image)
 docker build --platform linux/amd64 \
@@ -67,7 +67,7 @@ docker push "$REG/resume-ranker-backend:latest"
 
 # Frontend — the prod API origin is BAKED IN here via the build arg
 docker build --platform linux/amd64 \
-  --build-arg VITE_API_BASE_URL=https://api.resume-ranker.kishanthanki.dev \
+  --build-arg VITE_API_BASE_URL=https://api.resume-ranker.example.com \
   -t "$REG/resume-ranker-frontend:$TAG" -t "$REG/resume-ranker-frontend:latest" \
   ./frontend
 docker push "$REG/resume-ranker-frontend:$TAG"
@@ -94,7 +94,7 @@ then set the production values:
 [source,dotenv]
 ----
 ENVIRONMENT=production
-APP_BASE_URL=https://resume-ranker.kishanthanki.dev   # frontend origin (CORS + magic-link)
+APP_BASE_URL=https://resume-ranker.example.com   # frontend origin (CORS + magic-link)
 
 POSTGRES_USER=resumeranker
 POSTGRES_PASSWORD=<the rotated 64-char value — keep it secret>
@@ -107,8 +107,8 @@ LLM_API_KEY=<real Gemini key>
 LLM_MODEL=gemini/gemini-2.5-flash
 
 RESEND_API_KEY=<real Resend key>
-RESEND_FROM_EMAIL=login@mail.kishanthanki.dev
-CONTACT_TO_EMAIL=support@kishanthanki.dev
+RESEND_FROM_EMAIL=login@mail.example.com
+CONTACT_TO_EMAIL=contact@example.com
 
 # MUST persist forever — losing this makes every stored analysis unreadable.
 RESUME_ENCRYPTION_KEY=<the real 44-char Fernet key>
@@ -126,7 +126,7 @@ columns are unrecoverable without it.
 == 3. TLS: Cloudflare Origin Certificate
 
 . Cloudflare dashboard → SSL/TLS → *Origin Server* → Create Certificate.
-  Hostnames: `*.kishanthanki.dev` and `kishanthanki.dev`. 15-year.
+  Hostnames: `*.example.com` and `example.com`. 15-year.
 . Save the certificate → `deploy/certs/origin.pem`,
   the private key → `deploy/certs/origin-key.pem` (on the box, `chmod 600`).
 . Cloudflare → SSL/TLS → Overview → set encryption mode to *Full (strict)*.
@@ -172,18 +172,18 @@ docker compose exec api alembic upgrade head
 [source,bash]
 ----
 # API up behind Caddy/Cloudflare
-curl -sS -o /dev/null -w "%{http_code}\n" https://api.resume-ranker.kishanthanki.dev/health   # 200
+curl -sS -o /dev/null -w "%{http_code}\n" https://api.resume-ranker.example.com/health   # 200
 
 # No HTTPS redirect loop (should NOT be a 3xx ping-pong)
-curl -sSI https://api.resume-ranker.kishanthanki.dev/health | head -1
+curl -sSI https://api.resume-ranker.example.com/health | head -1
 
 # Frontend loads
-curl -sS -o /dev/null -w "%{http_code}\n" https://resume-ranker.kishanthanki.dev/            # 200
+curl -sS -o /dev/null -w "%{http_code}\n" https://resume-ranker.example.com/            # 200
 ----
 
 Then in a real browser:
 
-. Open `https://resume-ranker.kishanthanki.dev` — loads, theme toggle works.
+. Open `https://resume-ranker.example.com` — loads, theme toggle works.
 . Sign in with your email + accept the terms checkbox.
 . *A real magic-link email arrives* (Resend is live now, not stdout) →
   click it → land on `/app`.

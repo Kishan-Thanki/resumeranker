@@ -29,6 +29,7 @@ function makeAnalysis(over: Partial<AnalysisResult> = {}): AnalysisResult {
 		id: 'a-1',
 		createdAt: '2026-05-01T12:00:00.000Z',
 		jdTitle: 'Senior Backend Engineer',
+		jdText: 'Default Job Description Text',
 		resumeName: 'resume.pdf',
 		status: 'completed',
 		sections: [],

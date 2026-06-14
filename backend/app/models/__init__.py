@@ -6,5 +6,17 @@ from app.models.base import Base
 from app.models.magic_link import MagicLink
 from app.models.session import Session
 from app.models.user import User
+from app.models.admin import Admin, AdminRole, AdminSession, AdminAuditEvent
 
-__all__ = ["Analysis", "AuditEvent", "Base", "MagicLink", "Session", "User"]
+__all__ = [
+    "Analysis",
+    "AuditEvent",
+    "Base",
+    "MagicLink",
+    "Session",
+    "User",
+    "Admin",
+    "AdminRole",
+    "AdminSession",
+    "AdminAuditEvent",
+]

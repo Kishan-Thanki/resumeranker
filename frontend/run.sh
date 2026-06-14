@@ -50,7 +50,7 @@ case "${1:-up}" in
 
     # VITE_API_BASE_URL is baked into the bundle + CSP at build time.
     # Defaults to localhost for dev; for production build with e.g.
-    #   VITE_API_BASE_URL=https://api.resume-ranker.kishanthanki.dev ./run.sh
+    #   VITE_API_BASE_URL=https://api.resume-ranker.example.com ./run.sh
     API_BASE="${VITE_API_BASE_URL:-http://localhost:8000}"
     echo "Building $IMAGE (VITE_API_BASE_URL=$API_BASE) ..."
     docker build --build-arg VITE_API_BASE_URL="$API_BASE" -t "$IMAGE" .
@@ -59,6 +59,8 @@ case "${1:-up}" in
     docker run -d \
       --name "$NAME" \
       --restart unless-stopped \
+      --network resume-ranker \
+      --env-file .env \
       -p "${HOST_PORT}:${CONTAINER_PORT}" \
       --memory "$MEMORY" \
       --memory-swap "$MEMORY_SWAP" \

@@ -52,21 +52,6 @@
 			</a>
 		</div>
 
-		<div class="border-muted-foreground/40 rounded-md border border-dashed p-4">
-			<p class="text-muted-foreground text-xs font-semibold uppercase tracking-wide">
-				Dev only
-			</p>
-			<p class="text-muted-foreground mt-1 text-xs">
-				No Resend key yet, so the backend prints the magic link to its stdout.
-				Grab it from the api container:
-			</p>
-			<pre
-				class="bg-muted text-muted-foreground mt-2 overflow-x-auto rounded-sm p-2 font-mono text-xs"><code
-					>docker compose -p resume-ranker-backend logs api | grep Link:</code
-				></pre>
-			<p class="text-muted-foreground mt-2 text-xs">
-				Paste that URL into your browser to complete sign-in.
-			</p>
-		</div>
+
 	</div>
 </div>

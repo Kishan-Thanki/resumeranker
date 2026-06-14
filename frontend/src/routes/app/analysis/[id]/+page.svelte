@@ -8,7 +8,9 @@
 	import { Card } from '$lib/components/ui/card';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import SectionScoreCard from '$lib/components/SectionScoreCard.svelte';
-	import { analyses, refreshById, remove } from '$lib/stores/analyses';
+	import FileUpload from '$lib/components/FileUpload.svelte';
+	import { analyses, refreshById, remove, create } from '$lib/stores/analyses';
+	import { ApiError } from '$lib/api';
 	import type { AnalysisResult, RequirementMatch } from '$lib/types';
 
 	const POLL_INTERVAL_MS = 2000;
@@ -29,6 +31,11 @@
 
 	let deleteDialogOpen = $state(false);
 	let deleting = $state(false);
+
+	let iterateDialogOpen = $state(false);
+	let newResumeFile = $state<File | null>(null);
+	let iterating = $state(false);
+	let iterateError = $state<string | null>(null);
 
 	let loadingStage = $state(0);
 	const loadingLabels = [
@@ -58,6 +65,30 @@
 			toast.error("Couldn't delete analysis", { description: 'Please try again.' });
 		} finally {
 			deleting = false;
+		}
+	}
+
+	async function handleIterate() {
+		if (!newResumeFile || !analysis?.jdText) return;
+		iterating = true;
+		iterateError = null;
+		try {
+			const result = await create({
+				jdInputType: 'text',
+				jdText: analysis.jdText,
+				resume: newResumeFile
+			});
+			iterateDialogOpen = false;
+			toast.success('Iteration started', { description: 'Analyzing your updated resume.' });
+			await goto(`/app/analysis/${result.id}`);
+		} catch (e) {
+			if (e instanceof ApiError) {
+				iterateError = e.message;
+			} else {
+				iterateError = 'Could not reach the server.';
+			}
+		} finally {
+			iterating = false;
 		}
 	}
 
@@ -216,7 +247,7 @@
 					{analysis.errorMessage ??
 						'Something went wrong while analyzing this resume. Nothing was saved.'}
 				</p>
-				<Button href="/app/new">Try again</Button>
+				<Button href="/app">Start over</Button>
 			</div>
 		{:else}
 			{#if analysis.sections.length === 0}
@@ -270,18 +301,17 @@
 
 			<!--
 				Footer CTAs so the page isn't a dead end. Primary action is
-				"start another analysis" (most common next step after reading
-				one). Secondary is "back to all analyses" for users who want
-				to browse history.
+				"Iterate" (upload new resume against same JD). Secondary is
+				"back to all analyses" for users who want to browse history.
 			-->
 			<footer class="border-border flex flex-col gap-3 border-t pt-6 sm:flex-row sm:items-center sm:justify-between">
-				<Button href="/app/new">
-					<Plus class="size-4" />
-					New analysis
+				<Button onclick={() => { newResumeFile = null; iterateError = null; iterateDialogOpen = true; }}>
+					<Plus class="mr-2 size-4" />
+					Upload new version
 				</Button>
 				<Button href="/app" variant="outline">
-					<ArrowLeft class="size-4" />
-					All analyses
+					<ArrowLeft class="mr-2 size-4" />
+					Back to Dashboard
 				</Button>
 			</footer>
 		{/if}
@@ -308,6 +338,42 @@
 			</Button>
 			<Button type="button" variant="destructive" disabled={deleting} onclick={handleDelete}>
 				{deleting ? 'Deleting...' : 'Delete analysis'}
+			</Button>
+		</Dialog.Footer>
+	</Dialog.Content>
+</Dialog.Root>
+
+<Dialog.Root bind:open={iterateDialogOpen}>
+	<Dialog.Content class="sm:max-w-md">
+		<Dialog.Header>
+			<Dialog.Title>Upload an updated resume</Dialog.Title>
+			<Dialog.Description>
+				See if your score improved against: <span class="text-foreground font-medium">{analysis?.jdTitle}</span>
+			</Dialog.Description>
+		</Dialog.Header>
+		<div class="py-4">
+			<FileUpload
+				id="new-resume-file"
+				accept="application/pdf,.pdf"
+				acceptLabel="PDF only"
+				file={newResumeFile}
+				onChange={(f) => (newResumeFile = f)}
+			/>
+			{#if iterateError}
+				<p class="text-destructive mt-2 text-sm">{iterateError}</p>
+			{/if}
+		</div>
+		<Dialog.Footer class="gap-2 sm:gap-2">
+			<Button
+				type="button"
+				variant="outline"
+				disabled={iterating}
+				onclick={() => (iterateDialogOpen = false)}
+			>
+				Cancel
+			</Button>
+			<Button type="button" disabled={!newResumeFile || iterating} onclick={handleIterate}>
+				{iterating ? 'Uploading...' : 'Re-analyze'}
 			</Button>
 		</Dialog.Footer>
 	</Dialog.Content>

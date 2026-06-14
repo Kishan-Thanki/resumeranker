@@ -29,6 +29,7 @@
 		"@vitest/ui": "^4.1.6",
 		"bits-ui": "^2.18.1",
 		"clsx": "^2.1.1",
+		"dotenv": "^17.4.2",
 		"jsdom": "^29.1.1",
 		"shadcn-svelte": "^1.2.7",
 		"svelte": "^5.55.2",
@@ -44,7 +45,9 @@
 	},
 	"dependencies": {
 		"@fontsource/jetbrains-mono": "^5.2.8",
-		"mode-watcher": "^1.1.0"
+		"drizzle-orm": "^0.45.2",
+		"mode-watcher": "^1.1.0",
+		"postgres": "^3.4.9"
 	},
 	"pnpm": {
 		"overrides": {

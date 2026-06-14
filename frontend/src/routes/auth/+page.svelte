@@ -49,6 +49,7 @@
 				type="email"
 				autocomplete="email"
 				required
+				autofocus
 				bind:value={email}
 				placeholder="you@example.com"
 			/>

@@ -9,8 +9,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.analysis import Analysis
-from app.schemas.analysis import AnalysisResult, SectionScore
+from app.schemas.analysis import AnalysisResult, SectionScore, AnalysisStatus
 
+
+from typing import cast
 
 def to_schema(row: Analysis) -> AnalysisResult:
     """DB row → Pydantic. sections JSONB is already a list of dicts."""
@@ -19,8 +21,9 @@ def to_schema(row: Analysis) -> AnalysisResult:
         id=str(row.id),
         created_at=row.created_at,
         jd_title=row.jd_title,
+        jd_text=row.jd_text,
         resume_name=row.resume_name,
-        status=row.status,
+        status=cast(AnalysisStatus, row.status),
         sections=sections,
         error_message=row.error_message,
     )

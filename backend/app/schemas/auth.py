@@ -27,11 +27,15 @@ class VerifyBody(BaseModel):
     token: str = Field(min_length=1, max_length=512)
 
 
+from app.models.user import UserRole
+
+
 class UserPublic(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     id: uuid.UUID
     email: EmailStr
+    role: UserRole
     # Exposed so the frontend can compare against its current build's
     # CURRENT_POLICY_VERSION and show a re-acceptance modal when the user
     # is on an older one. Nullable for backfilled pre-policy users.

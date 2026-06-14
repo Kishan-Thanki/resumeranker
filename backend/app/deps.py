@@ -60,3 +60,16 @@ async def get_current_user(
             detail="invalid or expired session",
         )
     return user
+
+
+class RequireRole:
+    def __init__(self, allowed_roles: list[str]) -> None:
+        self.allowed_roles = allowed_roles
+
+    def __call__(self, user: Annotated[User, Depends(get_current_user)]) -> User:
+        if user.role.value not in self.allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="insufficient permissions",
+            )
+        return user
