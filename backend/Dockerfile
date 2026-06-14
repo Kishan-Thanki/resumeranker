@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-FROM python:3.12-slim AS base
+FROM python:3.14-slim AS base
 # Apply OS security patches on top of the base image. The published
 # `python:3.12-slim` tag ships with already-known CVEs in OS packages
 # (systemd, ncurses, etc.) that have fixes in apt but aren't yet rolled
@@ -22,7 +22,7 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen
 
 # --- runtime stage: minimal final image ------------------------------------
-FROM python:3.12-slim AS runner
+FROM python:3.14-slim AS runner
 
 # Apply OS security patches on the runtime base too (separate FROM, so
 # the `base` stage's upgrade doesn't carry over).
