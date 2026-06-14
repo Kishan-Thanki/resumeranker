@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-FROM node:22-alpine AS base
+FROM node:26-alpine AS base
 RUN corepack enable && corepack prepare pnpm@latest --activate
 WORKDIR /app
 
@@ -28,7 +28,7 @@ RUN pnpm build
 # team can run `docker compose exec web pnpm run test` and similar against
 # the live container. The image is ~30 MB larger than a prod-only install
 # but the test workflow stays intact in this single-image setup.
-FROM node:22-alpine AS runner
+FROM node:26-alpine AS runner
 
 # Apply OS security patches. `node:22-alpine` ships with already-known
 # CVEs in Alpine packages that have fixes in the apk repo but aren't yet
