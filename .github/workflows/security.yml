@@ -92,7 +92,7 @@ jobs:
         run: docker build -t local/backend:scan ./backend
 
       - name: Trivy scan
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: local/backend:scan
           severity: HIGH,CRITICAL
@@ -111,7 +111,7 @@ jobs:
         run: docker build -t local/frontend:scan ./frontend
 
       - name: Trivy scan
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: local/frontend:scan
           severity: HIGH,CRITICAL
