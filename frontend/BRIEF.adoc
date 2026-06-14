@@ -162,7 +162,7 @@ build
 Dockerfile
 Dockerfile.dev
 compose.yml
-README.md
+README.adoc
 .vscode
 .idea
 *.log
