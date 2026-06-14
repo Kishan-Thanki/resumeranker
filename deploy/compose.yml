@@ -13,7 +13,7 @@
 #
 # IMAGE_REGISTRY / IMAGE_TAG let you pin versions; defaults shown.
 
-name: resume-ranker
+name: resumeranker
 
 services:
   caddy:
@@ -33,11 +33,11 @@ services:
       - api
       - frontend
     networks:
-      - resume-ranker
+      - resumeranker
     mem_limit: 64m
 
   frontend:
-    image: ${IMAGE_REGISTRY:-ghcr.io/username}/resume-ranker-frontend:${IMAGE_TAG:-latest}
+    image: ${IMAGE_REGISTRY:-ghcr.io/username}/resumeranker-frontend:${IMAGE_TAG:-latest}
     container_name: frontend
     restart: unless-stopped
     # No published ports — Caddy reaches it over the internal network.
@@ -45,13 +45,13 @@ services:
     expose:
       - "3000"
     networks:
-      - resume-ranker
+      - resumeranker
     mem_limit: 128m
     mem_reservation: 48m
     pids_limit: 100
 
   api:
-    image: ${IMAGE_REGISTRY:-ghcr.io/username}/resume-ranker-backend:${IMAGE_TAG:-latest}
+    image: ${IMAGE_REGISTRY:-ghcr.io/username}/resumeranker-backend:${IMAGE_TAG:-latest}
     container_name: api
     restart: unless-stopped
     env_file: .env
@@ -80,13 +80,13 @@ services:
     expose:
       - "8000"
     networks:
-      - resume-ranker
+      - resumeranker
     mem_limit: 320m
     mem_reservation: 128m
     pids_limit: 200
 
   worker:
-    image: ${IMAGE_REGISTRY:-ghcr.io/username}/resume-ranker-backend:${IMAGE_TAG:-latest}
+    image: ${IMAGE_REGISTRY:-ghcr.io/username}/resumeranker-backend:${IMAGE_TAG:-latest}
     container_name: worker
     restart: unless-stopped
     env_file: .env
@@ -99,7 +99,7 @@ services:
         condition: service_healthy
     command: ["arq", "app.worker.WorkerSettings"]
     networks:
-      - resume-ranker
+      - resumeranker
     # Tuned down from the dev 1g for a 1 GB box. Docker lets a container
     # use up to mem_limit RAM + an equal amount of swap by default, so the
     # worker's PDF/LLM spike lands in swap (slow) instead of OOM-killing.
@@ -120,7 +120,7 @@ services:
       - postgres-data:/var/lib/postgresql/data
     # NO ports — database is never reachable from the public internet.
     networks:
-      - resume-ranker
+      - resumeranker
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 10s
@@ -138,7 +138,7 @@ services:
       - redis-data:/data
     # NO ports — internal only.
     networks:
-      - resume-ranker
+      - resumeranker
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -149,15 +149,15 @@ services:
     pids_limit: 100
 
 networks:
-  resume-ranker:
-    name: resume-ranker
+  resumeranker:
+    name: resumeranker
 
 volumes:
   postgres-data:
-    name: resume-ranker-postgres-data
+    name: resumeranker-postgres-data
   redis-data:
-    name: resume-ranker-redis-data
+    name: resumeranker-redis-data
   caddy-data:
-    name: resume-ranker-caddy-data
+    name: resumeranker-caddy-data
   caddy-config:
-    name: resume-ranker-caddy-config
+    name: resumeranker-caddy-config

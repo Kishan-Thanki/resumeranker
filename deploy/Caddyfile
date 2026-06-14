@@ -1,7 +1,7 @@
 # Caddy reverse proxy for Resume Ranker — two sub-domains, one origin.
 #
-#   resume-ranker.example.com      -> frontend (SvelteKit node, :3000)
-#   api.resume-ranker.example.com  -> backend  (FastAPI/uvicorn, :8000)
+#   resumeranker.example.com      -> frontend (SvelteKit node, :3000)
+#   api.resumeranker.example.com  -> backend  (FastAPI/uvicorn, :8000)
 #
 # TLS: we use a Cloudflare Origin Certificate (primary path below) so this
 # works immediately with Cloudflare's orange-cloud proxy ON and SSL mode
@@ -26,7 +26,7 @@
 	email security@example.com
 }
 
-resume-ranker.example.com {
+resumeranker.example.com {
 	tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin-key.pem
 	encode zstd gzip
 	reverse_proxy frontend:3000
@@ -36,7 +36,7 @@ resume-ranker.example.com {
 	header -Server
 }
 
-api.resume-ranker.example.com {
+api.resumeranker.example.com {
 	tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin-key.pem
 	encode zstd gzip
 	# `reverse_proxy` sets X-Forwarded-Proto=https, which uvicorn honors

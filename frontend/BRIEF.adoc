@@ -1,4 +1,4 @@
-= Resume-Ranker — Frontend Brief (v1, Candidate-side)
+= ResumeRanker — Frontend Brief (v1, Candidate-side)
 
 == What this is
 
@@ -86,7 +86,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.dev
-    container_name: resume-ranker-web
+    container_name: resumeranker-web
     ports:
       - "5173:5173"
     volumes:
@@ -403,7 +403,7 @@ _Rule:_ if it's a generic primitive (button, input, dialog), use shadcn-svelte. 
 == File structure
 
 ----
-resume-ranker-frontend/
+resumeranker-frontend/
 ├── Dockerfile                          # Production multi-stage build
 ├── Dockerfile.dev                      # Development image with HMR
 ├── compose.yml                         # Docker Compose for dev
@@ -487,7 +487,7 @@ resume-ranker-frontend/
 * Renders correctly at 380px, 768px, and 1280px viewports
 * Keyboard navigation works on every page
 * `docker compose up` starts the dev environment cleanly from a fresh clone
-* `docker build -t resume-ranker-frontend:prod .` produces a working production image
+* `docker build -t resumeranker-frontend:prod .` produces a working production image
 * Production image runs and serves the built site on `:3000`
 
 == Working order (suggested)
@@ -506,7 +506,7 @@ resume-ranker-frontend/
 . Build `/app` home (the merged home + history view).
 . Build `/app/new` upload page.
 . Build `/app/analysis/[id]` — processing state first, then completed state. This is where `SectionScoreCard` and `RequirementRow` get built.
-. Write the production `Dockerfile` (multi-stage) and verify `docker build -t resume-ranker-frontend:prod .` produces a working image. Run with `docker run -p 3000:3000 resume-ranker-frontend:prod` and verify the built site loads.
+. Write the production `Dockerfile` (multi-stage) and verify `docker build -t resumeranker-frontend:prod .` produces a working image. Run with `docker run -p 3000:3000 resumeranker-frontend:prod` and verify the built site loads.
 . Polish: empty states, error states, focus styles, mobile passes at 380px, dark mode toggle, `+error.svelte` page.
 
 At each step, the project should run cleanly with `docker compose up` and the new page should be reachable. _Never break a previous step's behavior_ — if step 11 stops step 10 from working, fix it before moving on.

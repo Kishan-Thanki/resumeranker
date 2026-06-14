@@ -1,7 +1,7 @@
 [project]
-name = "resume-ranker-backend"
+name = "resumeranker-backend"
 version = "0.1.0"
-description = "Resume-Ranker backend: FastAPI + arq + Postgres + Redis. Matches the frontend's AnalysisResult contract."
+description = "ResumeRanker backend: FastAPI + arq + Postgres + Redis. Matches the frontend's AnalysisResult contract."
 requires-python = ">=3.12"
 dependencies = [
     "fastapi~=0.115",

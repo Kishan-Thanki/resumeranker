@@ -46,9 +46,9 @@ _redoc_url = "/redoc" if _is_dev else None
 _openapi_url = "/openapi.json" if _is_dev else None
 
 app = FastAPI(
-    title="Resume-Ranker API",
+    title="ResumeRanker API",
     version="0.1.0",
-    description="Backend for Resume-Ranker. Matches frontend's AnalysisResult contract.",
+    description="Backend for ResumeRanker. Matches frontend's AnalysisResult contract.",
     docs_url=_docs_url,
     redoc_url=_redoc_url,
     openapi_url=_openapi_url,

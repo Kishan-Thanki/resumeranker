@@ -1,6 +1,6 @@
 = Security — Frontend
 
-Security posture for the Resume-Ranker frontend (SvelteKit + adapter-node):
+Security posture for the ResumeRanker frontend (SvelteKit + adapter-node):
 what we defend against, how, and what we don't (yet).
 
 The backend's defenses (auth, rate limiting, input validation, LLM

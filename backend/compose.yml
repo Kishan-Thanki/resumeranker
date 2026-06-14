@@ -5,13 +5,13 @@
 # To see code changes you must rebuild:
 #   docker compose up -d --build
 
-name: resume-ranker-backend
+name: resumeranker-backend
 
 services:
   api:
     build:
       context: .
-    image: resume-ranker-backend
+    image: resumeranker-backend
     container_name: api
     ports:
       - "8000:8000"
@@ -22,7 +22,7 @@ services:
       redis:
         condition: service_healthy
     networks:
-      - resume-ranker
+      - resumeranker
     # `--no-server-header` strips `Server: uvicorn` from responses. Combined
     # with the generic error handlers in app/main.py, this removes the
     # easiest framework-fingerprinting signal.
@@ -36,7 +36,7 @@ services:
     pids_limit: 200
 
   worker:
-    image: resume-ranker-backend
+    image: resumeranker-backend
     container_name: worker
     env_file: .env
     depends_on:
@@ -47,7 +47,7 @@ services:
       redis:
         condition: service_healthy
     networks:
-      - resume-ranker
+      - resumeranker
     command: ["arq", "app.worker.WorkerSettings"]
     restart: unless-stopped
     # Heavy lifter — LLM pipeline, pdfplumber, JSON shaping. Up to
@@ -70,9 +70,9 @@ services:
       # Postgres on the host. Internal services use `postgres:5432`.
       - "15432:5432"
     volumes:
-      - resume-ranker-postgres-data:/var/lib/postgresql/data
+      - resumeranker-postgres-data:/var/lib/postgresql/data
     networks:
-      - resume-ranker
+      - resumeranker
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 5s
@@ -92,9 +92,9 @@ services:
       # Host port 16379 → container 6379.
       - "16379:6379"
     volumes:
-      - resume-ranker-redis-data:/data
+      - resumeranker-redis-data:/data
     networks:
-      - resume-ranker
+      - resumeranker
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -108,11 +108,11 @@ services:
     pids_limit: 100
 
 networks:
-  resume-ranker:
-    name: resume-ranker
+  resumeranker:
+    name: resumeranker
 
 volumes:
-  resume-ranker-postgres-data:
-    name: resume-ranker-postgres-data
-  resume-ranker-redis-data:
-    name: resume-ranker-redis-data
+  resumeranker-postgres-data:
+    name: resumeranker-postgres-data
+  resumeranker-redis-data:
+    name: resumeranker-redis-data

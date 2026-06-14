@@ -3,8 +3,8 @@
 
 set -euo pipefail
 
-IMAGE="resume-ranker-admin:latest"
-NAME="resume-ranker-admin"
+IMAGE="resumeranker-admin:latest"
+NAME="resumeranker-admin"
 HOST_PORT="5174"
 CONTAINER_PORT="3000"
 
@@ -34,7 +34,7 @@ case "${1:-up}" in
     docker run -d \
       --name "$NAME" \
       --restart unless-stopped \
-      --network resume-ranker \
+      --network resumeranker \
       --env-file .env \
       -p "${HOST_PORT}:${CONTAINER_PORT}" \
       --memory "$MEMORY" \

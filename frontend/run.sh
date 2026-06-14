@@ -13,12 +13,12 @@
 #
 # Resource caps mirror what was in compose.yml. SvelteKit adapter-node
 # idles at ~60 MB; cap is 256 MiB. Bump if you ever see OOM kills:
-#   docker inspect resume-ranker-frontend | grep OOMKilled
+#   docker inspect resumeranker-frontend | grep OOMKilled
 
 set -euo pipefail
 
-IMAGE="resume-ranker-frontend:latest"
-NAME="resume-ranker-frontend"
+IMAGE="resumeranker-frontend:latest"
+NAME="resumeranker-frontend"
 HOST_PORT="5173"
 CONTAINER_PORT="3000"
 
@@ -26,7 +26,7 @@ CONTAINER_PORT="3000"
 # serving traffic. svelte-check and vitest need ~1 GiB to run, so when
 # you want to exec dev-time tools inside the container, start it with
 # `FRONTEND_MEMORY=2g ./run.sh` (or run `docker update --memory 2g
-# resume-ranker-frontend` on the live container before exec'ing).
+# resumeranker-frontend` on the live container before exec'ing).
 MEMORY="${FRONTEND_MEMORY:-256m}"
 MEMORY_SWAP="${FRONTEND_MEMORY_SWAP:-${MEMORY}}"
 
@@ -50,7 +50,7 @@ case "${1:-up}" in
 
     # VITE_API_BASE_URL is baked into the bundle + CSP at build time.
     # Defaults to localhost for dev; for production build with e.g.
-    #   VITE_API_BASE_URL=https://api.resume-ranker.example.com ./run.sh
+    #   VITE_API_BASE_URL=https://api.resumeranker.example.com ./run.sh
     API_BASE="${VITE_API_BASE_URL:-http://localhost:8000}"
     echo "Building $IMAGE (VITE_API_BASE_URL=$API_BASE) ..."
     docker build --build-arg VITE_API_BASE_URL="$API_BASE" -t "$IMAGE" .
@@ -59,7 +59,7 @@ case "${1:-up}" in
     docker run -d \
       --name "$NAME" \
       --restart unless-stopped \
-      --network resume-ranker \
+      --network resumeranker \
       --env-file .env \
       -p "${HOST_PORT}:${CONTAINER_PORT}" \
       --memory "$MEMORY" \

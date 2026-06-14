@@ -1,4 +1,4 @@
-= resume-ranker backend — AI assistant context
+= resumeranker backend — AI assistant context
 
 FastAPI + arq + Postgres + Redis. Section-by-section resume↔JD matching API,
 async via worker. This file loads automatically when working in `backend/`.
@@ -21,13 +21,13 @@ Python 3.12 · FastAPI · SQLAlchemy 2 async + asyncpg · Postgres 16 (pgvector)
 ----
 api        FastAPI / uvicorn :8000
 worker     arq queue consumer (same image as api, different CMD)
-postgres   pgvector/pgvector:pg16, volume resume-ranker-postgres-data
-redis      redis:7-alpine, volume resume-ranker-redis-data
+postgres   pgvector/pgvector:pg16, volume resumeranker-postgres-data
+redis      redis:7-alpine, volume resumeranker-redis-data
 ----
 
-* _Compose project name:_ `resume-ranker-backend` (group label in Docker Desktop).
+* _Compose project name:_ `resumeranker-backend` (group label in Docker Desktop).
 * Container names are _short_ intentionally; they collide if other containers on the host use the same names.
-* Network: `resume-ranker` (shared with frontend if it's also up; not required).
+* Network: `resumeranker` (shared with frontend if it's also up; not required).
 
 == Workflow
 

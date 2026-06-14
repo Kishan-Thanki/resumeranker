@@ -12,5 +12,5 @@ Policy: http://localhost:5173/privacy
 
 # NOTE: The absolute URLs above use localhost while the service is in
 # local dev. Before deploying publicly, replace both with the production
-# origin (e.g. https://resume-ranker.example/contact and /privacy). RFC
+# origin (e.g. https://resumeranker.example/contact and /privacy). RFC
 # 9116 requires absolute URLs in these directives.

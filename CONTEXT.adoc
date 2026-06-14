@@ -1,4 +1,4 @@
-= resume-ranker — AI assistant context (repo root)
+= resumeranker — AI assistant context (repo root)
 
 Section-by-section resume↔JD matching with evidence quotes. *No top-line
 score.* This file loads automatically into every AI session and gives
@@ -10,7 +10,7 @@ those folders.
 
 [source,text]
 ----
-resume-ranker/
+resumeranker/
 ├── backend/                 FastAPI + arq + Postgres + Redis (own image)
 ├── frontend/                SvelteKit (adapter-node)         (own image)
 ├── .github/                 dormant CI (gitleaks, pip-audit, pnpm audit, Trivy)
@@ -25,7 +25,7 @@ fetch). There is no root `compose.yml`.
 
 . *Docker-first.* Never `pnpm` / `uv` / `python` on the host. All commands
    go through `docker compose exec ...` (backend) or `docker exec
-   resume-ranker-frontend ...` (frontend). Host install of `pnpm install` for
+   resumeranker-frontend ...` (frontend). Host install of `pnpm install` for
    IDE intellisense is the only exception.
 . *Backend never calls the LLM.* API is thin (validate + DB + enqueue);
    only the worker invokes litellm. Per `backend/AGENTS.md` rule #10.

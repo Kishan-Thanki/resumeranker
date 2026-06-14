@@ -13,8 +13,8 @@ Browser ──HTTPS──> Cloudflare (proxy) ──HTTPS──> Caddy ──┬
                                                                 worker ──┘ (no inbound)
 ----
 
-* `resume-ranker.example.com` → frontend
-* `api.resume-ranker.example.com` → backend
+* `resumeranker.example.com` → frontend
+* `api.resumeranker.example.com` → backend
 * Same registrable domain ⇒ same-site ⇒ the `SameSite=Lax` HttpOnly
   session cookie works across the two sub-domains; CORS only needs the
   frontend origin allow-listed (handled by `APP_BASE_URL`).
@@ -60,18 +60,18 @@ echo "$GHCR_TOKEN" | docker login ghcr.io -u Username --password-stdin
 
 # Backend (api + worker share this image)
 docker build --platform linux/amd64 \
-  -t "$REG/resume-ranker-backend:$TAG" -t "$REG/resume-ranker-backend:latest" \
+  -t "$REG/resumeranker-backend:$TAG" -t "$REG/resumeranker-backend:latest" \
   ./backend
-docker push "$REG/resume-ranker-backend:$TAG"
-docker push "$REG/resume-ranker-backend:latest"
+docker push "$REG/resumeranker-backend:$TAG"
+docker push "$REG/resumeranker-backend:latest"
 
 # Frontend — the prod API origin is BAKED IN here via the build arg
 docker build --platform linux/amd64 \
-  --build-arg VITE_API_BASE_URL=https://api.resume-ranker.example.com \
-  -t "$REG/resume-ranker-frontend:$TAG" -t "$REG/resume-ranker-frontend:latest" \
+  --build-arg VITE_API_BASE_URL=https://api.resumeranker.example.com \
+  -t "$REG/resumeranker-frontend:$TAG" -t "$REG/resumeranker-frontend:latest" \
   ./frontend
-docker push "$REG/resume-ranker-frontend:$TAG"
-docker push "$REG/resume-ranker-frontend:latest"
+docker push "$REG/resumeranker-frontend:$TAG"
+docker push "$REG/resumeranker-frontend:latest"
 ----
 
 NOTE: On a 4 GB+ host you may build on-box instead; just run the same
@@ -83,7 +83,7 @@ mandatory either way.
 [source,bash]
 ----
 # on the server
-mkdir -p ~/resume-ranker && cd ~/resume-ranker
+mkdir -p ~/resumeranker && cd ~/resumeranker
 # copy deploy/compose.yml, deploy/Caddyfile, and deploy/certs/ here
 # (scp, or sparse-checkout just the deploy/ dir)
 ----
@@ -94,7 +94,7 @@ then set the production values:
 [source,dotenv]
 ----
 ENVIRONMENT=production
-APP_BASE_URL=https://resume-ranker.example.com   # frontend origin (CORS + magic-link)
+APP_BASE_URL=https://resumeranker.example.com   # frontend origin (CORS + magic-link)
 
 POSTGRES_USER=resumeranker
 POSTGRES_PASSWORD=<the rotated 64-char value — keep it secret>
@@ -139,8 +139,8 @@ the orange cloud. See the Caddyfile comments.)
 
 * DNS → add two *A records* → the server's public IP, both *Proxied*
   (orange cloud):
-** `resume-ranker` → <IP>
-** `api.resume-ranker` → <IP>
+** `resumeranker` → <IP>
+** `api.resumeranker` → <IP>
 * Open only 80 + 443 to the world. On Oracle this means the VCN Security
   List / NSG ingress rules AND the instance's local firewall:
 +
@@ -157,7 +157,7 @@ sudo netfilter-persistent save     # Oracle Ubuntu images keep iptables rules
 
 [source,bash]
 ----
-cd ~/resume-ranker
+cd ~/resumeranker
 docker compose pull
 docker compose up -d
 docker compose ps          # all healthy?
@@ -172,18 +172,18 @@ docker compose exec api alembic upgrade head
 [source,bash]
 ----
 # API up behind Caddy/Cloudflare
-curl -sS -o /dev/null -w "%{http_code}\n" https://api.resume-ranker.example.com/health   # 200
+curl -sS -o /dev/null -w "%{http_code}\n" https://api.resumeranker.example.com/health   # 200
 
 # No HTTPS redirect loop (should NOT be a 3xx ping-pong)
-curl -sSI https://api.resume-ranker.example.com/health | head -1
+curl -sSI https://api.resumeranker.example.com/health | head -1
 
 # Frontend loads
-curl -sS -o /dev/null -w "%{http_code}\n" https://resume-ranker.example.com/            # 200
+curl -sS -o /dev/null -w "%{http_code}\n" https://resumeranker.example.com/            # 200
 ----
 
 Then in a real browser:
 
-. Open `https://resume-ranker.example.com` — loads, theme toggle works.
+. Open `https://resumeranker.example.com` — loads, theme toggle works.
 . Sign in with your email + accept the terms checkbox.
 . *A real magic-link email arrives* (Resend is live now, not stdout) →
   click it → land on `/app`.
@@ -201,7 +201,7 @@ and that the Resend domain is verified. If analyses hang in `queued`:
 [source,bash]
 ----
 # rebuild + push new images off-box (step 1), then on the server:
-cd ~/resume-ranker
+cd ~/resumeranker
 docker compose pull
 docker compose up -d
 docker compose exec api alembic upgrade head   # if there are new migrations

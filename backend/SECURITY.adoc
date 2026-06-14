@@ -1,6 +1,6 @@
 = Security — Backend
 
-Security posture for the Resume-Ranker backend (FastAPI + arq + Postgres + Redis):
+Security posture for the ResumeRanker backend (FastAPI + arq + Postgres + Redis):
 what we defend against, how, and what we don't (yet).
 
 The frontend's defenses (CSP, header policy, output escaping) live in

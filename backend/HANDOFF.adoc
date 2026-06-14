@@ -1,4 +1,4 @@
-= Resume-Ranker — Backend Handoff
+= ResumeRanker — Backend Handoff
 
 A web tool that lets a job-seeking candidate upload their resume and a job
 description and receive a section-by-section match analysis with evidence
@@ -43,7 +43,7 @@ pdfplumber · Resend (stdout fallback) · Alembic · uv · `python:3.12-slim`.
 == Repo placement
 
 ----
-resume-ranker/
+resumeranker/
 ├── frontend/                  (SvelteKit, complete)
 └── backend/                   ← this
     ├── BACKEND_BRIEF.md       (full spec)
@@ -88,7 +88,7 @@ resume-ranker/
 
 == Docker resource naming
 
-The compose project name (`resume-ranker-backend`) is the group label in
+The compose project name (`resumeranker-backend`) is the group label in
 Docker Desktop. Container names are intentionally _short_ because the
 group already disambiguates them — Docker Desktop shows the group at the
 top and the four short containers inside it.
@@ -97,16 +97,16 @@ top and the four short containers inside it.
 |===
 | Resource | Name
 
-| Compose project (group in Docker Desktop) | `resume-ranker-backend`
+| Compose project (group in Docker Desktop) | `resumeranker-backend`
 | Container (api) | `api`
 | Container (worker) | `worker`
 | Container (postgres) | `postgres`
 | Container (redis) | `redis`
-| Network | `resume-ranker`
-| Volume (postgres) | `resume-ranker-postgres-data`
-| Volume (redis) | `resume-ranker-redis-data`
-| Image (dev) | `resume-ranker-backend:dev` (~780 MB)
-| Image (prod) | `resume-ranker-backend:prod` (~550 MB)
+| Network | `resumeranker`
+| Volume (postgres) | `resumeranker-postgres-data`
+| Volume (redis) | `resumeranker-redis-data`
+| Image (dev) | `resumeranker-backend:dev` (~780 MB)
+| Image (prod) | `resumeranker-backend:prod` (~550 MB)
 |===
 
 *Heads-up — name collision risk:* short container names like `postgres`
@@ -122,7 +122,7 @@ Host port mappings (changed from brief because 5432 is in use on this dev box):
 * API `localhost:8000` → container `8000`
 
 Internal container-to-container traffic uses default 5432/6379 via the
-shared `resume-ranker-backend` network.
+shared `resumeranker-backend` network.
 
 == HTTP API (everything implemented and verified)
 
@@ -195,8 +195,8 @@ docker compose exec api uv run alembic revision --autogenerate -m "describe chan
 docker compose exec api uv run alembic upgrade head
 
 # Production image
-docker build -t resume-ranker-backend:prod .
-docker run --rm -p 8000:8000 --env-file .env resume-ranker-backend:prod
+docker build -t resumeranker-backend:prod .
+docker run --rm -p 8000:8000 --env-file .env resumeranker-backend:prod
 
 # Regenerate eval fixtures (5 JDs + 5 resumes + 25 expected JSONs)
 docker compose exec api uv run python -m app.tests.evals._seed
@@ -210,7 +210,7 @@ _Never run `uv` or `python` on the host._ Rule #13.
 |===
 | Deviation | Why
 
-| `Dockerfile.dev` runs `uv sync` at _build time_ as the brief specified — this works because the venv lives in a named volume (`resume-ranker-backend-venv`) so the bind mount doesn't clobber it. | No frontend-style "runtime install" needed; uv's behavior plays nicer with Docker than pnpm's did.
+| `Dockerfile.dev` runs `uv sync` at _build time_ as the brief specified — this works because the venv lives in a named volume (`resumeranker-backend-venv`) so the bind mount doesn't clobber it. | No frontend-style "runtime install" needed; uv's behavior plays nicer with Docker than pnpm's did.
 | Host ports remapped to _15432 / 16379_ for postgres/redis | Default 5432 was in use on the dev box. Inside-container ports unchanged.
 | `app/db.py` uses `NullPool` when running under pytest | The default SQLAlchemy pool binds connections to whichever event loop first uses them; pytest-asyncio's per-test loops then crash with "Event loop is closed".
 | `app/tests/conftest.py` resets the singleton redis client between tests | Same reason as above.

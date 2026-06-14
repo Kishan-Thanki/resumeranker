@@ -1,4 +1,4 @@
-= Resume-Ranker — Frontend Handoff
+= ResumeRanker — Frontend Handoff
 
 A web tool that lets a job-seeking candidate upload their resume and a job
 description and receive a section-by-section match analysis with evidence
@@ -39,7 +39,7 @@ Everything runs in Docker via `node:22-alpine`.
 == Repo placement
 
 ----
-resume-ranker/
+resumeranker/
 ├── backend/                  (FastAPI + arq + Postgres + Redis)
 └── frontend/                 ← this
     ├── BRIEF.md              (full UX spec)
@@ -81,8 +81,8 @@ keeps the container flat in the UI.
 |===
 | Resource | Name
 
-| Container | `resume-ranker-frontend`
-| Image | `resume-ranker-frontend:latest`
+| Container | `resumeranker-frontend`
+| Image | `resumeranker-frontend:latest`
 | Network | Docker default `bridge` (no custom network needed — the browser, not the container, talks to the backend)
 | Host port → Container | `5173 → 3000`
 |===
@@ -131,19 +131,19 @@ _Important quirk:_ all `VITE__` vars are inlined into the browser bundle at _bui
 ./run.sh status
 
 # Type-check + diagnostics (the source-of-truth check)
-docker exec resume-ranker-frontend pnpm exec svelte-check --tsconfig ./tsconfig.json
+docker exec resumeranker-frontend pnpm exec svelte-check --tsconfig ./tsconfig.json
 
 # Unit tests
-docker exec resume-ranker-frontend pnpm exec vitest run
+docker exec resumeranker-frontend pnpm exec vitest run
 
 # Production deploy — push the image to a registry and pull it on the target
-docker build -t resume-ranker-frontend:latest .
-docker tag resume-ranker-frontend:latest <registry>/<you>/resume-ranker-frontend:1.0
-docker push <registry>/<you>/resume-ranker-frontend:1.0
+docker build -t resumeranker-frontend:latest .
+docker tag resumeranker-frontend:latest <registry>/<you>/resumeranker-frontend:1.0
+docker push <registry>/<you>/resumeranker-frontend:1.0
 # Then on the target host:
-docker run -d --name resume-ranker-frontend --restart unless-stopped \
+docker run -d --name resumeranker-frontend --restart unless-stopped \
   -p 80:3000 -e VITE_API_BASE_URL=https://api.example.com \
-  <registry>/<you>/resume-ranker-frontend:1.0
+  <registry>/<you>/resumeranker-frontend:1.0
 ----
 
 _Never run `pnpm`/`node` on the host._ Rule per `AGENTS.md`. (Exception:

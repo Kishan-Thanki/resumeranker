@@ -1,4 +1,4 @@
-= resume-ranker frontend — AI assistant context
+= resumeranker frontend — AI assistant context
 
 SvelteKit 2 (Svelte 5 runes mode) on `@sveltejs/adapter-node`. Renders the
 section-by-section match UI. This file loads automatically when working in
@@ -21,7 +21,7 @@ TailwindCSS 4 · shadcn-svelte · bits-ui · `@lucide/svelte` · svelte-sonner
 == Container & workflow
 
 ----
-resume-ranker-frontend     adapter-node server, host :5173 → container :3000
+resumeranker-frontend     adapter-node server, host :5173 → container :3000
 ----
 
 _No `docker compose` for the frontend_ — it runs via a `run.sh` wrapper so
@@ -39,8 +39,8 @@ For in-container commands (svelte-check, vitest, anything `pnpm` runs):
 
 [source,bash]
 ----
-docker exec resume-ranker-frontend pnpm exec svelte-check --tsconfig ./tsconfig.json
-docker exec resume-ranker-frontend pnpm exec vitest run
+docker exec resumeranker-frontend pnpm exec svelte-check --tsconfig ./tsconfig.json
+docker exec resumeranker-frontend pnpm exec vitest run
 ----
 
 _Never run host-side `pnpm`/`node` for runtime work._ Host install of
