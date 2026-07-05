@@ -5,7 +5,7 @@ import (
 	"errors"
 
 	"github.com/kishan-thanki/resumeranker/api/internal/domain"
-	"github.com/kishan-thanki/resumeranker/api/pkg/hashutil"
+	"github.com/kishan-thanki/resumeranker/api/internal/utils/hashutil"
 )
 
 var (
