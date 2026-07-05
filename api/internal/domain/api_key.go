@@ -13,8 +13,9 @@ const (
 type APIKey struct {
 	ID         uint64       `json:"id"`
 	UserID     uint64       `json:"user_id"`
-	Name       string       `json:"name"`
-	KeyHash    string       `json:"-"`
+	Name        string       `json:"name"`
+	KeySelector string       `json:"-"`
+	KeyHash     string       `json:"-"`
 	Status     APIKeyStatus `json:"status"`
 	TokenQuota uint64       `json:"-"`
 	TokensUsed uint64       `json:"-"`

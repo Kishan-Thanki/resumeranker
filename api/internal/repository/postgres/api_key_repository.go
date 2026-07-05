@@ -17,13 +17,14 @@ func NewAPIKeyRepository(db *pgxpool.Pool) *APIKeyRepository {
 
 func (r *APIKeyRepository) Create(ctx context.Context, apiKey *domain.APIKey) (*domain.APIKey, error) {
 	const sql = `
-		INSERT INTO api_keys (user_id, name, key_hash, status, token_quota, tokens_used, expires_at, last_used_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO api_keys (user_id, name, key_selector, key_hash, status, token_quota, tokens_used, expires_at, last_used_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		RETURNING id, created_at, updated_at
 	`
 	err := r.db.QueryRow(ctx, sql,
 		apiKey.UserID,
 		apiKey.Name,
+		apiKey.KeySelector,
 		apiKey.KeyHash,
 		apiKey.Status,
 		apiKey.TokenQuota,
@@ -43,7 +44,7 @@ func (r *APIKeyRepository) Create(ctx context.Context, apiKey *domain.APIKey) (*
 
 func (r *APIKeyRepository) GetByID(ctx context.Context, id uint64) (*domain.APIKey, error) {
 	const sql = `
-		SELECT id, user_id, name, key_hash, status, token_quota, tokens_used, expires_at, last_used_at, created_at, updated_at, deleted_at
+		SELECT id, user_id, name, key_selector, key_hash, status, token_quota, tokens_used, expires_at, last_used_at, created_at, updated_at, deleted_at
 		FROM api_keys
 		WHERE id = $1 AND deleted_at IS NULL
 	`
@@ -52,6 +53,7 @@ func (r *APIKeyRepository) GetByID(ctx context.Context, id uint64) (*domain.APIK
 		&apiKey.ID,
 		&apiKey.UserID,
 		&apiKey.Name,
+		&apiKey.KeySelector,
 		&apiKey.KeyHash,
 		&apiKey.Status,
 		&apiKey.TokenQuota,
@@ -68,17 +70,18 @@ func (r *APIKeyRepository) GetByID(ctx context.Context, id uint64) (*domain.APIK
 	return apiKey, nil
 }
 
-func (r *APIKeyRepository) GetByHash(ctx context.Context, hash string) (*domain.APIKey, error) {
+func (r *APIKeyRepository) GetBySelector(ctx context.Context, selector string) (*domain.APIKey, error) {
 	const sql = `
-		SELECT id, user_id, name, key_hash, status, token_quota, tokens_used, expires_at, last_used_at, created_at, updated_at, deleted_at
+		SELECT id, user_id, name, key_selector, key_hash, status, token_quota, tokens_used, expires_at, last_used_at, created_at, updated_at, deleted_at
 		FROM api_keys
-		WHERE key_hash = $1 AND deleted_at IS NULL
+		WHERE key_selector = $1 AND deleted_at IS NULL
 	`
 	apiKey := &domain.APIKey{}
-	err := r.db.QueryRow(ctx, sql, hash).Scan(
+	err := r.db.QueryRow(ctx, sql, selector).Scan(
 		&apiKey.ID,
 		&apiKey.UserID,
 		&apiKey.Name,
+		&apiKey.KeySelector,
 		&apiKey.KeyHash,
 		&apiKey.Status,
 		&apiKey.TokenQuota,
