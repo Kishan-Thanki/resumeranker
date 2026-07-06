@@ -93,5 +93,17 @@ make install-tools
 make migrate-up
 
 # Start the core engine
-go run ./cmd/api
+make run
+```
+
+### Testing
+
+The service is strictly tested with a 100% standard library coverage strategy.
+
+```bash
+# Run standard unit tests
+make test
+
+# Run tests including Postgres database integration tests
+make test-integration
 ```

@@ -14,3 +14,15 @@ migrate-down:
 migrate-create:
 	@if [ -z "$(NAME)" ]; then echo "NAME is required. Usage: make migrate-create NAME=my_migration"; exit 1; fi
 	migrate create -ext sql -dir migrations -seq $(NAME)
+
+build:
+	go build -o bin/api cmd/api/main.go
+
+run: build
+	./bin/api
+
+test:
+	go test -v ./...
+
+test-integration:
+	go test -v -tags=integration ./...

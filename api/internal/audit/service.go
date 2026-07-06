@@ -21,7 +21,7 @@ func (s *AuditService) LogEvent(ctx context.Context, event *AuditEvent) error {
 
 func (s *AuditService) ListLogs(ctx context.Context, limit, offset int) ([]*AuditEvent, error) {
 	if limit <= 0 || limit > 100 {
-		limit = 50 
+		limit = 50
 	}
 	if offset < 0 {
 		offset = 0

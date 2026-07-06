@@ -63,6 +63,7 @@ Thumbs.db
 # =========================
 *.coverprofile
 coverage.out
+profiles/
 
 # =========================
 # Air (Live Reload)

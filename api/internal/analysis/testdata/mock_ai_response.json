@@ -1,0 +1,4 @@
+{
+  "score": 95,
+  "feedback": "This is a massive JSON payload that we load from testdata so we don't clog up the test file with huge string literals. The candidate has 10 years of experience in Go and is a perfect match."
+}

@@ -3,86 +3,118 @@ package audit
 import (
 	"context"
 	"log/slog"
+	"net/netip"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/kishan-thanki/resumeranker/api/internal/audit/db"
 )
 
 type PostgresRepository struct {
-	db *pgxpool.Pool
+	pool    *pgxpool.Pool
+	queries *db.Queries
 }
 
-func NewPostgresRepository(db *pgxpool.Pool) *PostgresRepository {
-	return &PostgresRepository{db: db}
+func NewPostgresRepository(pool *pgxpool.Pool) *PostgresRepository {
+	return &PostgresRepository{
+		pool:    pool,
+		queries: db.New(pool),
+	}
 }
 
 func (r *PostgresRepository) Create(ctx context.Context, event *AuditEvent) (*AuditEvent, error) {
-	const sql = `
-		INSERT INTO audit_events (user_id, api_key_id, analysis_request_id, type, description, ip_address, user_agent)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
-		RETURNING id, created_at
-	`
-	err := r.db.QueryRow(ctx, sql,
-		event.UserID,
-		event.APIKeyID,
-		event.AnalysisRequestID,
-		event.Type,
-		event.Description,
-		event.IPAddress,
-		event.UserAgent,
-	).Scan(
-		&event.ID,
-		&event.CreatedAt,
-	)
+	var ipAddr *netip.Addr
+	if event.IPAddress != nil && *event.IPAddress != "" {
+		addr, err := netip.ParseAddr(*event.IPAddress)
+		if err == nil {
+			ipAddr = &addr
+		}
+	}
+
+	e, err := r.queries.CreateAuditEvent(ctx, db.CreateAuditEventParams{
+		UserID:            toPgInt8(event.UserID),
+		ApiKeyID:          toPgInt8(event.APIKeyID),
+		AnalysisRequestID: toPgInt8(event.AnalysisRequestID),
+		Type:              string(event.Type),
+		Description:       event.Description,
+		IpAddress:         ipAddr,
+		UserAgent:         toPgText(event.UserAgent),
+	})
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to record audit event to database", slog.Any("error", err), slog.String("event_type", string(event.Type)))
 		return nil, err
 	}
-	
-	slog.InfoContext(ctx, "audit event recorded", 
+
+	event.ID = uint64(e.ID)
+	event.CreatedAt = e.CreatedAt.Time
+
+	slog.InfoContext(ctx, "audit event recorded",
 		slog.String("event_type", string(event.Type)),
 		slog.String("description", event.Description),
 		slog.Any("user_id", event.UserID),
 		slog.Any("api_key_id", event.APIKeyID),
 	)
-	
+
 	return event, nil
 }
 
 func (r *PostgresRepository) List(ctx context.Context, limit, offset int) ([]*AuditEvent, error) {
-	const sql = `
-		SELECT id, user_id, api_key_id, analysis_request_id, type, description, ip_address, user_agent, created_at
-		FROM audit_events
-		ORDER BY created_at DESC
-		LIMIT $1 OFFSET $2
-	`
-	rows, err := r.db.Query(ctx, sql, limit, offset)
+	dbEvents, err := r.queries.ListAuditEvents(ctx, db.ListAuditEventsParams{
+		Limit:  int32(limit),
+		Offset: int32(offset),
+	})
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	var events []*AuditEvent
-	for rows.Next() {
-		event := &AuditEvent{}
-		err := rows.Scan(
-			&event.ID,
-			&event.UserID,
-			&event.APIKeyID,
-			&event.AnalysisRequestID,
-			&event.Type,
-			&event.Description,
-			&event.IPAddress,
-			&event.UserAgent,
-			&event.CreatedAt,
-		)
-		if err != nil {
-			return nil, err
+	events := make([]*AuditEvent, len(dbEvents))
+	for i, e := range dbEvents {
+		var ipStr *string
+		if e.IpAddress != nil {
+			s := e.IpAddress.String()
+			ipStr = &s
 		}
-		events = append(events, event)
-	}
 
-	if err := rows.Err(); err != nil {
-		return nil, err
+		events[i] = &AuditEvent{
+			ID:                uint64(e.ID),
+			UserID:            fromPgInt8(e.UserID),
+			APIKeyID:          fromPgInt8(e.ApiKeyID),
+			AnalysisRequestID: fromPgInt8(e.AnalysisRequestID),
+			Type:              AuditEventType(e.Type),
+			Description:       e.Description,
+			IPAddress:         ipStr,
+			UserAgent:         fromPgText(e.UserAgent),
+			CreatedAt:         e.CreatedAt.Time,
+		}
 	}
 	return events, nil
+}
+
+func toPgInt8(id *uint64) pgtype.Int8 {
+	if id == nil {
+		return pgtype.Int8{Valid: false}
+	}
+	return pgtype.Int8{Int64: int64(*id), Valid: true}
+}
+
+func fromPgInt8(i pgtype.Int8) *uint64 {
+	if !i.Valid {
+		return nil
+	}
+	val := uint64(i.Int64)
+	return &val
+}
+
+func toPgText(s *string) pgtype.Text {
+	if s == nil {
+		return pgtype.Text{Valid: false}
+	}
+	return pgtype.Text{String: *s, Valid: true}
+}
+
+func fromPgText(t pgtype.Text) *string {
+	if !t.Valid {
+		return nil
+	}
+	return &t.String
 }
