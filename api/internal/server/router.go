@@ -45,6 +45,8 @@ func NewRouter(cfg RouterConfig) http.Handler {
 		})
 
 		r.Post("/analyze/resume", cfg.AnalysisHandler.ProcessResume)
+		r.Get("/analyze/history", cfg.AnalysisHandler.ListHistory)
+		r.Get("/analyze/{id}/result", cfg.AnalysisHandler.GetResult)
 	})
 
 	return r

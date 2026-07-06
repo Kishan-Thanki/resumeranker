@@ -3,7 +3,11 @@ module github.com/kishan-thanki/resumeranker/api
 go 1.26.4
 
 require (
+	github.com/go-chi/chi/v5 v5.3.0
+	github.com/golang-jwt/jwt/v5 v5.3.1
+	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.10.0
+	github.com/kishan-thanki/logger/v2 v2.0.0
 	golang.org/x/crypto v0.53.0
 )
 
