@@ -7,6 +7,7 @@ import (
 	"encoding/base32"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/kishan-thanki/resumeranker/api/internal/audit"
 	"github.com/kishan-thanki/resumeranker/api/internal/password"
@@ -58,6 +59,7 @@ func (s *APIKeyService) GenerateKey(ctx context.Context, userID uint64, name str
 	apiKey := &APIKey{
 		UserID:      userID,
 		Name:        name,
+		KeyPrefix:   "rr_" + strings.ToLower(selector) + "_",
 		KeySelector: selector,
 		KeyHash:     keyHash,
 		Status:      APIKeyStatusActive,
@@ -103,6 +105,14 @@ func (s *APIKeyService) ValidateKey(ctx context.Context, plainTextKey string) (*
 	if apiKey.Status != APIKeyStatusActive {
 		return nil, ErrInvalidAPIKey
 	}
+
+	isActive, err := s.repo.IsUserActive(ctx, apiKey.UserID)
+	if err != nil || !isActive {
+		return nil, ErrInvalidAPIKey
+	}
+
+	apiKey.LastUsedAt = func(t time.Time) *time.Time { return &t }(time.Now())
+	_, _ = s.repo.Update(ctx, apiKey)
 
 	return apiKey, nil
 }

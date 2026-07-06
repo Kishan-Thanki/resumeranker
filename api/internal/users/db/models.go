@@ -62,6 +62,7 @@ type ApiKey struct {
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
 	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
+	KeyPrefix   string             `json:"key_prefix"`
 }
 
 type AuditEvent struct {

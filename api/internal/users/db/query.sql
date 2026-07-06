@@ -20,8 +20,7 @@ WHERE id = $1 AND deleted_at IS NULL
 RETURNING *;
 
 -- name: DeleteUser :exec
-UPDATE users
-SET deleted_at = NOW()
+DELETE FROM users
 WHERE id = $1;
 
 -- name: CreateAgreement :one

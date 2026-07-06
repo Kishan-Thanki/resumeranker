@@ -106,6 +106,9 @@ type MockUserService struct {
 	AuthenticateFunc     func(ctx context.Context, email, password string) (*users.User, error)
 	AcceptTermsFunc      func(ctx context.Context, userID uint64, version string) error
 	HasAcceptedTermsFunc func(ctx context.Context, userID uint64, version string) (bool, error)
+	ChangePasswordFunc   func(ctx context.Context, userID uint64, oldPassword, newPassword string) error
+	ToggleStatusFunc     func(ctx context.Context, userID uint64, status users.AccountStatus) error
+	DeleteAccountFunc    func(ctx context.Context, userID uint64) error
 }
 
 func (m *MockUserService) Register(ctx context.Context, email, password string, role users.Role) (*users.User, error) {
@@ -134,4 +137,25 @@ func (m *MockUserService) HasAcceptedTerms(ctx context.Context, userID uint64, v
 		return m.HasAcceptedTermsFunc(ctx, userID, version)
 	}
 	return false, nil
+}
+
+func (m *MockUserService) ChangePassword(ctx context.Context, userID uint64, oldPassword, newPassword string) error {
+	if m.ChangePasswordFunc != nil {
+		return m.ChangePasswordFunc(ctx, userID, oldPassword, newPassword)
+	}
+	return nil
+}
+
+func (m *MockUserService) ToggleStatus(ctx context.Context, userID uint64, status users.AccountStatus) error {
+	if m.ToggleStatusFunc != nil {
+		return m.ToggleStatusFunc(ctx, userID, status)
+	}
+	return nil
+}
+
+func (m *MockUserService) DeleteAccount(ctx context.Context, userID uint64) error {
+	if m.DeleteAccountFunc != nil {
+		return m.DeleteAccountFunc(ctx, userID)
+	}
+	return nil
 }

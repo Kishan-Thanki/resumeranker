@@ -13,15 +13,16 @@ import (
 
 const createAPIKey = `-- name: CreateAPIKey :one
 INSERT INTO api_keys (
-    user_id, name, key_selector, key_hash, status, token_quota, tokens_used, expires_at
+    user_id, name, key_prefix, key_selector, key_hash, status, token_quota, tokens_used, expires_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8
-) RETURNING id, user_id, name, key_selector, key_hash, status, token_quota, tokens_used, expires_at, last_used_at, created_at, updated_at, deleted_at
+    $1, $2, $3, $4, $5, $6, $7, $8, $9
+) RETURNING id, user_id, name, key_selector, key_hash, status, token_quota, tokens_used, expires_at, last_used_at, created_at, updated_at, deleted_at, key_prefix
 `
 
 type CreateAPIKeyParams struct {
 	UserID      int64              `json:"user_id"`
 	Name        string             `json:"name"`
+	KeyPrefix   string             `json:"key_prefix"`
 	KeySelector string             `json:"key_selector"`
 	KeyHash     string             `json:"key_hash"`
 	Status      string             `json:"status"`
@@ -34,6 +35,7 @@ func (q *Queries) CreateAPIKey(ctx context.Context, arg CreateAPIKeyParams) (Api
 	row := q.db.QueryRow(ctx, createAPIKey,
 		arg.UserID,
 		arg.Name,
+		arg.KeyPrefix,
 		arg.KeySelector,
 		arg.KeyHash,
 		arg.Status,
@@ -56,6 +58,7 @@ func (q *Queries) CreateAPIKey(ctx context.Context, arg CreateAPIKeyParams) (Api
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.KeyPrefix,
 	)
 	return i, err
 }
@@ -72,7 +75,7 @@ func (q *Queries) DeleteAPIKey(ctx context.Context, id int64) error {
 }
 
 const getAPIKeyByID = `-- name: GetAPIKeyByID :one
-SELECT id, user_id, name, key_selector, key_hash, status, token_quota, tokens_used, expires_at, last_used_at, created_at, updated_at, deleted_at FROM api_keys
+SELECT id, user_id, name, key_selector, key_hash, status, token_quota, tokens_used, expires_at, last_used_at, created_at, updated_at, deleted_at, key_prefix FROM api_keys
 WHERE id = $1 AND deleted_at IS NULL
 `
 
@@ -93,12 +96,13 @@ func (q *Queries) GetAPIKeyByID(ctx context.Context, id int64) (ApiKey, error) {
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.KeyPrefix,
 	)
 	return i, err
 }
 
 const getAPIKeyBySelector = `-- name: GetAPIKeyBySelector :one
-SELECT id, user_id, name, key_selector, key_hash, status, token_quota, tokens_used, expires_at, last_used_at, created_at, updated_at, deleted_at FROM api_keys
+SELECT id, user_id, name, key_selector, key_hash, status, token_quota, tokens_used, expires_at, last_used_at, created_at, updated_at, deleted_at, key_prefix FROM api_keys
 WHERE key_selector = $1 AND deleted_at IS NULL
 `
 
@@ -119,12 +123,13 @@ func (q *Queries) GetAPIKeyBySelector(ctx context.Context, keySelector string) (
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.KeyPrefix,
 	)
 	return i, err
 }
 
 const listAPIKeysByUserID = `-- name: ListAPIKeysByUserID :many
-SELECT id, user_id, name, key_selector, key_hash, status, token_quota, tokens_used, expires_at, last_used_at, created_at, updated_at, deleted_at FROM api_keys
+SELECT id, user_id, name, key_selector, key_hash, status, token_quota, tokens_used, expires_at, last_used_at, created_at, updated_at, deleted_at, key_prefix FROM api_keys
 WHERE user_id = $1 AND deleted_at IS NULL
 ORDER BY created_at DESC
 `
@@ -152,6 +157,7 @@ func (q *Queries) ListAPIKeysByUserID(ctx context.Context, userID int64) ([]ApiK
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DeletedAt,
+			&i.KeyPrefix,
 		); err != nil {
 			return nil, err
 		}
@@ -167,7 +173,7 @@ const updateAPIKey = `-- name: UpdateAPIKey :one
 UPDATE api_keys
 SET status = $2, token_quota = $3, tokens_used = $4, expires_at = $5, last_used_at = $6, updated_at = NOW()
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, user_id, name, key_selector, key_hash, status, token_quota, tokens_used, expires_at, last_used_at, created_at, updated_at, deleted_at
+RETURNING id, user_id, name, key_selector, key_hash, status, token_quota, tokens_used, expires_at, last_used_at, created_at, updated_at, deleted_at, key_prefix
 `
 
 type UpdateAPIKeyParams struct {
@@ -203,6 +209,7 @@ func (q *Queries) UpdateAPIKey(ctx context.Context, arg UpdateAPIKeyParams) (Api
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.KeyPrefix,
 	)
 	return i, err
 }

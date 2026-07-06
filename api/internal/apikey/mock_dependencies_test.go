@@ -8,12 +8,13 @@ import (
 )
 
 type MockRepository struct {
-	CreateFunc        func(ctx context.Context, key *apikey.APIKey) (*apikey.APIKey, error)
+	CreateFunc        func(ctx context.Context, apiKey *apikey.APIKey) (*apikey.APIKey, error)
 	GetByIDFunc       func(ctx context.Context, id uint64) (*apikey.APIKey, error)
 	GetBySelectorFunc func(ctx context.Context, selector string) (*apikey.APIKey, error)
 	ListByUserIDFunc  func(ctx context.Context, userID uint64) ([]*apikey.APIKey, error)
-	UpdateFunc        func(ctx context.Context, key *apikey.APIKey) (*apikey.APIKey, error)
+	UpdateFunc        func(ctx context.Context, apiKey *apikey.APIKey) (*apikey.APIKey, error)
 	DeleteFunc        func(ctx context.Context, id uint64) error
+	IsUserActiveFunc  func(ctx context.Context, userID uint64) (bool, error)
 }
 
 func (m *MockRepository) Create(ctx context.Context, key *apikey.APIKey) (*apikey.APIKey, error) {
@@ -56,6 +57,13 @@ func (m *MockRepository) Delete(ctx context.Context, id uint64) error {
 		return m.DeleteFunc(ctx, id)
 	}
 	return nil
+}
+
+func (m *MockRepository) IsUserActive(ctx context.Context, userID uint64) (bool, error) {
+	if m.IsUserActiveFunc != nil {
+		return m.IsUserActiveFunc(ctx, userID)
+	}
+	return true, nil
 }
 
 type MockAuditService struct {

@@ -98,3 +98,50 @@ func (s *UserService) HasAcceptedTerms(ctx context.Context, userID uint64, versi
 
 	return s.repo.HasUserAcceptedAgreement(ctx, userID, agreement.ID)
 }
+
+func (s *UserService) ChangePassword(ctx context.Context, userID uint64, oldPassword, newPassword string) error {
+	user, err := s.repo.GetUserByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	match, err := password.VerifyHash(oldPassword, user.PasswordHash)
+	if err != nil || !match {
+		return errors.New("incorrect old password")
+	}
+
+	hashedPassword, err := password.HashIt(newPassword)
+	if err != nil {
+		return errors.New("failed to hash new password")
+	}
+
+	user.PasswordHash = hashedPassword
+	_, err = s.repo.UpdateUser(ctx, user)
+	if err == nil {
+		_ = s.auditService.LogEvent(ctx, &audit.AuditEvent{
+			Type:        audit.AuditEventUserPasswordChanged,
+			Description: "user changed password successfully",
+			UserID:      &userID,
+		})
+	}
+	return err
+}
+
+func (s *UserService) ToggleStatus(ctx context.Context, userID uint64, status AccountStatus) error {
+	user, err := s.repo.GetUserByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	if user.Status == status {
+		return nil
+	}
+
+	user.Status = status
+	_, err = s.repo.UpdateUser(ctx, user)
+	return err
+}
+
+func (s *UserService) DeleteAccount(ctx context.Context, userID uint64) error {
+	return s.repo.DeleteUser(ctx, userID)
+}

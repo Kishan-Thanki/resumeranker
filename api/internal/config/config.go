@@ -6,6 +6,7 @@ import (
 )
 
 type Config struct {
+	Environment        string
 	DatabaseURL        string
 	JWTSecret          string
 	Port               string
@@ -33,7 +34,13 @@ func Load() (*Config, error) {
 		analysisServiceURL = "http://localhost:5000"
 	}
 
+	env := os.Getenv("APP_ENV")
+	if env == "" {
+		env = "development"
+	}
+
 	return &Config{
+		Environment:        env,
 		DatabaseURL:        dbURL,
 		JWTSecret:          jwtSecret,
 		Port:               port,

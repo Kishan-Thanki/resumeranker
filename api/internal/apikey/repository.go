@@ -9,4 +9,5 @@ type Repository interface {
 	ListByUserID(ctx context.Context, userID uint64) ([]*APIKey, error)
 	Update(ctx context.Context, apiKey *APIKey) (*APIKey, error)
 	Delete(ctx context.Context, id uint64) error
+	IsUserActive(ctx context.Context, userID uint64) (bool, error)
 }

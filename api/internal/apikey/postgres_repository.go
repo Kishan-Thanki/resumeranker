@@ -25,6 +25,7 @@ func (r *PostgresRepository) Create(ctx context.Context, apiKey *APIKey) (*APIKe
 	k, err := r.queries.CreateAPIKey(ctx, db.CreateAPIKeyParams{
 		UserID:      int64(apiKey.UserID),
 		Name:        apiKey.Name,
+		KeyPrefix:   apiKey.KeyPrefix,
 		KeySelector: apiKey.KeySelector,
 		KeyHash:     apiKey.KeyHash,
 		Status:      string(apiKey.Status),
@@ -90,6 +91,15 @@ func (r *PostgresRepository) Delete(ctx context.Context, id uint64) error {
 	return r.queries.DeleteAPIKey(ctx, int64(id))
 }
 
+func (r *PostgresRepository) IsUserActive(ctx context.Context, userID uint64) (bool, error) {
+	var status string
+	err := r.pool.QueryRow(ctx, "SELECT status FROM users WHERE id = $1 AND deleted_at IS NULL", int64(userID)).Scan(&status)
+	if err != nil {
+		return false, err
+	}
+	return status == "active", nil
+}
+
 func mapDBAPIKeyToModel(k db.ApiKey) *APIKey {
 	var deletedAt *time.Time
 	if k.DeletedAt.Valid {
@@ -107,6 +117,7 @@ func mapDBAPIKeyToModel(k db.ApiKey) *APIKey {
 		ID:          uint64(k.ID),
 		UserID:      uint64(k.UserID),
 		Name:        k.Name,
+		KeyPrefix:   k.KeyPrefix,
 		KeySelector: k.KeySelector,
 		KeyHash:     k.KeyHash,
 		Status:      APIKeyStatus(k.Status),

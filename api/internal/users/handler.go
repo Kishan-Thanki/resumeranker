@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/kishan-thanki/resumeranker/api/internal/auth"
 )
 
@@ -14,6 +16,9 @@ type userService interface {
 	Authenticate(ctx context.Context, email, password string) (*User, error)
 	AcceptTerms(ctx context.Context, userID uint64, version string) error
 	HasAcceptedTerms(ctx context.Context, userID uint64, version string) (bool, error)
+	ChangePassword(ctx context.Context, userID uint64, oldPassword, newPassword string) error
+	ToggleStatus(ctx context.Context, userID uint64, status AccountStatus) error
+	DeleteAccount(ctx context.Context, userID uint64) error
 }
 
 type UserHandler struct {
@@ -70,4 +75,68 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 		"token":      token,
 		"expires_in": 3600,
 	})
+}
+
+func (h *UserHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value("user_id").(uint64)
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	var req ChangePasswordRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	err := h.userService.ChangePassword(r.Context(), userID, req.OldPassword, req.NewPassword)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "password changed successfully"})
+}
+
+func (h *UserHandler) ToggleStatus(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	userID, err := strconv.ParseUint(idStr, 10, 64)
+	if err != nil {
+		http.Error(w, "invalid user id", http.StatusBadRequest)
+		return
+	}
+
+	var req ToggleStatusRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	err = h.userService.ToggleStatus(r.Context(), userID, req.Status)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "account status updated successfully"})
+}
+
+func (h *UserHandler) DeleteAccount(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value("user_id").(uint64)
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	err := h.userService.DeleteAccount(r.Context(), userID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "account deleted successfully"})
 }

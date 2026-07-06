@@ -1,8 +1,8 @@
 -- name: CreateAPIKey :one
 INSERT INTO api_keys (
-    user_id, name, key_selector, key_hash, status, token_quota, tokens_used, expires_at
+    user_id, name, key_prefix, key_selector, key_hash, status, token_quota, tokens_used, expires_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8
+    $1, $2, $3, $4, $5, $6, $7, $8, $9
 ) RETURNING *;
 
 -- name: GetAPIKeyByID :one

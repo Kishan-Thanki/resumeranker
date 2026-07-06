@@ -113,8 +113,7 @@ func (q *Queries) CreateUserAgreement(ctx context.Context, arg CreateUserAgreeme
 }
 
 const deleteUser = `-- name: DeleteUser :exec
-UPDATE users
-SET deleted_at = NOW()
+DELETE FROM users
 WHERE id = $1
 `
 
