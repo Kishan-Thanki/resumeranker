@@ -16,15 +16,19 @@ var (
 	ErrInvalidAPIKey = errors.New("invalid or expired api key")
 )
 
-type APIKeyService struct {
-	repo      Repository
-	auditRepo audit.Repository
+type auditService interface {
+	LogEvent(ctx context.Context, event *audit.AuditEvent) error
 }
 
-func NewAPIKeyService(repo Repository, auditRepo audit.Repository) *APIKeyService {
+type APIKeyService struct {
+	repo         Repository
+	auditService auditService
+}
+
+func NewAPIKeyService(repo Repository, auditService auditService) *APIKeyService {
 	return &APIKeyService{
-		repo:      repo,
-		auditRepo: auditRepo,
+		repo:         repo,
+		auditService: auditService,
 	}
 }
 
@@ -67,7 +71,7 @@ func (s *APIKeyService) GenerateKey(ctx context.Context, userID uint64, name str
 
 	plainTextKey := "rr_" + strings.ToLower(selector) + "_" + strings.ToLower(verifier)
 
-	_, _ = s.auditRepo.Create(ctx, &audit.AuditEvent{
+	_ = s.auditService.LogEvent(ctx, &audit.AuditEvent{
 		Type:        audit.AuditEventAPIKeyCreated,
 		Description: "api key generated successfully",
 		UserID:      &userID,
@@ -147,7 +151,7 @@ func (s *APIKeyService) RevokeKey(ctx context.Context, userID, keyID uint64) err
 		return err
 	}
 
-	_, _ = s.auditRepo.Create(ctx, &audit.AuditEvent{
+	_ = s.auditService.LogEvent(ctx, &audit.AuditEvent{
 		Type:        audit.AuditEventAPIKeyRevoked,
 		Description: "api key revoked",
 		UserID:      &userID,

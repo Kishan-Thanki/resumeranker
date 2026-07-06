@@ -47,3 +47,42 @@ func (r *PostgresRepository) Create(ctx context.Context, event *AuditEvent) (*Au
 	
 	return event, nil
 }
+
+func (r *PostgresRepository) List(ctx context.Context, limit, offset int) ([]*AuditEvent, error) {
+	const sql = `
+		SELECT id, user_id, api_key_id, analysis_request_id, type, description, ip_address, user_agent, created_at
+		FROM audit_events
+		ORDER BY created_at DESC
+		LIMIT $1 OFFSET $2
+	`
+	rows, err := r.db.Query(ctx, sql, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var events []*AuditEvent
+	for rows.Next() {
+		event := &AuditEvent{}
+		err := rows.Scan(
+			&event.ID,
+			&event.UserID,
+			&event.APIKeyID,
+			&event.AnalysisRequestID,
+			&event.Type,
+			&event.Description,
+			&event.IPAddress,
+			&event.UserAgent,
+			&event.CreatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		events = append(events, event)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return events, nil
+}

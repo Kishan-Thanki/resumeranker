@@ -27,7 +27,7 @@ type AuditEvent struct {
 	AnalysisRequestID *uint64        `json:"analysis_request_id"`
 	Type              AuditEventType `json:"type"`
 	Description       string         `json:"description"`
-	IPAddress         *string        `json:"-"`
-	UserAgent         *string        `json:"-"`
+	IPAddress         *string        `json:"ip_address"`
+	UserAgent         *string        `json:"user_agent"`
 	CreatedAt         time.Time      `json:"created_at"`
 }
