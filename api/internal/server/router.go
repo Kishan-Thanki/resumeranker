@@ -2,6 +2,8 @@ package server
 
 import (
 	"net/http"
+	"net/http/pprof"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -26,7 +28,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 
 	r.Use(httptelemetry.Middleware)
 	r.Use(middleware.Recoverer)
-
+	r.Use(middleware.Timeout(60 * time.Second))
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Post("/users/register", cfg.UserHandler.Register)
 		r.Post("/users/login", cfg.UserHandler.Login)
@@ -41,6 +43,12 @@ func NewRouter(cfg RouterConfig) http.Handler {
 			r.Group(func(r chi.Router) {
 				r.Use(auth.AdminMiddleware)
 				r.Get("/admin/audit-logs", cfg.AuditHandler.ListLogs)
+
+				r.HandleFunc("/admin/debug/pprof/*", pprof.Index)
+				r.HandleFunc("/admin/debug/pprof/cmdline", pprof.Cmdline)
+				r.HandleFunc("/admin/debug/pprof/profile", pprof.Profile)
+				r.HandleFunc("/admin/debug/pprof/symbol", pprof.Symbol)
+				r.HandleFunc("/admin/debug/pprof/trace", pprof.Trace)
 			})
 		})
 
