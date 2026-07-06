@@ -12,15 +12,19 @@ var (
 	ErrInvalidCredentials = errors.New("invalid email or password")
 )
 
-type UserService struct {
-	repo      Repository
-	auditRepo audit.Repository
+type auditService interface {
+	LogEvent(ctx context.Context, event *audit.AuditEvent) error
 }
 
-func NewUserService(repo Repository, auditRepo audit.Repository) *UserService {
+type UserService struct {
+	repo         Repository
+	auditService auditService
+}
+
+func NewUserService(repo Repository, auditService auditService) *UserService {
 	return &UserService{
-		repo:      repo,
-		auditRepo: auditRepo,
+		repo:         repo,
+		auditService: auditService,
 	}
 }
 
@@ -39,7 +43,7 @@ func (s *UserService) Register(ctx context.Context, email, passwordStr string, r
 
 	createdUser, err := s.repo.CreateUser(ctx, user)
 	if err == nil {
-		_, _ = s.auditRepo.Create(ctx, &audit.AuditEvent{
+		_ = s.auditService.LogEvent(ctx, &audit.AuditEvent{
 			Type:        audit.AuditEventUserRegistered,
 			Description: "user registered successfully",
 			UserID:      &createdUser.ID,
@@ -63,7 +67,7 @@ func (s *UserService) Authenticate(ctx context.Context, email, passwordStr strin
 		return nil, errors.New("account is not active")
 	}
 
-	_, _ = s.auditRepo.Create(ctx, &audit.AuditEvent{
+	_ = s.auditService.LogEvent(ctx, &audit.AuditEvent{
 		Type:        audit.AuditEventUserLoggedIn,
 		Description: "user logged in successfully",
 		UserID:      &user.ID,

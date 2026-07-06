@@ -16,14 +16,26 @@ func Middleware(secret string) func(http.Handler) http.Handler {
 			}
 			tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
 
-			userID, err := ValidateToken(tokenStr, secret)
+			userID, role, err := ValidateToken(tokenStr, secret)
 			if err != nil {
 				http.Error(w, "unauthorized", http.StatusUnauthorized)
 				return
 			}
 
 			ctx := context.WithValue(r.Context(), "user_id", userID)
+			ctx = context.WithValue(ctx, "user_role", role)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+func AdminMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		role, ok := r.Context().Value("user_role").(string)
+		if !ok || (role != "admin" && role != "owner") {
+			http.Error(w, "forbidden: requires admin privileges", http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
