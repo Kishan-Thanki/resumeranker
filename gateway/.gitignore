@@ -1,0 +1,9 @@
+# Caddy volumes and configs
+caddy_data/
+caddy_config/
+data/
+config/
+
+# OS Specific
+.DS_Store
+Thumbs.db
