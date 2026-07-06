@@ -2,215 +2,186 @@ package users
 
 import (
 	"context"
+	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/kishan-thanki/resumeranker/api/internal/users/db"
 )
 
 type PostgresRepository struct {
-	db *pgxpool.Pool
+	pool    *pgxpool.Pool
+	queries *db.Queries
 }
 
-func NewPostgresRepository(db *pgxpool.Pool) *PostgresRepository {
-	return &PostgresRepository{db: db}
+func NewPostgresRepository(pool *pgxpool.Pool) *PostgresRepository {
+	return &PostgresRepository{
+		pool:    pool,
+		queries: db.New(pool),
+	}
 }
 
 func (r *PostgresRepository) CreateUser(ctx context.Context, user *User) (*User, error) {
-	const sql = `
-		INSERT INTO users (email, password_hash, role, status, metadata)
-		VALUES ($1, $2, $3, $4, $5)
-		RETURNING id, created_at, updated_at
-	`
-	err := r.db.QueryRow(ctx, sql,
-		user.Email,
-		user.PasswordHash,
-		user.Role,
-		user.Status,
-		user.Metadata,
-	).Scan(
-		&user.ID,
-		&user.CreatedAt,
-		&user.UpdatedAt,
-	)
+	u, err := r.queries.CreateUser(ctx, db.CreateUserParams{
+		Email:        user.Email,
+		PasswordHash: user.PasswordHash,
+		Role:         string(user.Role),
+		Status:       string(user.Status),
+		Metadata:     user.Metadata,
+	})
 	if err != nil {
 		return nil, err
 	}
+	user.ID = uint64(u.ID)
+	user.CreatedAt = u.CreatedAt.Time
+	user.UpdatedAt = u.UpdatedAt.Time
 	return user, nil
 }
 
 func (r *PostgresRepository) GetUserByID(ctx context.Context, id uint64) (*User, error) {
-	const sql = `
-		SELECT id, email, password_hash, role, status, metadata, created_at, updated_at, deleted_at
-		FROM users
-		WHERE id = $1 AND deleted_at IS NULL
-	`
-	user := &User{}
-	err := r.db.QueryRow(ctx, sql, id).Scan(
-		&user.ID,
-		&user.Email,
-		&user.PasswordHash,
-		&user.Role,
-		&user.Status,
-		&user.Metadata,
-		&user.CreatedAt,
-		&user.UpdatedAt,
-		&user.DeletedAt,
-	)
+	u, err := r.queries.GetUserByID(ctx, int64(id))
 	if err != nil {
 		return nil, err
 	}
-	return user, nil
+
+	var deletedAt *time.Time
+	if u.DeletedAt.Valid {
+		deletedAt = &u.DeletedAt.Time
+	}
+
+	return &User{
+		ID:           uint64(u.ID),
+		Email:        u.Email,
+		PasswordHash: u.PasswordHash,
+		Role:         Role(u.Role),
+		Status:       AccountStatus(u.Status),
+		Metadata:     u.Metadata,
+		CreatedAt:    u.CreatedAt.Time,
+		UpdatedAt:    u.UpdatedAt.Time,
+		DeletedAt:    deletedAt,
+	}, nil
 }
 
 func (r *PostgresRepository) GetUserByEmail(ctx context.Context, email string) (*User, error) {
-	const sql = `
-		SELECT id, email, password_hash, role, status, metadata, created_at, updated_at, deleted_at
-		FROM users
-		WHERE email = $1 AND deleted_at IS NULL
-	`
-	user := &User{}
-	err := r.db.QueryRow(ctx, sql, email).Scan(
-		&user.ID,
-		&user.Email,
-		&user.PasswordHash,
-		&user.Role,
-		&user.Status,
-		&user.Metadata,
-		&user.CreatedAt,
-		&user.UpdatedAt,
-		&user.DeletedAt,
-	)
+	u, err := r.queries.GetUserByEmail(ctx, email)
 	if err != nil {
 		return nil, err
 	}
-	return user, nil
+
+	var deletedAt *time.Time
+	if u.DeletedAt.Valid {
+		deletedAt = &u.DeletedAt.Time
+	}
+
+	return &User{
+		ID:           uint64(u.ID),
+		Email:        u.Email,
+		PasswordHash: u.PasswordHash,
+		Role:         Role(u.Role),
+		Status:       AccountStatus(u.Status),
+		Metadata:     u.Metadata,
+		CreatedAt:    u.CreatedAt.Time,
+		UpdatedAt:    u.UpdatedAt.Time,
+		DeletedAt:    deletedAt,
+	}, nil
 }
 
 func (r *PostgresRepository) UpdateUser(ctx context.Context, user *User) (*User, error) {
-	const sql = `
-		UPDATE users
-		SET email = $1, password_hash = $2, role = $3, status = $4, metadata = $5, updated_at = NOW()
-		WHERE id = $6 AND deleted_at IS NULL
-		RETURNING updated_at
-	`
-	err := r.db.QueryRow(ctx, sql,
-		user.Email,
-		user.PasswordHash,
-		user.Role,
-		user.Status,
-		user.Metadata,
-		user.ID,
-	).Scan(&user.UpdatedAt)
-
+	u, err := r.queries.UpdateUser(ctx, db.UpdateUserParams{
+		ID:           int64(user.ID),
+		Email:        user.Email,
+		PasswordHash: user.PasswordHash,
+		Role:         string(user.Role),
+		Status:       string(user.Status),
+		Metadata:     user.Metadata,
+	})
 	if err != nil {
 		return nil, err
 	}
+	user.UpdatedAt = u.UpdatedAt.Time
 	return user, nil
 }
 
 func (r *PostgresRepository) DeleteUser(ctx context.Context, id uint64) error {
-	const sql = `
-		UPDATE users
-		SET deleted_at = NOW()
-		WHERE id = $1 AND deleted_at IS NULL
-	`
-	_, err := r.db.Exec(ctx, sql, id)
-	return err
+	return r.queries.DeleteUser(ctx, int64(id))
 }
 
 func (r *PostgresRepository) CreateAgreement(ctx context.Context, agreement *Agreement) (*Agreement, error) {
-	const sql = `
-		INSERT INTO agreements (type, version, document_url, published_at)
-		VALUES ($1, $2, $3, $4)
-		RETURNING id, created_at, updated_at
-	`
-	err := r.db.QueryRow(ctx, sql,
-		agreement.Type,
-		agreement.Version,
-		agreement.DocumentURL,
-		agreement.PublishedAt,
-	).Scan(
-		&agreement.ID,
-		&agreement.CreatedAt,
-		&agreement.UpdatedAt,
-	)
+	a, err := r.queries.CreateAgreement(ctx, db.CreateAgreementParams{
+		Type:        string(agreement.Type),
+		Version:     agreement.Version,
+		DocumentUrl: agreement.DocumentURL,
+		PublishedAt: toPgTimestamp(&agreement.PublishedAt),
+	})
 	if err != nil {
 		return nil, err
 	}
+	agreement.ID = uint64(a.ID)
+	agreement.CreatedAt = a.CreatedAt.Time
+	agreement.UpdatedAt = a.UpdatedAt.Time
 	return agreement, nil
 }
 
 func (r *PostgresRepository) GetAgreementByID(ctx context.Context, id uint64) (*Agreement, error) {
-	const sql = `
-		SELECT id, type, version, document_url, published_at, created_at, updated_at
-		FROM agreements
-		WHERE id = $1
-	`
-	agreement := &Agreement{}
-	err := r.db.QueryRow(ctx, sql, id).Scan(
-		&agreement.ID,
-		&agreement.Type,
-		&agreement.Version,
-		&agreement.DocumentURL,
-		&agreement.PublishedAt,
-		&agreement.CreatedAt,
-		&agreement.UpdatedAt,
-	)
+	a, err := r.queries.GetAgreementByID(ctx, int64(id))
 	if err != nil {
 		return nil, err
 	}
-	return agreement, nil
+	return &Agreement{
+		ID:          uint64(a.ID),
+		Type:        AgreementType(a.Type),
+		Version:     a.Version,
+		DocumentURL: a.DocumentUrl,
+		PublishedAt: a.PublishedAt.Time,
+		CreatedAt:   a.CreatedAt.Time,
+		UpdatedAt:   a.UpdatedAt.Time,
+	}, nil
 }
 
 func (r *PostgresRepository) GetAgreementByTypeAndVersion(ctx context.Context, agType AgreementType, version string) (*Agreement, error) {
-	const sql = `
-		SELECT id, type, version, document_url, published_at, created_at, updated_at
-		FROM agreements
-		WHERE type = $1 AND version = $2
-	`
-	agreement := &Agreement{}
-	err := r.db.QueryRow(ctx, sql, agType, version).Scan(
-		&agreement.ID,
-		&agreement.Type,
-		&agreement.Version,
-		&agreement.DocumentURL,
-		&agreement.PublishedAt,
-		&agreement.CreatedAt,
-		&agreement.UpdatedAt,
-	)
+	a, err := r.queries.GetAgreementByTypeAndVersion(ctx, db.GetAgreementByTypeAndVersionParams{
+		Type:    string(agType),
+		Version: version,
+	})
 	if err != nil {
 		return nil, err
 	}
-	return agreement, nil
+	return &Agreement{
+		ID:          uint64(a.ID),
+		Type:        AgreementType(a.Type),
+		Version:     a.Version,
+		DocumentURL: a.DocumentUrl,
+		PublishedAt: a.PublishedAt.Time,
+		CreatedAt:   a.CreatedAt.Time,
+		UpdatedAt:   a.UpdatedAt.Time,
+	}, nil
 }
 
 func (r *PostgresRepository) CreateUserAgreement(ctx context.Context, userAgreement *UserAgreement) (*UserAgreement, error) {
-	const sql = `
-		INSERT INTO user_agreements (user_id, agreement_id, accepted_at)
-		VALUES ($1, $2, $3)
-		RETURNING id, created_at, updated_at
-	`
-	err := r.db.QueryRow(ctx, sql,
-		userAgreement.UserID,
-		userAgreement.AgreementID,
-		userAgreement.AcceptedAt,
-	).Scan(
-		&userAgreement.ID,
-		&userAgreement.CreatedAt,
-		&userAgreement.UpdatedAt,
-	)
+	ua, err := r.queries.CreateUserAgreement(ctx, db.CreateUserAgreementParams{
+		UserID:      int64(userAgreement.UserID),
+		AgreementID: int64(userAgreement.AgreementID),
+	})
 	if err != nil {
 		return nil, err
 	}
+	userAgreement.ID = uint64(ua.ID)
+
+	userAgreement.CreatedAt = ua.CreatedAt.Time
+	userAgreement.UpdatedAt = ua.UpdatedAt.Time
 	return userAgreement, nil
 }
 
 func (r *PostgresRepository) HasUserAcceptedAgreement(ctx context.Context, userID uint64, agreementID uint64) (bool, error) {
-	const sql = `
-		SELECT EXISTS (
-			SELECT 1 FROM user_agreements WHERE user_id = $1 AND agreement_id = $2
-		)
-	`
-	var exists bool
-	err := r.db.QueryRow(ctx, sql, userID, agreementID).Scan(&exists)
-	return exists, err
+	return r.queries.HasUserAcceptedAgreement(ctx, db.HasUserAcceptedAgreementParams{
+		UserID:      int64(userID),
+		AgreementID: int64(agreementID),
+	})
+}
+
+func toPgTimestamp(t *time.Time) pgtype.Timestamptz {
+	if t == nil {
+		return pgtype.Timestamptz{Valid: false}
+	}
+	return pgtype.Timestamptz{Time: *t, Valid: true}
 }
