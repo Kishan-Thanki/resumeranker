@@ -1,0 +1,288 @@
+openapi: 3.0.3
+info:
+  title: ResumeRanker Comprehensive Internal API
+  version: 1.0.0
+  description: Master internal specification for ALL backend routes (Auth, Users, API Keys, Admin, Analysis). DEVELOPMENT USE ONLY.
+servers:
+  - url: /api/v1
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: API_KEY
+      description: Provide your secret API Key as a Bearer token.
+    JwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Provide your JWT session token.
+
+  schemas:
+    UserRegisterRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+    UserLoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+    ChangePasswordRequest:
+      type: object
+      required: [old_password, new_password]
+      properties:
+        old_password:
+          type: string
+        new_password:
+          type: string
+    GenerateKeyRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+    APIKey:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        key_prefix:
+          type: string
+        status:
+          type: string
+        plain_text_key:
+          type: string
+          description: Only returned on creation
+    AnalysisResult:
+      type: object
+      properties:
+        id:
+          type: integer
+        analysis_request_id:
+          type: integer
+        model:
+          type: string
+        result_json:
+          type: string
+        prompt_tokens:
+          type: integer
+        completion_tokens:
+          type: integer
+        total_tokens:
+          type: integer
+
+paths:
+  /users/register:
+    post:
+      summary: Register User
+      tags: [Users]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRegisterRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+
+  /users/login:
+    post:
+      summary: Login User
+      tags: [Users]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserLoginRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+
+  /users/me/password:
+    put:
+      summary: Change Password
+      tags: [Users]
+      security:
+        - JwtAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '200':
+          description: OK
+
+  /users/me/status:
+    put:
+      summary: Toggle Account Status
+      tags: [Users]
+      security:
+        - JwtAuth: []
+      responses:
+        '200':
+          description: OK
+
+  /users/me:
+    delete:
+      summary: Permanently Delete Account
+      tags: [Users]
+      security:
+        - JwtAuth: []
+      responses:
+        '204':
+          description: Deleted
+
+  /keys/generate:
+    post:
+      summary: Generate API Key
+      tags: [API Keys]
+      security:
+        - JwtAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateKeyRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIKey'
+
+  /keys:
+    get:
+      summary: List API Keys
+      tags: [API Keys]
+      security:
+        - JwtAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/APIKey'
+
+  /keys/{id}/status:
+    put:
+      summary: Toggle API Key Status
+      tags: [API Keys]
+      security:
+        - JwtAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+
+  /keys/{id}:
+    delete:
+      summary: Revoke API Key
+      tags: [API Keys]
+      security:
+        - JwtAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Deleted
+
+  /admin/audit-logs:
+    get:
+      summary: List Audit Logs (Admin Only)
+      tags: [Admin]
+      security:
+        - JwtAuth: []
+      responses:
+        '200':
+          description: OK
+
+  /analyze/resume:
+    post:
+      summary: Analyze a Resume
+      tags: [Analysis]
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                resume:
+                  type: string
+                  format: binary
+                job_description:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: OK
+
+  /analyze/history:
+    get:
+      summary: Get Analysis History
+      tags: [Analysis]
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: OK
+
+  /analyze/{id}/result:
+    get:
+      summary: Get Analysis Result by ID
+      tags: [Analysis]
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK

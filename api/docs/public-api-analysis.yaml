@@ -1,0 +1,160 @@
+openapi: 3.0.3
+info:
+  title: ResumeRanker Internal Master API
+  version: 1.0.0
+  description: Internal master specification for all API routes including analysis, history, and internal actions.
+servers:
+  - url: /api/v1
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: API_KEY
+      description: Provide your secret API Key as a Bearer token.
+
+  schemas:
+    AnalysisResult:
+      type: object
+      properties:
+        id:
+          type: integer
+        analysis_request_id:
+          type: integer
+        model:
+          type: string
+        result_json:
+          type: string
+        prompt_tokens:
+          type: integer
+        completion_tokens:
+          type: integer
+        total_tokens:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    AnalysisRequest:
+      type: object
+      properties:
+        id:
+          type: integer
+        request_id:
+          type: string
+        user_id:
+          type: integer
+        api_key_id:
+          type: integer
+        status:
+          type: string
+          enum: [pending, processing, completed, failed]
+        error:
+          type: string
+          nullable: true
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+
+paths:
+  /analyze/resume:
+    post:
+      summary: Analyze a Resume (Native PDF)
+      description: Upload a candidate's resume and a job description as native PDFs for AI analysis.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - resume
+                - job_description
+              properties:
+                resume:
+                  type: string
+                  format: binary
+                  description: The candidate's resume (PDF format).
+                job_description:
+                  type: string
+                  format: binary
+                  description: The target job description (PDF format).
+      responses:
+        '200':
+          description: Analysis successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalysisResult'
+        '400':
+          description: Bad request (missing files or invalid format)
+        '401':
+          description: Unauthorized (missing or invalid API key)
+        '500':
+          description: Internal server error or AI engine failure
+
+  /analyze/history:
+    get:
+      summary: Get Analysis History
+      description: Retrieve the history of analysis requests made with this API key.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+          description: Maximum number of records to return
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            default: 0
+          description: Number of records to skip
+      responses:
+        '200':
+          description: A list of past analysis requests.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AnalysisRequest'
+        '401':
+          description: Unauthorized
+
+  /analyze/{id}:
+    get:
+      summary: Get Analysis Result by ID
+      description: Retrieve a specific analysis result using its unique ID.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: The numeric ID of the analysis request.
+      responses:
+        '200':
+          description: The analysis result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalysisResult'
+        '400':
+          description: Invalid ID format
+        '401':
+          description: Unauthorized
+        '404':
+          description: Result not found
