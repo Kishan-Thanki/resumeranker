@@ -49,6 +49,14 @@ func (r *PostgresRepository) GetRequestByID(ctx context.Context, id uint64) (*An
 	return mapDBAnalysisRequestToModel(ar), nil
 }
 
+func (r *PostgresRepository) GetRequestByUUID(ctx context.Context, requestID string) (*AnalysisRequest, error) {
+	ar, err := r.queries.GetAnalysisRequestByUUID(ctx, requestID)
+	if err != nil {
+		return nil, err
+	}
+	return mapDBAnalysisRequestToModel(ar), nil
+}
+
 func (r *PostgresRepository) ListRequestsByUserID(ctx context.Context, userID uint64, limit, offset int) ([]*AnalysisRequest, error) {
 	dbReqs, err := r.queries.ListAnalysisRequestsByUserID(ctx, db.ListAnalysisRequestsByUserIDParams{
 		UserID: int64(userID),
@@ -61,7 +69,7 @@ func (r *PostgresRepository) ListRequestsByUserID(ctx context.Context, userID ui
 
 	reqs := make([]*AnalysisRequest, len(dbReqs))
 	for i, ar := range dbReqs {
-		reqs[i] = mapDBAnalysisRequestToModel(ar)
+		reqs[i] = mapDBListRowToModel(ar)
 	}
 	return reqs, nil
 }
@@ -159,6 +167,46 @@ func mapDBAnalysisRequestToModel(ar db.AnalysisRequest) *AnalysisRequest {
 		Status:      AnalysisRequestStatus(ar.Status),
 		Error:       errorStr,
 		Metadata:    ar.Metadata,
+		StartedAt:   startedAt,
+		CompletedAt: completedAt,
+		CreatedAt:   ar.CreatedAt.Time,
+		UpdatedAt:   ar.UpdatedAt.Time,
+		DeletedAt:   deletedAt,
+	}
+}
+
+func mapDBListRowToModel(ar db.ListAnalysisRequestsByUserIDRow) *AnalysisRequest {
+	var errorStr *string
+	if ar.Error.Valid {
+		errorStr = &ar.Error.String
+	}
+	var startedAt *time.Time
+	if ar.StartedAt.Valid {
+		startedAt = &ar.StartedAt.Time
+	}
+	var completedAt *time.Time
+	if ar.CompletedAt.Valid {
+		completedAt = &ar.CompletedAt.Time
+	}
+	var deletedAt *time.Time
+	if ar.DeletedAt.Valid {
+		deletedAt = &ar.DeletedAt.Time
+	}
+	var totalTokens *uint32
+	if ar.TotalTokens.Valid {
+		tt := uint32(ar.TotalTokens.Int32)
+		totalTokens = &tt
+	}
+
+	return &AnalysisRequest{
+		ID:          uint64(ar.ID),
+		RequestID:   ar.RequestID,
+		UserID:      uint64(ar.UserID),
+		APIKeyID:    uint64(ar.ApiKeyID),
+		Status:      AnalysisRequestStatus(ar.Status),
+		Error:       errorStr,
+		Metadata:    ar.Metadata,
+		TotalTokens: totalTokens,
 		StartedAt:   startedAt,
 		CompletedAt: completedAt,
 		CreatedAt:   ar.CreatedAt.Time,

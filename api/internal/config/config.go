@@ -9,6 +9,7 @@ type Config struct {
 	Environment        string
 	DatabaseURL        string
 	JWTSecret          string
+	CSRFAuthKey        string
 	Port               string
 	AnalysisServiceURL string
 }
@@ -22,6 +23,11 @@ func Load() (*Config, error) {
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
 		return nil, errors.New("JWT_SECRET environment variable is required")
+	}
+
+	csrfAuthKey := os.Getenv("CSRF_AUTH_KEY")
+	if csrfAuthKey == "" {
+		return nil, errors.New("CSRF_AUTH_KEY environment variable is required")
 	}
 
 	port := os.Getenv("PORT")
@@ -43,6 +49,7 @@ func Load() (*Config, error) {
 		Environment:        env,
 		DatabaseURL:        dbURL,
 		JWTSecret:          jwtSecret,
+		CSRFAuthKey:        csrfAuthKey,
 		Port:               port,
 		AnalysisServiceURL: analysisServiceURL,
 	}, nil

@@ -3,6 +3,7 @@ package analysis
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -11,9 +12,9 @@ import (
 )
 
 type analysisService interface {
-	ProcessResume(ctx context.Context, plainTextKey, resumeText, jobDescription string) (*AnalysisResult, error)
+	ProcessResume(ctx context.Context, plainTextKey string, resumeFilename, jdFilename string, resumePDF, jdPDF []byte) (*AnalysisResult, error)
 	ListHistory(ctx context.Context, plainTextKey string, limit, offset int) ([]*AnalysisRequest, error)
-	GetResult(ctx context.Context, plainTextKey string, requestID uint64) (*AnalysisResult, error)
+	GetResult(ctx context.Context, plainTextKey string, requestID string) (*AnalysisResult, error)
 }
 
 type AnalysisHandler struct {
@@ -34,20 +35,57 @@ func (h *AnalysisHandler) ProcessResume(w http.ResponseWriter, r *http.Request) 
 	}
 	apiKey := strings.TrimPrefix(authHeader, "Bearer ")
 
-	var req ProcessResumeRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+	r.Body = http.MaxBytesReader(w, r.Body, 10<<20)
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
+		http.Error(w, "failed to parse multipart form", http.StatusBadRequest)
 		return
 	}
 
-	result, err := h.analysisService.ProcessResume(r.Context(), apiKey, req.ResumeText, req.JobDescription)
+	resumeFile, resumeHeader, err := r.FormFile("resume")
+	if err != nil {
+		http.Error(w, "missing resume file", http.StatusBadRequest)
+		return
+	}
+	if resumeHeader.Header.Get("Content-Type") != "application/pdf" {
+		http.Error(w, "resume must be a PDF", http.StatusBadRequest)
+		return
+	}
+	defer resumeFile.Close()
+
+	jdFile, jdHeader, err := r.FormFile("job_description")
+	if err != nil {
+		http.Error(w, "missing job_description file", http.StatusBadRequest)
+		return
+	}
+	if jdHeader.Header.Get("Content-Type") != "application/pdf" {
+		http.Error(w, "job_description must be a PDF", http.StatusBadRequest)
+		return
+	}
+	defer jdFile.Close()
+
+	resumeBytes, err := io.ReadAll(resumeFile)
+	if err != nil {
+		http.Error(w, "failed to read resume file", http.StatusInternalServerError)
+		return
+	}
+
+	jdBytes, err := io.ReadAll(jdFile)
+	if err != nil {
+		http.Error(w, "failed to read job_description file", http.StatusInternalServerError)
+		return
+	}
+
+	result, err := h.analysisService.ProcessResume(r.Context(), apiKey, resumeHeader.Filename, jdHeader.Filename, resumeBytes, jdBytes)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(result)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"result": result.Result,
+	})
 }
 
 func (h *AnalysisHandler) ListHistory(w http.ResponseWriter, r *http.Request) {
@@ -59,7 +97,18 @@ func (h *AnalysisHandler) ListHistory(w http.ResponseWriter, r *http.Request) {
 	apiKey := strings.TrimPrefix(authHeader, "Bearer ")
 
 	limit := 50
+	if limitParam := r.URL.Query().Get("limit"); limitParam != "" {
+		if parsedLimit, err := strconv.Atoi(limitParam); err == nil {
+			limit = parsedLimit
+		}
+	}
+
 	offset := 0
+	if offsetParam := r.URL.Query().Get("offset"); offsetParam != "" {
+		if parsedOffset, err := strconv.Atoi(offsetParam); err == nil {
+			offset = parsedOffset
+		}
+	}
 
 	history, err := h.analysisService.ListHistory(r.Context(), apiKey, limit, offset)
 	if err != nil {
@@ -79,12 +128,7 @@ func (h *AnalysisHandler) GetResult(w http.ResponseWriter, r *http.Request) {
 	}
 	apiKey := strings.TrimPrefix(authHeader, "Bearer ")
 
-	idParam := chi.URLParam(r, "id")
-	requestID, err := strconv.ParseUint(idParam, 10, 64)
-	if err != nil {
-		http.Error(w, "invalid request id", http.StatusBadRequest)
-		return
-	}
+	requestID := chi.URLParam(r, "id")
 
 	result, err := h.analysisService.GetResult(r.Context(), apiKey, requestID)
 	if err != nil {
@@ -92,6 +136,7 @@ func (h *AnalysisHandler) GetResult(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(result)
 }

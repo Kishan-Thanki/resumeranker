@@ -148,6 +148,31 @@ func (q *Queries) GetAnalysisRequestByID(ctx context.Context, id int64) (Analysi
 	return i, err
 }
 
+const getAnalysisRequestByUUID = `-- name: GetAnalysisRequestByUUID :one
+SELECT id, request_id, user_id, api_key_id, status, error, metadata, started_at, completed_at, created_at, updated_at, deleted_at FROM analysis_requests
+WHERE request_id = $1 AND deleted_at IS NULL
+`
+
+func (q *Queries) GetAnalysisRequestByUUID(ctx context.Context, requestID string) (AnalysisRequest, error) {
+	row := q.db.QueryRow(ctx, getAnalysisRequestByUUID, requestID)
+	var i AnalysisRequest
+	err := row.Scan(
+		&i.ID,
+		&i.RequestID,
+		&i.UserID,
+		&i.ApiKeyID,
+		&i.Status,
+		&i.Error,
+		&i.Metadata,
+		&i.StartedAt,
+		&i.CompletedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
 const getAnalysisResultByRequestID = `-- name: GetAnalysisResultByRequestID :one
 SELECT id, analysis_request_id, model, result, prompt_tokens, completion_tokens, total_tokens, created_at, updated_at, deleted_at FROM analysis_results
 WHERE analysis_request_id = $1 AND deleted_at IS NULL
@@ -172,9 +197,11 @@ func (q *Queries) GetAnalysisResultByRequestID(ctx context.Context, analysisRequ
 }
 
 const listAnalysisRequestsByUserID = `-- name: ListAnalysisRequestsByUserID :many
-SELECT id, request_id, user_id, api_key_id, status, error, metadata, started_at, completed_at, created_at, updated_at, deleted_at FROM analysis_requests
-WHERE user_id = $1 AND deleted_at IS NULL
-ORDER BY created_at DESC
+SELECT ar.id, ar.request_id, ar.user_id, ar.api_key_id, ar.status, ar.error, ar.metadata, ar.started_at, ar.completed_at, ar.created_at, ar.updated_at, ar.deleted_at, res.total_tokens 
+FROM analysis_requests ar
+LEFT JOIN analysis_results res ON ar.id = res.analysis_request_id
+WHERE ar.user_id = $1 AND ar.deleted_at IS NULL
+ORDER BY ar.created_at DESC
 LIMIT $2 OFFSET $3
 `
 
@@ -184,15 +211,31 @@ type ListAnalysisRequestsByUserIDParams struct {
 	Offset int32 `json:"offset"`
 }
 
-func (q *Queries) ListAnalysisRequestsByUserID(ctx context.Context, arg ListAnalysisRequestsByUserIDParams) ([]AnalysisRequest, error) {
+type ListAnalysisRequestsByUserIDRow struct {
+	ID          int64              `json:"id"`
+	RequestID   string             `json:"request_id"`
+	UserID      int64              `json:"user_id"`
+	ApiKeyID    int64              `json:"api_key_id"`
+	Status      string             `json:"status"`
+	Error       pgtype.Text        `json:"error"`
+	Metadata    []byte             `json:"metadata"`
+	StartedAt   pgtype.Timestamptz `json:"started_at"`
+	CompletedAt pgtype.Timestamptz `json:"completed_at"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
+	TotalTokens pgtype.Int4        `json:"total_tokens"`
+}
+
+func (q *Queries) ListAnalysisRequestsByUserID(ctx context.Context, arg ListAnalysisRequestsByUserIDParams) ([]ListAnalysisRequestsByUserIDRow, error) {
 	rows, err := q.db.Query(ctx, listAnalysisRequestsByUserID, arg.UserID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []AnalysisRequest{}
+	items := []ListAnalysisRequestsByUserIDRow{}
 	for rows.Next() {
-		var i AnalysisRequest
+		var i ListAnalysisRequestsByUserIDRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.RequestID,
@@ -206,6 +249,7 @@ func (q *Queries) ListAnalysisRequestsByUserID(ctx context.Context, arg ListAnal
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DeletedAt,
+			&i.TotalTokens,
 		); err != nil {
 			return nil, err
 		}

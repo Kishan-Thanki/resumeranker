@@ -17,6 +17,7 @@ func TestLoadConfig(t *testing.T) {
 		clearEnv()
 		os.Setenv("DATABASE_URL", "postgres://test")
 		os.Setenv("JWT_SECRET", "supersecret")
+		os.Setenv("CSRF_AUTH_KEY", "csrf_key_32_bytes_long_123456789")
 		os.Setenv("PORT", "9090")
 		os.Setenv("ANALYSIS_SERVICE_URL", "http://remote:5000")
 
@@ -43,6 +44,7 @@ func TestLoadConfig(t *testing.T) {
 		clearEnv()
 		os.Setenv("DATABASE_URL", "postgres://test")
 		os.Setenv("JWT_SECRET", "supersecret")
+		os.Setenv("CSRF_AUTH_KEY", "csrf_key_32_bytes_long_123456789")
 
 		cfg, err := config.Load()
 		if err != nil {
@@ -60,6 +62,7 @@ func TestLoadConfig(t *testing.T) {
 	t.Run("error when DATABASE_URL is missing", func(t *testing.T) {
 		clearEnv()
 		os.Setenv("JWT_SECRET", "supersecret")
+		os.Setenv("CSRF_AUTH_KEY", "csrf_key_32_bytes_long_123456789")
 
 		_, err := config.Load()
 		if err == nil {
@@ -73,6 +76,7 @@ func TestLoadConfig(t *testing.T) {
 	t.Run("error when JWT_SECRET is missing", func(t *testing.T) {
 		clearEnv()
 		os.Setenv("DATABASE_URL", "postgres://test")
+		os.Setenv("CSRF_AUTH_KEY", "csrf_key_32_bytes_long_123456789")
 
 		_, err := config.Load()
 		if err == nil {

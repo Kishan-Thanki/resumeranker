@@ -7,7 +7,6 @@ import (
 	"github.com/kishan-thanki/resumeranker/api/internal/audit"
 )
 
-// MockAPIKeyValidator implements APIKeyValidator
 type MockAPIKeyValidator struct {
 	ValidateKeyFunc  func(ctx context.Context, plainTextKey string) (*apikey.APIKey, error)
 	DeductTokensFunc func(ctx context.Context, key *apikey.APIKey, tokensUsed uint64) error
@@ -28,7 +27,6 @@ func (m *MockAPIKeyValidator) DeductTokens(ctx context.Context, key *apikey.APIK
 	return nil
 }
 
-// MockAuditService implements auditService
 type MockAuditService struct {
 	LogEventFunc func(ctx context.Context, event *audit.AuditEvent) error
 	Events       []*audit.AuditEvent
@@ -42,10 +40,10 @@ func (m *MockAuditService) LogEvent(ctx context.Context, event *audit.AuditEvent
 	return nil
 }
 
-// MockRepository implements Repository
 type MockRepository struct {
 	CreateRequestFunc        func(ctx context.Context, req *AnalysisRequest) (*AnalysisRequest, error)
 	GetRequestByIDFunc       func(ctx context.Context, id uint64) (*AnalysisRequest, error)
+	GetRequestByUUIDFunc     func(ctx context.Context, requestID string) (*AnalysisRequest, error)
 	ListRequestsByUserIDFunc func(ctx context.Context, userID uint64, limit, offset int) ([]*AnalysisRequest, error)
 	UpdateRequestFunc        func(ctx context.Context, req *AnalysisRequest) (*AnalysisRequest, error)
 	DeleteRequestFunc        func(ctx context.Context, id uint64) error
@@ -67,6 +65,12 @@ func (m *MockRepository) GetRequestByID(ctx context.Context, id uint64) (*Analys
 		return m.GetRequestByIDFunc(ctx, id)
 	}
 	return nil, nil
+}
+func (m *MockRepository) GetRequestByUUID(ctx context.Context, requestID string) (*AnalysisRequest, error) {
+	if m.GetRequestByUUIDFunc != nil {
+		return m.GetRequestByUUIDFunc(ctx, requestID)
+	}
+	return &AnalysisRequest{ID: 1, UserID: 1}, nil
 }
 func (m *MockRepository) ListRequestsByUserID(ctx context.Context, userID uint64, limit, offset int) ([]*AnalysisRequest, error) {
 	if m.ListRequestsByUserIDFunc != nil {

@@ -9,7 +9,6 @@ import (
 	"github.com/kishan-thanki/resumeranker/api/internal/apikey"
 )
 
-// assertEqual is our custom test helper to avoid third-party libraries.
 func assertEqual(t *testing.T, got, want any, msg string) {
 	t.Helper()
 	if got != want {
@@ -93,7 +92,7 @@ func TestProcessResume(t *testing.T) {
 
 			svc := analysis.NewAnalysisService(repo, auditSvc, keySvc, engine)
 
-			res, err := svc.ProcessResume(context.Background(), tt.plainTextKey, tt.resumeText, tt.jobDescription)
+			res, err := svc.ProcessResume(context.Background(), tt.plainTextKey, "resume.pdf", "jd.pdf", []byte(tt.resumeText), []byte(tt.jobDescription))
 
 			if tt.wantError != nil {
 				if err == nil {
@@ -128,7 +127,8 @@ func BenchmarkProcessResume(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, _ = svc.ProcessResume(ctx, "valid-key", "resume data", "job description")
+		res, err := svc.ProcessResume(ctx, "valid-key", "resume.pdf", "jd.pdf", []byte("resume data"), []byte("job description"))
+		_, _ = res, err
 	}
 }
 
@@ -145,6 +145,6 @@ func FuzzProcessResume(f *testing.F) {
 
 	f.Fuzz(func(t *testing.T, plainTextKey, resumeText, jobDescription string) {
 
-		_, _ = svc.ProcessResume(context.Background(), plainTextKey, resumeText, jobDescription)
+		_, _ = svc.ProcessResume(context.Background(), plainTextKey, "resume.pdf", "jd.pdf", []byte(resumeText), []byte(jobDescription))
 	})
 }

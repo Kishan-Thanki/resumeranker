@@ -28,7 +28,7 @@ func TestMiddleware(t *testing.T) {
 		token, _ := auth.GenerateToken(1, "user", secret, time.Hour)
 
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
-		req.Header.Set("Authorization", "Bearer "+token)
+		req.AddCookie(&http.Cookie{Name: "jwt", Value: token})
 		rr := httptest.NewRecorder()
 
 		mw.ServeHTTP(rr, req)
@@ -40,6 +40,7 @@ func TestMiddleware(t *testing.T) {
 
 	t.Run("missing header", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		// Missing cookie!
 		rr := httptest.NewRecorder()
 
 		mw.ServeHTTP(rr, req)
@@ -51,7 +52,7 @@ func TestMiddleware(t *testing.T) {
 
 	t.Run("invalid token", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
-		req.Header.Set("Authorization", "Bearer invalidtoken")
+		req.AddCookie(&http.Cookie{Name: "jwt", Value: "invalidtoken"})
 		rr := httptest.NewRecorder()
 
 		mw.ServeHTTP(rr, req)
@@ -79,7 +80,7 @@ func TestAdminMiddleware(t *testing.T) {
 		}))
 
 		token, _ := auth.GenerateToken(1, "admin", "secret", time.Hour)
-		req.Header.Set("Authorization", "Bearer "+token)
+		req.AddCookie(&http.Cookie{Name: "jwt", Value: token})
 		rr := httptest.NewRecorder()
 
 		dummyMW.ServeHTTP(rr, req)
@@ -97,7 +98,7 @@ func TestAdminMiddleware(t *testing.T) {
 		}))
 
 		token, _ := auth.GenerateToken(1, "owner", "secret", time.Hour)
-		req.Header.Set("Authorization", "Bearer "+token)
+		req.AddCookie(&http.Cookie{Name: "jwt", Value: token})
 		rr := httptest.NewRecorder()
 
 		dummyMW.ServeHTTP(rr, req)
@@ -115,7 +116,7 @@ func TestAdminMiddleware(t *testing.T) {
 		}))
 
 		token, _ := auth.GenerateToken(1, "user", "secret", time.Hour)
-		req.Header.Set("Authorization", "Bearer "+token)
+		req.AddCookie(&http.Cookie{Name: "jwt", Value: token})
 		rr := httptest.NewRecorder()
 
 		dummyMW.ServeHTTP(rr, req)

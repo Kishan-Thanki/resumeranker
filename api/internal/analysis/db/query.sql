@@ -9,10 +9,16 @@ INSERT INTO analysis_requests (
 SELECT * FROM analysis_requests
 WHERE id = $1 AND deleted_at IS NULL;
 
--- name: ListAnalysisRequestsByUserID :many
+-- name: GetAnalysisRequestByUUID :one
 SELECT * FROM analysis_requests
-WHERE user_id = $1 AND deleted_at IS NULL
-ORDER BY created_at DESC
+WHERE request_id = $1 AND deleted_at IS NULL;
+
+-- name: ListAnalysisRequestsByUserID :many
+SELECT ar.*, res.total_tokens 
+FROM analysis_requests ar
+LEFT JOIN analysis_results res ON ar.id = res.analysis_request_id
+WHERE ar.user_id = $1 AND ar.deleted_at IS NULL
+ORDER BY ar.created_at DESC
 LIMIT $2 OFFSET $3;
 
 -- name: UpdateAnalysisRequest :one
