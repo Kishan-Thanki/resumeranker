@@ -18,6 +18,7 @@ WORKDIR /root/
 COPY --from=builder /app/bin/api .
 COPY --from=builder /app/.env .
 COPY --from=builder /app/migrations ./migrations
+COPY --from=builder /app/fixtures ./fixtures
 
 EXPOSE 8080
 

@@ -8,8 +8,9 @@
 *.dylib
 *.test
 *.out
-api
+.api
 resumeranker
+
 
 # =========================
 # Build directories
@@ -29,9 +30,12 @@ go.work.sum
 # =========================
 # Environment
 # =========================
+env/
+!env/example.env
+!env/test.env
 .env
 .env.*
-!.env.example
+key
 
 # =========================
 # Logs
