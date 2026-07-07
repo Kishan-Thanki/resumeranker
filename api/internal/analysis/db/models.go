@@ -14,10 +14,10 @@ type Agreement struct {
 	ID          int64              `json:"id"`
 	Type        string             `json:"type"`
 	Version     string             `json:"version"`
-	DocumentUrl string             `json:"document_url"`
 	PublishedAt pgtype.Timestamptz `json:"published_at"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	Content     string             `json:"content"`
 }
 
 type AnalysisRequest struct {
@@ -78,15 +78,18 @@ type AuditEvent struct {
 }
 
 type User struct {
-	ID           int64              `json:"id"`
-	Email        string             `json:"email"`
-	PasswordHash string             `json:"password_hash"`
-	Role         string             `json:"role"`
-	Status       string             `json:"status"`
-	Metadata     []byte             `json:"metadata"`
-	CreatedAt    pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
-	DeletedAt    pgtype.Timestamptz `json:"deleted_at"`
+	ID                    int64              `json:"id"`
+	Email                 string             `json:"email"`
+	PasswordHash          string             `json:"password_hash"`
+	Role                  string             `json:"role"`
+	Status                string             `json:"status"`
+	Metadata              []byte             `json:"metadata"`
+	CreatedAt             pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt             pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt             pgtype.Timestamptz `json:"deleted_at"`
+	IsVerified            bool               `json:"is_verified"`
+	VerificationToken     pgtype.Text        `json:"verification_token"`
+	VerificationExpiresAt pgtype.Timestamptz `json:"verification_expires_at"`
 }
 
 type UserAgreement struct {

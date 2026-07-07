@@ -18,6 +18,7 @@ import (
 	"github.com/kishan-thanki/resumeranker/api/internal/auth"
 	"github.com/kishan-thanki/resumeranker/api/internal/config"
 	"github.com/kishan-thanki/resumeranker/api/internal/database"
+	"github.com/kishan-thanki/resumeranker/api/internal/email"
 	"github.com/kishan-thanki/resumeranker/api/internal/server"
 	"github.com/kishan-thanki/resumeranker/api/internal/users"
 )
@@ -54,14 +55,16 @@ func main() {
 	analysisRepo := analysis.NewPostgresRepository(pool)
 	auditRepo := audit.NewPostgresRepository(pool)
 
+	emailService := email.NewResendService(cfg.EmailAPIKey, cfg.EmailFrom)
+
 	auditService := audit.NewAuditService(auditRepo)
-	userService := users.NewUserService(userRepo, auditService)
+	userService := users.NewUserService(userRepo, auditService, emailService)
 
 	if err := userService.SeedFromFixtures(ctx, "fixtures/seeds.json"); err != nil {
 		slog.Error("failed to seed from fixtures", "err", err)
 	}
 
-	apiKeyService := apikey.NewAPIKeyService(apiKeyRepo, auditService)
+	apiKeyService := apikey.NewAPIKeyService(apiKeyRepo, auditService, emailService)
 
 	// TODO: Replace with real gRPC client to external Analysis Service
 	engineClient := analysis.NewMockEngineClient(cfg.AnalysisServiceURL)
