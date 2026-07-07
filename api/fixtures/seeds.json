@@ -1,0 +1,14 @@
+{
+  "users": [
+    {
+      "email": "owner@resumeranker.kishanthanki.dev",
+      "password": "owner",
+      "role": "owner"
+    },
+    {
+      "email": "admin@resumeranker.kishanthanki.dev",
+      "password": "admin",
+      "role": "admin"
+    }
+  ]
+}

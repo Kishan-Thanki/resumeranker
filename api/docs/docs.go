@@ -7,3 +7,9 @@ var InternalAPIYAML []byte
 
 //go:embed public-api-analysis.yaml
 var PublicAPIYAML []byte
+
+//go:embed public.html
+var PublicHTML []byte
+
+//go:embed internal.html
+var InternalHTML []byte

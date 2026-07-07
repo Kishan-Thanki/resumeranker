@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>ResumeRanker Public API</title>
+	<meta charset="utf-8"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<style>
+		.scalar-client, .scalar-developer-tools { display: none !important; }
+		.back-btn {
+			position: fixed;
+			bottom: 2rem;
+			right: 2rem;
+			z-index: 99999;
+			padding: 0.75rem 1.25rem;
+			background: #111;
+			color: #fff;
+			text-decoration: none;
+			border-radius: 6px;
+			font-family: 'Inter', sans-serif;
+			font-size: 14px;
+			border: 1px solid #333;
+			box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+			transition: background 0.15s;
+		}
+		.back-btn:hover { background: #222; }
+	</style>
+</head>
+<body>
+	<a href="/" class="back-btn">&larr; Back to Platform</a>
+	<script id="api-reference" data-url="/docs/public/yaml" data-configuration='{"showDeveloperTools": false, "hideDownloadButton": true, "hideTestRequestButton": true, "hideModels": true, "customCss": ".scalar-app-header, .scalar-client, .lightlines-header { display: none !important; }"}'></script>
+	<script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
+</body>
+</html>
