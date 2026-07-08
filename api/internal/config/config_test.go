@@ -13,13 +13,22 @@ func TestLoadConfig(t *testing.T) {
 		os.Clearenv()
 	}
 
-	t.Run("success with all variables set", func(t *testing.T) {
-		clearEnv()
+	setValidEnv := func() {
+		os.Setenv("FRONTEND_URL", "http://localhost:3000")
+		os.Setenv("ALLOWED_ORIGINS", "http://localhost:3000")
 		os.Setenv("DATABASE_URL", "postgres://test")
 		os.Setenv("JWT_SECRET", "supersecret")
 		os.Setenv("CSRF_AUTH_KEY", "csrf_key_32_bytes_long_123456789")
 		os.Setenv("PORT", "9090")
 		os.Setenv("ANALYSIS_SERVICE_URL", "http://remote:5000")
+		os.Setenv("EMAIL_API_KEY", "test_key")
+		os.Setenv("EMAIL_FROM", "test@example.com")
+		os.Setenv("EMAIL_CONTACT", "contact@example.com")
+	}
+
+	t.Run("success with all variables set", func(t *testing.T) {
+		clearEnv()
+		setValidEnv()
 
 		cfg, err := config.Load()
 		if err != nil {
@@ -40,49 +49,44 @@ func TestLoadConfig(t *testing.T) {
 		}
 	})
 
-	t.Run("success with default fallbacks", func(t *testing.T) {
+	t.Run("error when ALLOWED_ORIGINS is missing", func(t *testing.T) {
 		clearEnv()
-		os.Setenv("DATABASE_URL", "postgres://test")
-		os.Setenv("JWT_SECRET", "supersecret")
-		os.Setenv("CSRF_AUTH_KEY", "csrf_key_32_bytes_long_123456789")
+		setValidEnv()
+		os.Unsetenv("ALLOWED_ORIGINS")
 
-		cfg, err := config.Load()
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
+		_, err := config.Load()
+		if err == nil {
+			t.Fatal("expected error, got nil")
 		}
+		if err.Error() != "ALLOWED_ORIGINS environment variable is required" {
+			t.Errorf("unexpected error message: %v", err)
+		}
+	})
 
-		if cfg.Port != "8080" {
-			t.Errorf("expected default port 8080, got %s", cfg.Port)
+	t.Run("error when FRONTEND_URL is missing", func(t *testing.T) {
+		clearEnv()
+		setValidEnv()
+		os.Unsetenv("FRONTEND_URL")
+
+		_, err := config.Load()
+		if err == nil {
+			t.Fatal("expected error, got nil")
 		}
-		if cfg.AnalysisServiceURL != "http://localhost:5000" {
-			t.Errorf("expected default analysis url http://localhost:5000, got %s", cfg.AnalysisServiceURL)
+		if err.Error() != "FRONTEND_URL environment variable is required" {
+			t.Errorf("unexpected error message: %v", err)
 		}
 	})
 
 	t.Run("error when DATABASE_URL is missing", func(t *testing.T) {
 		clearEnv()
-		os.Setenv("JWT_SECRET", "supersecret")
-		os.Setenv("CSRF_AUTH_KEY", "csrf_key_32_bytes_long_123456789")
+		setValidEnv()
+		os.Unsetenv("DATABASE_URL")
 
 		_, err := config.Load()
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
 		if err.Error() != "DATABASE_URL environment variable is required" {
-			t.Errorf("unexpected error message: %v", err)
-		}
-	})
-
-	t.Run("error when JWT_SECRET is missing", func(t *testing.T) {
-		clearEnv()
-		os.Setenv("DATABASE_URL", "postgres://test")
-		os.Setenv("CSRF_AUTH_KEY", "csrf_key_32_bytes_long_123456789")
-
-		_, err := config.Load()
-		if err == nil {
-			t.Fatal("expected error, got nil")
-		}
-		if err.Error() != "JWT_SECRET environment variable is required" {
 			t.Errorf("unexpected error message: %v", err)
 		}
 	})

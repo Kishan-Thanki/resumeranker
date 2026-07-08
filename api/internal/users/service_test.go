@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/kishan-thanki/resumeranker/api/internal/config"
 	"github.com/kishan-thanki/resumeranker/api/internal/password"
 	"github.com/kishan-thanki/resumeranker/api/internal/users"
 )
@@ -60,7 +61,7 @@ func TestUserService_Register(t *testing.T) {
 			}
 			auditSvc := &MockAuditService{}
 			emailSvc := &MockEmailService{}
-			svc := users.NewUserService(repo, auditSvc, emailSvc)
+			svc := users.NewUserService(repo, auditSvc, emailSvc, &config.Config{})
 
 			createdUser, err := svc.Register(context.Background(), tt.email, tt.password, tt.role, true)
 
@@ -162,7 +163,7 @@ func TestUserService_Authenticate(t *testing.T) {
 			}
 			auditSvc := &MockAuditService{}
 			emailSvc := &MockEmailService{}
-			svc := users.NewUserService(repo, auditSvc, emailSvc)
+			svc := users.NewUserService(repo, auditSvc, emailSvc, &config.Config{})
 
 			u, err := svc.Authenticate(context.Background(), tt.email, tt.password)
 
@@ -202,7 +203,7 @@ func BenchmarkAuthenticate(b *testing.B) {
 	}
 	auditSvc := &MockAuditService{}
 	emailSvc := &MockEmailService{}
-	svc := users.NewUserService(repo, auditSvc, emailSvc)
+	svc := users.NewUserService(repo, auditSvc, emailSvc, &config.Config{})
 	ctx := context.Background()
 
 	b.ResetTimer()
@@ -231,7 +232,7 @@ func FuzzAuthenticate(f *testing.F) {
 	}
 	auditSvc := &MockAuditService{}
 	emailSvc := &MockEmailService{}
-	svc := users.NewUserService(repo, auditSvc, emailSvc)
+	svc := users.NewUserService(repo, auditSvc, emailSvc, &config.Config{})
 
 	f.Fuzz(func(t *testing.T, email, pass string) {
 		_, _ = svc.Authenticate(context.Background(), email, pass)

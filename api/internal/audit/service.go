@@ -5,12 +5,14 @@ import (
 )
 
 type AuditService struct {
-	repo Repository
+	repo         Repository
+	defaultLimit int
 }
 
-func NewAuditService(repo Repository) *AuditService {
+func NewAuditService(repo Repository, defaultLimit int) *AuditService {
 	return &AuditService{
-		repo: repo,
+		repo:         repo,
+		defaultLimit: defaultLimit,
 	}
 }
 
@@ -21,7 +23,7 @@ func (s *AuditService) LogEvent(ctx context.Context, event *AuditEvent) error {
 
 func (s *AuditService) ListLogs(ctx context.Context, limit, offset int) ([]*AuditEvent, error) {
 	if limit <= 0 || limit > 100 {
-		limit = 50
+		limit = s.defaultLimit
 	}
 	if offset < 0 {
 		offset = 0

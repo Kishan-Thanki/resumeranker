@@ -57,8 +57,8 @@ func main() {
 
 	emailService := email.NewResendService(cfg.EmailAPIKey, cfg.EmailFrom)
 
-	auditService := audit.NewAuditService(auditRepo)
-	userService := users.NewUserService(userRepo, auditService, emailService)
+	auditService := audit.NewAuditService(auditRepo, cfg.PaginationDefaultLimit)
+	userService := users.NewUserService(userRepo, auditService, emailService, cfg)
 
 	if err := userService.SeedFromFixtures(ctx, "fixtures/seeds.json"); err != nil {
 		slog.Error("failed to seed from fixtures", "err", err)
@@ -68,14 +68,14 @@ func main() {
 
 	// TODO: Replace with real gRPC client to external Analysis Service
 	engineClient := analysis.NewMockEngineClient(cfg.AnalysisServiceURL)
-	analysisService := analysis.NewAnalysisService(analysisRepo, auditService, apiKeyService, engineClient)
+	analysisService := analysis.NewAnalysisService(analysisRepo, auditService, apiKeyService, engineClient, cfg.PaginationDefaultLimit)
 
-	authManager := auth.NewManager(cfg.JWTSecret, cfg.Environment)
+	authManager := auth.NewManager(cfg.JWTSecret, cfg.Environment, cfg.SessionDurationHours)
 
-	userHandler := users.NewUserHandler(userService, authManager)
+	userHandler := users.NewUserHandler(userService, authManager, cfg.PaginationDefaultLimit)
 	apiKeyHandler := apikey.NewAPIKeyHandler(apiKeyService)
-	analysisHandler := analysis.NewAnalysisHandler(analysisService)
-	auditHandler := audit.NewAuditHandler(auditService)
+	analysisHandler := analysis.NewAnalysisHandler(analysisService, cfg.PaginationDefaultLimit)
+	auditHandler := audit.NewAuditHandler(auditService, cfg.PaginationDefaultLimit)
 
 	router := server.NewRouter(server.RouterConfig{
 		Environment:     cfg.Environment,
@@ -85,6 +85,7 @@ func main() {
 		AuditHandler:    auditHandler,
 		JWTSecret:       cfg.JWTSecret,
 		CSRFAuthKey:     cfg.CSRFAuthKey,
+		AllowedOrigins:  cfg.AllowedOrigins,
 	})
 
 	srv := &http.Server{

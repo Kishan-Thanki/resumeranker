@@ -18,7 +18,7 @@ func TestAuditService_LogEvent(t *testing.T) {
 				return event, nil
 			},
 		}
-		svc := audit.NewAuditService(repo)
+		svc := audit.NewAuditService(repo, 50)
 
 		err := svc.LogEvent(context.Background(), &audit.AuditEvent{Type: audit.AuditEventUserLoggedIn})
 		if err != nil {
@@ -32,7 +32,7 @@ func TestAuditService_LogEvent(t *testing.T) {
 				return nil, errors.New("db error")
 			},
 		}
-		svc := audit.NewAuditService(repo)
+		svc := audit.NewAuditService(repo, 50)
 
 		err := svc.LogEvent(context.Background(), &audit.AuditEvent{})
 		if err == nil {
@@ -97,7 +97,7 @@ func TestAuditService_ListLogs(t *testing.T) {
 					return []*audit.AuditEvent{}, nil
 				},
 			}
-			svc := audit.NewAuditService(repo)
+			svc := audit.NewAuditService(repo, 50)
 
 			_, err := svc.ListLogs(context.Background(), tt.limit, tt.offset)
 			if err != nil {

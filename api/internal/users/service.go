@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/kishan-thanki/resumeranker/api/internal/audit"
+	"github.com/kishan-thanki/resumeranker/api/internal/config"
 	emailpkg "github.com/kishan-thanki/resumeranker/api/internal/email"
 	"github.com/kishan-thanki/resumeranker/api/internal/password"
 )
@@ -31,13 +32,15 @@ type UserService struct {
 	repo         Repository
 	auditService auditService
 	emailService emailService
+	cfg          *config.Config
 }
 
-func NewUserService(repo Repository, auditService auditService, emailService emailService) *UserService {
+func NewUserService(repo Repository, auditService auditService, emailService emailService, cfg *config.Config) *UserService {
 	return &UserService{
 		repo:         repo,
 		auditService: auditService,
 		emailService: emailService,
+		cfg:          cfg,
 	}
 }
 
@@ -53,7 +56,7 @@ func (s *UserService) Register(ctx context.Context, email, passwordStr string, r
 	}
 
 	token := uuid.New().String()
-	expiresAt := time.Now().Add(24 * time.Hour)
+	expiresAt := time.Now().Add(time.Duration(s.cfg.VerifyTokenDurationHours) * time.Hour)
 
 	user := &User{
 		Email:                 email,
@@ -91,7 +94,7 @@ func (s *UserService) Register(ctx context.Context, email, passwordStr string, r
 			To:      []string{createdUser.Email},
 			Subject: "Welcome to ResumeRanker - Verify your email",
 			Text:    "Your verification token is: " + token,
-			HTML:    fmt.Sprintf(`<p>Welcome to ResumeRanker! Click <a href="https://resumeranker.kishanthanki.dev/verify?token=%s">here</a> to verify your email.</p>`, token),
+			HTML:    fmt.Sprintf(`<p>Welcome to ResumeRanker! Click <a href="%s/verify?token=%s">here</a> to verify your email.</p>`, s.cfg.FrontendURL, token),
 		})
 	}()
 
@@ -119,7 +122,7 @@ func (s *UserService) ForgotPassword(ctx context.Context, email string) error {
 	}
 
 	token := uuid.New().String()
-	expiresAt := time.Now().Add(1 * time.Hour)
+	expiresAt := time.Now().Add(time.Duration(s.cfg.ResetTokenDurationHours) * time.Hour)
 
 	user.PasswordResetToken = &token
 	user.PasswordResetExpiresAt = &expiresAt
@@ -134,7 +137,7 @@ func (s *UserService) ForgotPassword(ctx context.Context, email string) error {
 			To:      []string{user.Email},
 			Subject: "ResumeRanker - Password Reset",
 			Text:    "Your password reset token is: " + token,
-			HTML:    fmt.Sprintf(`<p>You requested a password reset. Click <a href="https://resumeranker.kishanthanki.dev/reset-password?token=%s">here</a> to reset your password. This link is valid for 1 hour.</p>`, token),
+			HTML:    fmt.Sprintf(`<p>You requested a password reset. Click <a href="%s/reset-password?token=%s">here</a> to reset your password. This link is valid for 1 hour.</p>`, s.cfg.FrontendURL, token),
 		})
 	}()
 
@@ -361,7 +364,7 @@ func (s *UserService) PublishAgreement(ctx context.Context, agType AgreementType
 	go func() {
 		ctx := context.Background()
 		var offset int32 = 0
-		var limit int32 = 100
+		limit := int32(s.cfg.BulkEmailBatchSize)
 
 		for {
 			users, err := s.repo.ListUsers(ctx, limit, offset)
