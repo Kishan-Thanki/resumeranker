@@ -3,6 +3,9 @@ package auth
 import (
 	"context"
 	"net/http"
+
+	"github.com/kishan-thanki/resumeranker/api/internal/ctxkey"
+	"github.com/kishan-thanki/resumeranker/api/internal/users"
 )
 
 func Middleware(secret string) func(http.Handler) http.Handler {
@@ -21,8 +24,8 @@ func Middleware(secret string) func(http.Handler) http.Handler {
 				return
 			}
 
-			ctx := context.WithValue(r.Context(), "user_id", userID)
-			ctx = context.WithValue(ctx, "user_role", role)
+			ctx := context.WithValue(r.Context(), ctxkey.UserID, userID)
+			ctx = context.WithValue(ctx, ctxkey.UserRole, role)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
@@ -30,8 +33,8 @@ func Middleware(secret string) func(http.Handler) http.Handler {
 
 func AdminMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		role, ok := r.Context().Value("user_role").(string)
-		if !ok || (role != "admin" && role != "owner") {
+		role, ok := r.Context().Value(ctxkey.UserRole).(string)
+		if !ok || (role != string(users.RoleAdmin) && role != string(users.RoleOwner)) {
 			http.Error(w, "forbidden: requires admin privileges", http.StatusForbidden)
 			return
 		}
@@ -55,8 +58,8 @@ func WebAuthMiddleware(secret string) func(http.Handler) http.Handler {
 				return
 			}
 
-			ctx := context.WithValue(r.Context(), "user_id", userID)
-			ctx = context.WithValue(ctx, "user_role", role)
+			ctx := context.WithValue(r.Context(), ctxkey.UserID, userID)
+			ctx = context.WithValue(ctx, ctxkey.UserRole, role)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

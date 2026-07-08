@@ -47,6 +47,7 @@ type AnalysisService struct {
 	auditService auditService
 	keyService   APIKeyValidator
 	engineClient EngineClient
+	defaultLimit int
 }
 
 func NewAnalysisService(
@@ -54,12 +55,14 @@ func NewAnalysisService(
 	auditService auditService,
 	keyService APIKeyValidator,
 	engineClient EngineClient,
+	defaultLimit int,
 ) *AnalysisService {
 	return &AnalysisService{
 		repo:         repo,
 		auditService: auditService,
 		keyService:   keyService,
 		engineClient: engineClient,
+		defaultLimit: defaultLimit,
 	}
 }
 
@@ -182,7 +185,7 @@ func (s *AnalysisService) ListHistory(ctx context.Context, plainTextKey string, 
 	}
 
 	if limit <= 0 || limit > 100 {
-		limit = 50
+		limit = s.defaultLimit
 	}
 	if offset < 0 {
 		offset = 0

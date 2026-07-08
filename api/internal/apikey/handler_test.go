@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/kishan-thanki/resumeranker/api/internal/apikey"
+	"github.com/kishan-thanki/resumeranker/api/internal/ctxkey"
 )
 
 func TestAPIKeyHandler_GenerateKey(t *testing.T) {
@@ -25,7 +26,7 @@ func TestAPIKeyHandler_GenerateKey(t *testing.T) {
 		reqBody := `{"name":"test-key", "token_quota": 1000}`
 		req := httptest.NewRequest(http.MethodPost, "/keys", bytes.NewBufferString(reqBody))
 
-		ctx := context.WithValue(req.Context(), "user_id", uint64(1))
+		ctx := context.WithValue(req.Context(), ctxkey.UserID, uint64(1))
 		req = req.WithContext(ctx)
 
 		rr := httptest.NewRecorder()

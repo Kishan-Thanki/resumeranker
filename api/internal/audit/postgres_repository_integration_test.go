@@ -14,7 +14,7 @@ import (
 func TestPostgresRepository_Integration(t *testing.T) {
 	t.Parallel()
 
-	dbURL := os.Getenv("DATABASE_URL")
+	dbURL := os.Getenv("TEST_DATABASE_URL")
 	if dbURL == "" {
 		dbURL = "postgres://postgres:postgres@localhost:5432/resumeranker?sslmode=disable"
 	}

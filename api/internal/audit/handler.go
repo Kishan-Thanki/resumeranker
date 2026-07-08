@@ -13,11 +13,13 @@ type auditService interface {
 
 type AuditHandler struct {
 	auditService auditService
+	defaultLimit int
 }
 
-func NewAuditHandler(auditService auditService) *AuditHandler {
+func NewAuditHandler(auditService auditService, defaultLimit int) *AuditHandler {
 	return &AuditHandler{
 		auditService: auditService,
+		defaultLimit: defaultLimit,
 	}
 }
 
@@ -25,7 +27,10 @@ func (h *AuditHandler) ListLogs(w http.ResponseWriter, r *http.Request) {
 	limitStr := r.URL.Query().Get("limit")
 	offsetStr := r.URL.Query().Get("offset")
 
-	limit, _ := strconv.Atoi(limitStr)
+	limit := h.defaultLimit
+	if l, err := strconv.Atoi(limitStr); err == nil {
+		limit = l
+	}
 	offset, _ := strconv.Atoi(offsetStr)
 
 	logs, err := h.auditService.ListLogs(r.Context(), limit, offset)

@@ -26,7 +26,7 @@ func TestAuditHandler_ListLogs(t *testing.T) {
 				}, nil
 			},
 		}
-		h := audit.NewAuditHandler(svc)
+		h := audit.NewAuditHandler(svc, 50)
 
 		req := httptest.NewRequest(http.MethodGet, "/logs?limit=10&offset=5", nil)
 		rr := httptest.NewRecorder()
@@ -41,8 +41,8 @@ func TestAuditHandler_ListLogs(t *testing.T) {
 	t.Run("success with default params", func(t *testing.T) {
 		svc := &MockAuditService{
 			ListLogsFunc: func(ctx context.Context, limit, offset int) ([]*audit.AuditEvent, error) {
-				if limit != 0 {
-					t.Errorf("expected limit 0, got %d", limit)
+				if limit != 50 {
+					t.Errorf("expected limit 50, got %d", limit)
 				}
 				if offset != 0 {
 					t.Errorf("expected offset 0, got %d", offset)
@@ -50,7 +50,7 @@ func TestAuditHandler_ListLogs(t *testing.T) {
 				return []*audit.AuditEvent{}, nil
 			},
 		}
-		h := audit.NewAuditHandler(svc)
+		h := audit.NewAuditHandler(svc, 50)
 
 		req := httptest.NewRequest(http.MethodGet, "/logs", nil)
 		rr := httptest.NewRecorder()

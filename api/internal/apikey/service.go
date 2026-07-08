@@ -22,13 +22,17 @@ type auditService interface {
 	LogEvent(ctx context.Context, event *audit.AuditEvent) error
 }
 
+type emailService interface {
+	SendEmail(ctx context.Context, req *email.SendEmailRequest) error
+}
+
 type APIKeyService struct {
 	repo         Repository
 	auditService auditService
-	emailService email.Service
+	emailService emailService
 }
 
-func NewAPIKeyService(repo Repository, auditService auditService, emailService email.Service) *APIKeyService {
+func NewAPIKeyService(repo Repository, auditService auditService, emailService emailService) *APIKeyService {
 	return &APIKeyService{
 		repo:         repo,
 		auditService: auditService,

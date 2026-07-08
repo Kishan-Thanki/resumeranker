@@ -111,7 +111,7 @@ func TestAnalysisHandler_ProcessResume(t *testing.T) {
 				},
 			}
 
-			handler := analysis.NewAnalysisHandler(mockSvc)
+			handler := analysis.NewAnalysisHandler(mockSvc, 50)
 
 			body, contentType := tt.setupForm()
 			req := httptest.NewRequest(http.MethodPost, "/analyze/resume", body)

@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/kishan-thanki/resumeranker/api/internal/ctxkey"
 )
 
 type apiKeyService interface {
@@ -27,7 +28,7 @@ func NewAPIKeyHandler(apiKeyService apiKeyService) *APIKeyHandler {
 }
 
 func (h *APIKeyHandler) GenerateKey(w http.ResponseWriter, r *http.Request) {
-	userID, ok := r.Context().Value("user_id").(uint64)
+	userID, ok := r.Context().Value(ctxkey.UserID).(uint64)
 	if !ok {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
@@ -54,7 +55,7 @@ func (h *APIKeyHandler) GenerateKey(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *APIKeyHandler) ListKeys(w http.ResponseWriter, r *http.Request) {
-	userID, ok := r.Context().Value("user_id").(uint64)
+	userID, ok := r.Context().Value(ctxkey.UserID).(uint64)
 	if !ok {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
@@ -70,7 +71,7 @@ func (h *APIKeyHandler) ListKeys(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *APIKeyHandler) ToggleStatus(w http.ResponseWriter, r *http.Request) {
-	userID, ok := r.Context().Value("user_id").(uint64)
+	userID, ok := r.Context().Value(ctxkey.UserID).(uint64)
 	if !ok {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
@@ -105,7 +106,7 @@ func (h *APIKeyHandler) ToggleStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *APIKeyHandler) RevokeKey(w http.ResponseWriter, r *http.Request) {
-	userID, ok := r.Context().Value("user_id").(uint64)
+	userID, ok := r.Context().Value(ctxkey.UserID).(uint64)
 	if !ok {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return

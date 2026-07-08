@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/kishan-thanki/resumeranker/api/internal/ctxkey"
 )
 
 type userService interface {
@@ -34,14 +35,16 @@ type authManager interface {
 }
 
 type UserHandler struct {
-	userService userService
-	authManager authManager
+	userService  userService
+	authManager  authManager
+	defaultLimit int
 }
 
-func NewUserHandler(userService userService, authManager authManager) *UserHandler {
+func NewUserHandler(userService userService, authManager authManager, defaultLimit int) *UserHandler {
 	return &UserHandler{
-		userService: userService,
-		authManager: authManager,
+		userService:  userService,
+		authManager:  authManager,
+		defaultLimit: defaultLimit,
 	}
 }
 
@@ -80,7 +83,7 @@ func (h *UserHandler) VerifyEmail(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserHandler) GetPendingAgreements(w http.ResponseWriter, r *http.Request) {
-	userID, ok := r.Context().Value("user_id").(uint64)
+	userID, ok := r.Context().Value(ctxkey.UserID).(uint64)
 	if !ok {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
@@ -107,7 +110,7 @@ func (h *UserHandler) GetPendingAgreements(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *UserHandler) AcceptAgreements(w http.ResponseWriter, r *http.Request) {
-	userID, ok := r.Context().Value("user_id").(uint64)
+	userID, ok := r.Context().Value(ctxkey.UserID).(uint64)
 	if !ok {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
@@ -161,7 +164,7 @@ func (h *UserHandler) Logout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserHandler) GetMe(w http.ResponseWriter, r *http.Request) {
-	userID, ok := r.Context().Value("user_id").(uint64)
+	userID, ok := r.Context().Value(ctxkey.UserID).(uint64)
 	if !ok {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
@@ -179,7 +182,7 @@ func (h *UserHandler) GetMe(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
-	userID, ok := r.Context().Value("user_id").(uint64)
+	userID, ok := r.Context().Value(ctxkey.UserID).(uint64)
 	if !ok {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
@@ -261,7 +264,7 @@ func (h *UserHandler) ToggleStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserHandler) DeleteAccount(w http.ResponseWriter, r *http.Request) {
-	userID, ok := r.Context().Value("user_id").(uint64)
+	userID, ok := r.Context().Value(ctxkey.UserID).(uint64)
 	if !ok {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
@@ -281,7 +284,7 @@ func (h *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	limitStr := r.URL.Query().Get("limit")
 	offsetStr := r.URL.Query().Get("offset")
 
-	limit := 50
+	limit := h.defaultLimit
 	if l, err := strconv.Atoi(limitStr); err == nil {
 		limit = l
 	}

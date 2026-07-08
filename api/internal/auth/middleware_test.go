@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/kishan-thanki/resumeranker/api/internal/auth"
+	"github.com/kishan-thanki/resumeranker/api/internal/ctxkey"
 )
 
 func TestMiddleware(t *testing.T) {
@@ -15,7 +16,7 @@ func TestMiddleware(t *testing.T) {
 	secret := "middlewaresecret"
 
 	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		userID := r.Context().Value("user_id")
+		userID := r.Context().Value(ctxkey.UserID)
 		if userID == nil {
 			t.Fatal("expected user_id in context")
 		}

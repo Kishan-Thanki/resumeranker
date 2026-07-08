@@ -67,7 +67,7 @@ func TestUserHandler_Register(t *testing.T) {
 			svc := &MockUserService{
 				RegisterFunc: tt.mockRegister,
 			}
-			h := users.NewUserHandler(svc, &mockAuthManager{})
+			h := users.NewUserHandler(svc, &mockAuthManager{}, 50)
 
 			var buf bytes.Buffer
 			_ = json.NewEncoder(&buf).Encode(tt.payload)
@@ -125,7 +125,7 @@ func TestUserHandler_Login(t *testing.T) {
 			svc := &MockUserService{
 				AuthenticateFunc: tt.mockAuthenticate,
 			}
-			h := users.NewUserHandler(svc, &mockAuthManager{})
+			h := users.NewUserHandler(svc, &mockAuthManager{}, 50)
 
 			var buf bytes.Buffer
 			_ = json.NewEncoder(&buf).Encode(tt.payload)

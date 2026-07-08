@@ -6,19 +6,21 @@ import (
 )
 
 type Manager struct {
-	jwtSecret   string
-	environment string
+	jwtSecret       string
+	environment     string
+	sessionDuration time.Duration
 }
 
-func NewManager(jwtSecret, environment string) *Manager {
+func NewManager(jwtSecret, environment string, sessionDurationHours int) *Manager {
 	return &Manager{
-		jwtSecret:   jwtSecret,
-		environment: environment,
+		jwtSecret:       jwtSecret,
+		environment:     environment,
+		sessionDuration: time.Duration(sessionDurationHours) * time.Hour,
 	}
 }
 
 func (m *Manager) IssueSessionCookie(w http.ResponseWriter, userID uint64, role string) error {
-	token, err := GenerateToken(userID, role, m.jwtSecret, 24*time.Hour)
+	token, err := GenerateToken(userID, role, m.jwtSecret, m.sessionDuration)
 	if err != nil {
 		return err
 	}
@@ -27,7 +29,7 @@ func (m *Manager) IssueSessionCookie(w http.ResponseWriter, userID uint64, role 
 		Name:     "jwt",
 		Value:    token,
 		Path:     "/",
-		Expires:  time.Now().Add(24 * time.Hour),
+		Expires:  time.Now().Add(m.sessionDuration),
 		HttpOnly: true,
 		Secure:   m.environment == "production",
 		SameSite: http.SameSiteStrictMode,

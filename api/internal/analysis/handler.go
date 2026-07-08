@@ -19,11 +19,13 @@ type analysisService interface {
 
 type AnalysisHandler struct {
 	analysisService analysisService
+	defaultLimit    int
 }
 
-func NewAnalysisHandler(analysisService analysisService) *AnalysisHandler {
+func NewAnalysisHandler(analysisService analysisService, defaultLimit int) *AnalysisHandler {
 	return &AnalysisHandler{
 		analysisService: analysisService,
+		defaultLimit:    defaultLimit,
 	}
 }
 
@@ -96,7 +98,7 @@ func (h *AnalysisHandler) ListHistory(w http.ResponseWriter, r *http.Request) {
 	}
 	apiKey := strings.TrimPrefix(authHeader, "Bearer ")
 
-	limit := 50
+	limit := h.defaultLimit
 	if limitParam := r.URL.Query().Get("limit"); limitParam != "" {
 		if parsedLimit, err := strconv.Atoi(limitParam); err == nil {
 			limit = parsedLimit
