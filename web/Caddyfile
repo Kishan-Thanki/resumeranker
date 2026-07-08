@@ -1,0 +1,18 @@
+{$DOMAIN:localhost:80} {
+    root * /var/www/html
+    try_files {path} {path}.html {path}/index.html
+    file_server
+
+    handle /api/* {
+        reverse_proxy {$API_UPSTREAM:rr-api:8080}
+    }
+
+    handle /docs/* {
+        reverse_proxy {$API_UPSTREAM:rr-api:8080}
+    }
+
+    handle_errors {
+        rewrite * /error.html
+        file_server
+    }
+}

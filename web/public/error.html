@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Service Unavailable | ResumeRanker</title>
+    <script>
+        (function() {
+            var t = localStorage.getItem('data-theme');
+            if (!t) t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', t);
+        })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: #ffffff;
+            --bg-surface: #fafafa;
+            --bg-surface-elevated: #f4f4f5;
+            --border-color: #e4e4e7;
+            --text-primary: #09090b;
+            --text-secondary: #3f3f46;
+            --text-muted: #71717a;
+            --accent: #09090b;
+            --accent-text: #ffffff;
+            --error: #dc2626;
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            --radius-md: 10px;
+            --radius-lg: 16px;
+            --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+        }
+
+        [data-theme="dark"] {
+            --bg-base: #09090b;
+            --bg-surface: #0f0f11;
+            --bg-surface-elevated: #18181b;
+            --border-color: #27272a;
+            --text-primary: #fafafa;
+            --text-secondary: #a1a1aa;
+            --text-muted: #71717a;
+            --accent: #fafafa;
+            --accent-text: #09090b;
+            --error: #ef4444;
+            --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+        }
+
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: var(--font-sans);
+            background: var(--bg-base);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .error-container {
+            text-align: center;
+            max-width: 520px;
+            width: 100%;
+        }
+
+        .error-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 2rem;
+            border-radius: 50%;
+            background: var(--bg-surface-elevated);
+            border: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .error-icon svg {
+            width: 36px;
+            height: 36px;
+            stroke: var(--error);
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.8; }
+        }
+
+        .error-code {
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--error);
+            margin-bottom: 1rem;
+        }
+
+        .error-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.75rem;
+            line-height: 1.3;
+        }
+
+        .error-message {
+            font-size: 1rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+            margin-bottom: 2.5rem;
+        }
+
+        .error-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: var(--radius-md);
+            font-family: var(--font-sans);
+            font-size: 0.875rem;
+            font-weight: 500;
+            text-decoration: none;
+            cursor: pointer;
+            border: none;
+            transition: all 0.15s ease;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: var(--accent-text);
+        }
+
+        .btn-primary:hover {
+            opacity: 0.85;
+        }
+
+        .btn-secondary {
+            background: var(--bg-surface-elevated);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-surface);
+            border-color: var(--text-muted);
+        }
+
+        .error-footer {
+            margin-top: 3rem;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <div class="error-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+        </div>
+        <div class="error-code">Service Unavailable</div>
+        <h1 class="error-title">We'll be right back</h1>
+        <p class="error-message">The service you're trying to reach is temporarily offline or undergoing maintenance. This is usually resolved within a few minutes.</p>
+        <div class="error-actions">
+            <a href="/" class="btn btn-primary">Go to Homepage</a>
+            <button class="btn btn-secondary" onclick="location.reload()">Try Again</button>
+        </div>
+        <p class="error-footer">&copy; 2026 ResumeRanker</p>
+    </div>
+</body>
+</html>

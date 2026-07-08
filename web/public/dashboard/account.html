@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Manage your ResumeRanker account settings. Change your password, view token usage, and manage account status.">
+    <title>ResumeRanker | Account</title>
+    <script>
+        (function() {
+            var t = localStorage.getItem('data-theme');
+            if (!t) t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', t);
+        })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+    <a href="#main" class="skip-link">Skip to content</a>
+
+    <nav class="navbar" role="navigation" aria-label="Main navigation">
+        <div class="nav-brand"><a href="/">ResumeRanker</a></div>
+        <div class="nav-links">
+            <a href="/docs/public" target="_blank" rel="noopener">API Docs</a>
+            <a href="#" id="navLogout">Logout</a>
+        </div>
+        <div class="nav-actions">
+            <button class="theme-toggle" id="themeToggleBtn" aria-label="Toggle theme">
+                <svg class="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                <svg class="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+            </button>
+            <button class="nav-hamburger" id="navHamburger" aria-label="Toggle menu" aria-expanded="false">
+                <span></span>
+            </button>
+        </div>
+    </nav>
+
+    <div class="main-content" id="main">
+        <section class="dashboard-layout">
+
+            <aside class="dashboard-sidebar" role="navigation" aria-label="Dashboard navigation">
+                <a href="/dashboard/dashboard" class="sidebar-item">API Keys</a>
+                <a href="/dashboard/guide" class="sidebar-item">Integration Guide</a>
+                <a href="/dashboard/account" class="sidebar-item active">Account</a>
+            </aside>
+
+            <div class="dashboard-content">
+                <h2>Account Management</h2>
+
+                <div class="card card-narrow mt-4">
+                    <h3>Profile Info</h3>
+                    <div class="form-group mt-4">
+                        <label>Email Address</label>
+                        <div id="accountEmail" class="account-email-display">Your cached email will appear here</div>
+                        <span class="form-hint mt-2">Email changes are currently restricted.</span>
+                    </div>
+                    <form id="changePasswordForm" class="mt-4">
+                        <div class="form-group mt-4">
+                            <label for="oldPassword">Current Password</label>
+                            <input type="password" id="oldPassword" class="form-control" required autocomplete="current-password">
+                        </div>
+                        <div class="form-group mt-2">
+                            <label for="newPassword">New Password</label>
+                            <input type="password" id="newPassword" class="form-control" required minlength="8" autocomplete="new-password">
+                            <span class="form-hint">Minimum 8 characters.</span>
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-4">Change Password</button>
+                    </form>
+                </div>
+
+                <div class="card card-narrow card-danger mt-4">
+                    <h3>Danger Zone</h3>
+                    <p class="text-sm text-muted mt-2">
+                        Permanently delete your account and all associated data. This action cannot be undone.
+                    </p>
+                    <button id="deleteAccountBtn" class="btn btn-danger mt-4">Delete Account</button>
+                </div>
+
+                <div class="card card-narrow mt-4">
+                    <h3>Token Quota &amp; Usage</h3>
+                    <p class="text-sm text-muted mt-4">
+                        The ResumeRanker API operates on a pre-paid token quota system. Because this portal is in active development, automatic top-ups are disabled.
+                    </p>
+                    <div class="alert alert-error token-balance-alert mt-4">
+                        <strong>Balance: 0 Tokens</strong>
+                        <p class="text-sm mt-2">Please contact your administrator to provision tokens to your account.</p>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+    </div>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <div>&copy; 2026 ResumeRanker. All rights reserved.</div>
+            <div class="footer-links">
+                <a href="/about">About</a>
+                <a href="/contact">Contact</a>
+                <a href="/legal/terms">Terms of Service</a>
+                <a href="/legal/privacy">Privacy Policy</a>
+            </div>
+        </div>
+    </footer>
+
+    <script type="module" src="/assets/js/account.js"></script>
+</body>
+</html>
