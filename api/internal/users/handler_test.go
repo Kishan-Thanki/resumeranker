@@ -12,13 +12,21 @@ import (
 	"github.com/kishan-thanki/resumeranker/api/internal/users"
 )
 
+type mockAuthManager struct{}
+
+func (m *mockAuthManager) IssueSessionCookie(w http.ResponseWriter, userID uint64, role string) error {
+	return nil
+}
+
+func (m *mockAuthManager) ClearSessionCookie(w http.ResponseWriter) {}
+
 func TestUserHandler_Register(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
 		name           string
 		payload        interface{}
-		mockRegister   func(ctx context.Context, email, password string, role users.Role) (*users.User, error)
+		mockRegister   func(ctx context.Context, email, password string, role users.Role, agreedToTerms bool) (*users.User, error)
 		expectedStatus int
 	}{
 		{
@@ -27,7 +35,7 @@ func TestUserHandler_Register(t *testing.T) {
 				"email":    "test@example.com",
 				"password": "password123",
 			},
-			mockRegister: func(ctx context.Context, email, password string, role users.Role) (*users.User, error) {
+			mockRegister: func(ctx context.Context, email, password string, role users.Role, agreedToTerms bool) (*users.User, error) {
 				return &users.User{ID: 1}, nil
 			},
 			expectedStatus: http.StatusCreated,
@@ -44,10 +52,10 @@ func TestUserHandler_Register(t *testing.T) {
 				"email":    "test@example.com",
 				"password": "password123",
 			},
-			mockRegister: func(ctx context.Context, email, password string, role users.Role) (*users.User, error) {
+			mockRegister: func(ctx context.Context, email, password string, role users.Role, agreedToTerms bool) (*users.User, error) {
 				return nil, errors.New("registration failed")
 			},
-			expectedStatus: http.StatusInternalServerError,
+			expectedStatus: http.StatusBadRequest,
 		},
 	}
 
@@ -59,7 +67,7 @@ func TestUserHandler_Register(t *testing.T) {
 			svc := &MockUserService{
 				RegisterFunc: tt.mockRegister,
 			}
-			h := users.NewUserHandler(svc, "secret")
+			h := users.NewUserHandler(svc, &mockAuthManager{})
 
 			var buf bytes.Buffer
 			_ = json.NewEncoder(&buf).Encode(tt.payload)
@@ -117,7 +125,7 @@ func TestUserHandler_Login(t *testing.T) {
 			svc := &MockUserService{
 				AuthenticateFunc: tt.mockAuthenticate,
 			}
-			h := users.NewUserHandler(svc, "secret")
+			h := users.NewUserHandler(svc, &mockAuthManager{})
 
 			var buf bytes.Buffer
 			_ = json.NewEncoder(&buf).Encode(tt.payload)

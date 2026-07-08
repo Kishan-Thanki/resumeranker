@@ -59,9 +59,10 @@ func TestUserService_Register(t *testing.T) {
 				CreateUserFunc: tt.mockRepo,
 			}
 			auditSvc := &MockAuditService{}
-			svc := users.NewUserService(repo, auditSvc)
+			emailSvc := &MockEmailService{}
+			svc := users.NewUserService(repo, auditSvc, emailSvc)
 
-			createdUser, err := svc.Register(context.Background(), tt.email, tt.password, tt.role)
+			createdUser, err := svc.Register(context.Background(), tt.email, tt.password, tt.role, true)
 
 			if tt.wantError {
 				if err == nil {
@@ -105,6 +106,7 @@ func TestUserService_Authenticate(t *testing.T) {
 					Email:        email,
 					PasswordHash: validHash,
 					Status:       users.AccountStatusActive,
+					IsVerified:   true,
 				}, nil
 			},
 			wantError: nil,
@@ -119,6 +121,7 @@ func TestUserService_Authenticate(t *testing.T) {
 					Email:        email,
 					PasswordHash: validHash,
 					Status:       users.AccountStatusActive,
+					IsVerified:   true,
 				}, nil
 			},
 			wantError: users.ErrInvalidCredentials,
@@ -142,6 +145,7 @@ func TestUserService_Authenticate(t *testing.T) {
 					Email:        email,
 					PasswordHash: validHash,
 					Status:       users.AccountStatusSuspended,
+					IsVerified:   true,
 				}, nil
 			},
 			wantError: errors.New("account is not active"),
@@ -157,7 +161,8 @@ func TestUserService_Authenticate(t *testing.T) {
 				GetUserByEmailFunc: tt.mockRepo,
 			}
 			auditSvc := &MockAuditService{}
-			svc := users.NewUserService(repo, auditSvc)
+			emailSvc := &MockEmailService{}
+			svc := users.NewUserService(repo, auditSvc, emailSvc)
 
 			u, err := svc.Authenticate(context.Background(), tt.email, tt.password)
 
@@ -191,11 +196,13 @@ func BenchmarkAuthenticate(b *testing.B) {
 				Email:        email,
 				PasswordHash: validHash,
 				Status:       users.AccountStatusActive,
+				IsVerified:   true,
 			}, nil
 		},
 	}
 	auditSvc := &MockAuditService{}
-	svc := users.NewUserService(repo, auditSvc)
+	emailSvc := &MockEmailService{}
+	svc := users.NewUserService(repo, auditSvc, emailSvc)
 	ctx := context.Background()
 
 	b.ResetTimer()
@@ -218,11 +225,13 @@ func FuzzAuthenticate(f *testing.F) {
 				Email:        email,
 				PasswordHash: validHash,
 				Status:       users.AccountStatusActive,
+				IsVerified:   true,
 			}, nil
 		},
 	}
 	auditSvc := &MockAuditService{}
-	svc := users.NewUserService(repo, auditSvc)
+	emailSvc := &MockEmailService{}
+	svc := users.NewUserService(repo, auditSvc, emailSvc)
 
 	f.Fuzz(func(t *testing.T, email, pass string) {
 		_, _ = svc.Authenticate(context.Background(), email, pass)
