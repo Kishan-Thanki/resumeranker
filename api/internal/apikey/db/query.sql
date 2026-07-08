@@ -28,3 +28,7 @@ RETURNING *;
 UPDATE api_keys
 SET deleted_at = NOW()
 WHERE id = $1;
+
+-- name: GetUserEmailByID :one
+SELECT email FROM users
+WHERE id = $1 AND deleted_at IS NULL;

@@ -23,7 +23,8 @@ func TestAPIKeyService_GenerateKey(t *testing.T) {
 			},
 		}
 		auditSvc := &MockAuditService{}
-		svc := apikey.NewAPIKeyService(repo, auditSvc)
+		emailSvc := &MockEmailService{}
+		svc := apikey.NewAPIKeyService(repo, auditSvc, emailSvc)
 
 		plainKey, created, err := svc.GenerateKey(context.Background(), 1, "test-key", 100)
 		if err != nil {
@@ -47,7 +48,8 @@ func TestAPIKeyService_GenerateKey(t *testing.T) {
 			},
 		}
 		auditSvc := &MockAuditService{}
-		svc := apikey.NewAPIKeyService(repo, auditSvc)
+		emailSvc := &MockEmailService{}
+		svc := apikey.NewAPIKeyService(repo, auditSvc, emailSvc)
 
 		_, _, err := svc.GenerateKey(context.Background(), 1, "test-key", 100)
 		if err == nil {
@@ -79,7 +81,7 @@ func TestAPIKeyService_ValidateKey(t *testing.T) {
 				}, nil
 			},
 		}
-		svc := apikey.NewAPIKeyService(repo, &MockAuditService{})
+		svc := apikey.NewAPIKeyService(repo, &MockAuditService{}, &MockEmailService{})
 
 		key, err := svc.ValidateKey(context.Background(), plainTextKey)
 		if err != nil {
@@ -91,7 +93,7 @@ func TestAPIKeyService_ValidateKey(t *testing.T) {
 	})
 
 	t.Run("invalid format", func(t *testing.T) {
-		svc := apikey.NewAPIKeyService(&MockRepository{}, &MockAuditService{})
+		svc := apikey.NewAPIKeyService(&MockRepository{}, &MockAuditService{}, &MockEmailService{})
 
 		_, err := svc.ValidateKey(context.Background(), "invalid-format")
 		if err != apikey.ErrInvalidAPIKey {
@@ -109,7 +111,7 @@ func TestAPIKeyService_ValidateKey(t *testing.T) {
 				}, nil
 			},
 		}
-		svc := apikey.NewAPIKeyService(repo, &MockAuditService{})
+		svc := apikey.NewAPIKeyService(repo, &MockAuditService{}, &MockEmailService{})
 
 		_, err := svc.ValidateKey(context.Background(), plainTextKey)
 		if err != apikey.ErrInvalidAPIKey {
@@ -127,7 +129,7 @@ func TestAPIKeyService_ValidateKey(t *testing.T) {
 				}, nil
 			},
 		}
-		svc := apikey.NewAPIKeyService(repo, &MockAuditService{})
+		svc := apikey.NewAPIKeyService(repo, &MockAuditService{}, &MockEmailService{})
 
 		_, err := svc.ValidateKey(context.Background(), plainTextKey)
 		if err != apikey.ErrInvalidAPIKey {

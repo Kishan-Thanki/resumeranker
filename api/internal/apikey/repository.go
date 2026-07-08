@@ -10,4 +10,5 @@ type Repository interface {
 	Update(ctx context.Context, apiKey *APIKey) (*APIKey, error)
 	Delete(ctx context.Context, id uint64) error
 	IsUserActive(ctx context.Context, userID uint64) (bool, error)
+	GetUserEmailByID(ctx context.Context, userID uint64) (string, error)
 }

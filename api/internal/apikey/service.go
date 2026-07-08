@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/kishan-thanki/resumeranker/api/internal/audit"
+	"github.com/kishan-thanki/resumeranker/api/internal/email"
 	"github.com/kishan-thanki/resumeranker/api/internal/password"
 )
 
@@ -24,12 +25,14 @@ type auditService interface {
 type APIKeyService struct {
 	repo         Repository
 	auditService auditService
+	emailService email.Service
 }
 
-func NewAPIKeyService(repo Repository, auditService auditService) *APIKeyService {
+func NewAPIKeyService(repo Repository, auditService auditService, emailService email.Service) *APIKeyService {
 	return &APIKeyService{
 		repo:         repo,
 		auditService: auditService,
+		emailService: emailService,
 	}
 }
 
@@ -79,6 +82,17 @@ func (s *APIKeyService) GenerateKey(ctx context.Context, userID uint64, name str
 		UserID:      &userID,
 		APIKeyID:    &createdKey.ID,
 	})
+
+	userEmail, err := s.repo.GetUserEmailByID(ctx, userID)
+	if err == nil && userEmail != "" {
+		go func() {
+			_ = s.emailService.SendEmail(context.Background(), &email.SendEmailRequest{
+				To:      []string{userEmail},
+				Subject: "New API Key Generated",
+				Text:    "A new API key was just generated for your account. If you did not authorize this, please log in and revoke it immediately.",
+			})
+		}()
+	}
 
 	return plainTextKey, createdKey, nil
 }
@@ -143,6 +157,17 @@ func (s *APIKeyService) ToggleStatus(ctx context.Context, userID, keyID uint64, 
 		return err
 	}
 
+	userEmail, err := s.repo.GetUserEmailByID(ctx, userID)
+	if err == nil && userEmail != "" {
+		go func() {
+			_ = s.emailService.SendEmail(context.Background(), &email.SendEmailRequest{
+				To:      []string{userEmail},
+				Subject: "API Key Status Updated",
+				Text:    "The status of your API key has been updated to: " + string(status) + ".",
+			})
+		}()
+	}
+
 	return nil
 }
 
@@ -167,6 +192,17 @@ func (s *APIKeyService) RevokeKey(ctx context.Context, userID, keyID uint64) err
 		UserID:      &userID,
 		APIKeyID:    &keyID,
 	})
+
+	userEmail, err := s.repo.GetUserEmailByID(ctx, userID)
+	if err == nil && userEmail != "" {
+		go func() {
+			_ = s.emailService.SendEmail(context.Background(), &email.SendEmailRequest{
+				To:      []string{userEmail},
+				Subject: "API Key Revoked",
+				Text:    "An API key associated with your account was successfully revoked and deleted.",
+			})
+		}()
+	}
 
 	return nil
 }

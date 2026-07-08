@@ -5,6 +5,7 @@ import (
 
 	"github.com/kishan-thanki/resumeranker/api/internal/apikey"
 	"github.com/kishan-thanki/resumeranker/api/internal/audit"
+	"github.com/kishan-thanki/resumeranker/api/internal/email"
 )
 
 type MockRepository struct {
@@ -15,6 +16,7 @@ type MockRepository struct {
 	UpdateFunc        func(ctx context.Context, apiKey *apikey.APIKey) (*apikey.APIKey, error)
 	DeleteFunc        func(ctx context.Context, id uint64) error
 	IsUserActiveFunc  func(ctx context.Context, userID uint64) (bool, error)
+	GetUserEmailByIDFunc func(ctx context.Context, userID uint64) (string, error)
 }
 
 func (m *MockRepository) Create(ctx context.Context, key *apikey.APIKey) (*apikey.APIKey, error) {
@@ -66,6 +68,13 @@ func (m *MockRepository) IsUserActive(ctx context.Context, userID uint64) (bool,
 	return true, nil
 }
 
+func (m *MockRepository) GetUserEmailByID(ctx context.Context, userID uint64) (string, error) {
+	if m.GetUserEmailByIDFunc != nil {
+		return m.GetUserEmailByIDFunc(ctx, userID)
+	}
+	return "test@example.com", nil
+}
+
 type MockAuditService struct {
 	LogEventFunc func(ctx context.Context, event *audit.AuditEvent) error
 }
@@ -73,6 +82,17 @@ type MockAuditService struct {
 func (m *MockAuditService) LogEvent(ctx context.Context, event *audit.AuditEvent) error {
 	if m.LogEventFunc != nil {
 		return m.LogEventFunc(ctx, event)
+	}
+	return nil
+}
+
+type MockEmailService struct {
+	SendEmailFunc func(ctx context.Context, req *email.SendEmailRequest) error
+}
+
+func (m *MockEmailService) SendEmail(ctx context.Context, req *email.SendEmailRequest) error {
+	if m.SendEmailFunc != nil {
+		return m.SendEmailFunc(ctx, req)
 	}
 	return nil
 }

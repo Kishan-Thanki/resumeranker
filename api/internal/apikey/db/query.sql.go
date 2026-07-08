@@ -128,6 +128,18 @@ func (q *Queries) GetAPIKeyBySelector(ctx context.Context, keySelector string) (
 	return i, err
 }
 
+const getUserEmailByID = `-- name: GetUserEmailByID :one
+SELECT email FROM users
+WHERE id = $1 AND deleted_at IS NULL
+`
+
+func (q *Queries) GetUserEmailByID(ctx context.Context, id int64) (string, error) {
+	row := q.db.QueryRow(ctx, getUserEmailByID, id)
+	var email string
+	err := row.Scan(&email)
+	return email, err
+}
+
 const listAPIKeysByUserID = `-- name: ListAPIKeysByUserID :many
 SELECT id, user_id, name, key_selector, key_hash, status, token_quota, tokens_used, expires_at, last_used_at, created_at, updated_at, deleted_at, key_prefix FROM api_keys
 WHERE user_id = $1 AND deleted_at IS NULL
