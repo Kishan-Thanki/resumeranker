@@ -5,6 +5,5 @@ Dockerfile
 README.md
 build.sh
 run.sh
-.agents
 *.log
 .DS_Store
