@@ -1,0 +1,12 @@
+.git
+.gitignore
+.dockerignore
+Dockerfile
+README.md
+build.sh
+run.sh
+.agents
+env/
+tmp/
+*.log
+.DS_Store
