@@ -15,13 +15,13 @@ Built with performance, security, and scalability in mind, it safely abstracts e
 
 ## System Capabilities
 
-### Intelligent Analysis Engine
+### Intelligent Analysis Orchestration
 
-Submit a resume and a job description, and the `analysis` module orchestrates a secure connection to our external AI/LLM providers (the Engine). It normalizes the AI's output to generate a structured, highly contextual score and feedback report for downstream services to consume.
+Submit a resume and a job description to the API, and the `analysis` module orchestrates a secure HTTP/2 gRPC stream to our isolated **Python AI Engine**. The Go backend acts as the gateway, enforcing quotas and authorization, while delegating the heavy CPU/LLM processing to the Python microservice.
 
 ### Internal API Key & Quota Management
 
-To prevent rogue internal services from blowing through our AI provider budgets, access to the engine is governed by the `apikey` service. Each internal consumer (e.g., frontend app, Slack bot, scheduled cron job) is issued an API key with a strict token quota.
+To prevent rogue internal services from blowing through our AI provider budgets, access to the engine is governed by the `apikey` service. Each internal consumer (e.g., frontend app, Slack bot) is issued an API key with a strict token quota.
 
 ### Decoupled Security Model (RBAC)
 
@@ -53,25 +53,24 @@ POST /api/v1/keys/generate
 
 ### 2. Request Analysis
 
-Internal services use their issued API key to hit the engine:
+Internal services use their issued API key to hit the engine with multipart form-data (PDFs):
 
 ```bash
 POST /api/v1/analyze/resume
 Header: Authorization: Bearer <INTERNAL_API_KEY>
+Content-Type: multipart/form-data
 
-{
-  "resume_text": "Experienced software engineer with 10 years in Go...",
-  "job_description": "Looking for a senior backend developer..."
-}
+-F "resume_pdf=@/path/to/resume.pdf"
+-F "job_description_pdf=@/path/to/jd.pdf"
 ```
 
 **Response:**
 
 ```json
 {
-  "model": "engine-v1",
-  "result": "{\"score\": 95, \"feedback\": \"Excellent match.\"}",
-  "total_tokens": 150
+  "model": "gemini-2.5-flash",
+  "result": { ... }, // Structured JSON Score Payload from Python
+  "total_tokens": 450
 }
 ```
 

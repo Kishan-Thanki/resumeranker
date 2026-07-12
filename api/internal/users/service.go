@@ -458,6 +458,7 @@ func (s *UserService) SeedFromFixtures(ctx context.Context, filepath string) err
 			PasswordHash: hashedPassword,
 			Role:         u.Role,
 			Status:       AccountStatusActive,
+			IsVerified:   true,
 		}
 
 		_, err = s.repo.CreateUser(ctx, user)

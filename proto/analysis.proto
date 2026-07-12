@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package analysis;
+option go_package = "github.com/kishan-thanki/resumeranker/api/internal/analysis/pb";
+
+service AnalysisEngine {
+  rpc Analyze (AnalyzeRequest) returns (AnalyzeResponse) {}
+}
+
+message AnalyzeRequest {
+  bytes resume_pdf = 1;
+  bytes job_description_pdf = 2;
+}
+
+message AnalyzeResponse {
+  bool success = 1;
+  string error_message = 2;
+  string result_json = 3;
+  string model = 4;
+  uint32 prompt_tokens = 5;
+  uint32 completion_tokens = 6;
+  uint32 total_tokens = 7;
+}

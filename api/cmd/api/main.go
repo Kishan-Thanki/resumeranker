@@ -66,8 +66,12 @@ func main() {
 
 	apiKeyService := apikey.NewAPIKeyService(apiKeyRepo, auditService, emailService)
 
-	// TODO: Replace with real gRPC client to external Analysis Service
-	engineClient := analysis.NewMockEngineClient(cfg.AnalysisServiceURL)
+	engineClient, err := analysis.NewGrpcEngineClient(cfg.AnalysisServiceURL)
+	if err != nil {
+		slog.Error("failed to initialize engine client", "err", err)
+		os.Exit(1)
+	}
+	defer engineClient.Close()
 	analysisService := analysis.NewAnalysisService(analysisRepo, auditService, apiKeyService, engineClient, cfg.PaginationDefaultLimit)
 
 	authManager := auth.NewManager(cfg.JWTSecret, cfg.Environment, cfg.SessionDurationHours)
