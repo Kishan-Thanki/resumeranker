@@ -13,12 +13,20 @@ Instead of hosting the reverse proxy (Caddy) and the frontend files separately, 
 
 ```text
 web/
-├── public/              # (Source Code) All HTML, CSS, and JS files live here
+├── public/              # (Source Code) Pure Vanilla HTML/CSS/ES6 JS (No build steps)
+├── .agents/             # (Config) Strict AI coding constraints for the frontend
 ├── Caddyfile            # (Config) The routing and domain logic for Caddy
 ├── Dockerfile           # (Config) Builds the secure Alpine container
 ├── entrypoint.sh        # (Config) Drops root privileges and boots Caddy
 └── build.sh             # (Helper) Script to instantly compile the image
 ```
+
+## Architecture & Frontend Philosophy
+
+1. **Zero-Build Stack**: The frontend utilizes pure ES6 Modules (`import`/`export`), native CSS Variables, and standard HTML5. There is no Webpack, Vite, React, or Tailwind.
+2. **Strict Monochromatic Design**: The UI strictly enforces a black-and-white aesthetic with native Light/Dark mode toggling. No colors are permitted.
+3. **DOM Safety**: To prevent XSS vulnerabilities, the codebase strictly avoids `innerHTML` and dynamically constructs all elements using `document.createElement`.
+4. **Secure State Management**: CSRF tokens are securely maintained in JavaScript memory closures (inside `api.js`) to prevent XSS theft, and JWTs are handled entirely via backend `HttpOnly` cookies.
 
 ## Advanced Security
 

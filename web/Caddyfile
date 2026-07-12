@@ -4,11 +4,11 @@
     file_server
 
     handle /api/* {
-        reverse_proxy {$API_UPSTREAM:rr-api:8080}
+        reverse_proxy {$API_UPSTREAM:resumeranker-api:8080}
     }
 
     handle /docs/* {
-        reverse_proxy {$API_UPSTREAM:rr-api:8080}
+        reverse_proxy {$API_UPSTREAM:resumeranker-api:8080}
     }
 
     handle_errors {
