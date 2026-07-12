@@ -1,0 +1,10 @@
+# Ignore macOS folder attributes
+.DS_Store
+
+# Ignore local environment files (if any are added later)
+*.env
+.env
+.env.*
+
+# Ignore logs
+*.log
