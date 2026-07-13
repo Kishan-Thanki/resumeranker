@@ -3,6 +3,7 @@ package users
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -57,6 +58,10 @@ func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	user, err := h.userService.Register(r.Context(), req.Email, req.Password, RoleUser, req.AgreedToTerms)
 	if err != nil {
+		if errors.Is(err, ErrUserAlreadyExists) {
+			http.Error(w, err.Error(), http.StatusConflict)
+			return
+		}
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -141,6 +146,10 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	user, err := h.userService.Authenticate(r.Context(), req.Email, req.Password)
 	if err != nil {
+		if errors.Is(err, ErrAccountSuspended) {
+			http.Error(w, "Your account has been suspended. Please contact support.", http.StatusForbidden)
+			return
+		}
 		http.Error(w, "invalid credentials", http.StatusUnauthorized)
 		return
 	}

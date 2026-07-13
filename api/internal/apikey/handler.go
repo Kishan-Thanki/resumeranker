@@ -40,6 +40,10 @@ func (h *APIKeyHandler) GenerateKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.Quota == 0 {
+		req.Quota = 1000000
+	}
+
 	plainTextKey, apiKey, err := h.apiKeyService.GenerateKey(r.Context(), userID, req.Name, req.Quota)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

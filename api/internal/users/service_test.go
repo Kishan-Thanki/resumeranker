@@ -149,7 +149,7 @@ func TestUserService_Authenticate(t *testing.T) {
 					IsVerified:   true,
 				}, nil
 			},
-			wantError: errors.New("account is not active"),
+			wantError: users.ErrAccountSuspended,
 		},
 	}
 

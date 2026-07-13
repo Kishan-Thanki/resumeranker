@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,6 +16,12 @@ import (
 var (
 	ErrInsufficientQuota = errors.New("insufficient token quota")
 	ErrAnalysisFailed    = errors.New("analysis failed")
+	ErrRateLimit         = errors.New("the AI service is currently experiencing high load. Please try again later")
+	ErrAPIConnection     = errors.New("failed to connect to the AI service provider")
+	ErrContextExceeded   = errors.New("the provided documents are too large for the AI to process")
+	ErrLLMValidation     = errors.New("the AI service returned an invalid format")
+	ErrLLMTimeout        = errors.New("the AI service took too long to respond")
+	ErrPDFParse          = errors.New("failed to parse the provided PDF document")
 )
 
 type APIKeyValidator interface {
@@ -28,6 +36,7 @@ type auditService interface {
 type EngineRequest struct {
 	ResumePDF         []byte `json:"resume_pdf"`
 	JobDescriptionPDF []byte `json:"job_description_pdf"`
+	RequestID         string `json:"request_id"`
 }
 
 type EngineResponse struct {
@@ -111,11 +120,34 @@ func (s *AnalysisService) ProcessResume(ctx context.Context, plainTextKey string
 	engReq := &EngineRequest{
 		ResumePDF:         resumePDF,
 		JobDescriptionPDF: jdPDF,
+		RequestID:         fmt.Sprintf("%d", req.ID),
 	}
 
 	engRes, err := s.engineClient.Analyze(ctx, engReq)
 	if err != nil {
 		errStr := err.Error()
+		var retErr error = ErrAnalysisFailed
+		
+		if strings.Contains(errStr, "ERR_RATE_LIMIT") {
+			retErr = ErrRateLimit
+			errStr = ErrRateLimit.Error()
+		} else if strings.Contains(errStr, "ERR_API_CONNECTION") {
+			retErr = ErrAPIConnection
+			errStr = ErrAPIConnection.Error()
+		} else if strings.Contains(errStr, "ERR_CONTEXT_EXCEEDED") {
+			retErr = ErrContextExceeded
+			errStr = ErrContextExceeded.Error()
+		} else if strings.Contains(errStr, "ERR_LLM_VALIDATION") {
+			retErr = ErrLLMValidation
+			errStr = ErrLLMValidation.Error()
+		} else if strings.Contains(errStr, "ERR_LLM_TIMEOUT") {
+			retErr = ErrLLMTimeout
+			errStr = ErrLLMTimeout.Error()
+		} else if strings.Contains(errStr, "ERR_PDF_PARSE") {
+			retErr = ErrPDFParse
+			errStr = ErrPDFParse.Error()
+		}
+
 		req.Status = AnalysisRequestStatusFailed
 		req.Error = &errStr
 		completed := time.Now()
@@ -127,7 +159,7 @@ func (s *AnalysisService) ProcessResume(ctx context.Context, plainTextKey string
 			UserID:      &apiKey.UserID,
 			APIKeyID:    &apiKey.ID,
 		})
-		return nil, ErrAnalysisFailed
+		return nil, retErr
 	}
 
 	res := &AnalysisResult{

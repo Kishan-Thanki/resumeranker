@@ -36,6 +36,7 @@ func (c *GrpcEngineClient) Analyze(ctx context.Context, req *EngineRequest) (*En
 	pbReq := &pb.AnalyzeRequest{
 		ResumePdf:         req.ResumePDF,
 		JobDescriptionPdf: req.JobDescriptionPDF,
+		RequestId:         req.RequestID,
 	}
 
 	pbRes, err := c.client.Analyze(ctx, pbReq)

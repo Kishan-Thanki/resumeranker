@@ -10,6 +10,7 @@ service AnalysisEngine {
 message AnalyzeRequest {
   bytes resume_pdf = 1;
   bytes job_description_pdf = 2;
+  string request_id = 3;
 }
 
 message AnalyzeResponse {

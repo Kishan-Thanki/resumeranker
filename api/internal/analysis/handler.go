@@ -3,12 +3,14 @@ package analysis
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/kishan-thanki/resumeranker/api/internal/apikey"
 )
 
 type analysisService interface {
@@ -79,6 +81,30 @@ func (h *AnalysisHandler) ProcessResume(w http.ResponseWriter, r *http.Request) 
 
 	result, err := h.analysisService.ProcessResume(r.Context(), apiKey, resumeHeader.Filename, jdHeader.Filename, resumeBytes, jdBytes)
 	if err != nil {
+		if errors.Is(err, apikey.ErrInvalidAPIKey) || errors.Is(err, apikey.ErrAPIKeyInactive) || errors.Is(err, apikey.ErrAPIKeySuspended) {
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+			return
+		}
+		if errors.Is(err, ErrRateLimit) {
+			http.Error(w, err.Error(), http.StatusTooManyRequests)
+			return
+		}
+		if errors.Is(err, ErrContextExceeded) || errors.Is(err, ErrPDFParse) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		if errors.Is(err, ErrLLMValidation) || errors.Is(err, ErrAPIConnection) {
+			http.Error(w, err.Error(), http.StatusBadGateway)
+			return
+		}
+		if errors.Is(err, ErrLLMTimeout) {
+			http.Error(w, err.Error(), http.StatusGatewayTimeout)
+			return
+		}
+		if errors.Is(err, ErrInsufficientQuota) {
+			http.Error(w, err.Error(), http.StatusForbidden)
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

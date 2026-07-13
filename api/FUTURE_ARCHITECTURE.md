@@ -29,6 +29,12 @@ grpc.NewClient(
 )
 ```
 
+### 3. OpenTelemetry (OTel) Distributed Tracing
+**Current State:** We generate a `RequestID` (UUID) in the `ProcessResume` flow and propagate it across the gRPC boundary so it appears in the Python Datadog logs.
+**The Problem:** We rely on text-matching log IDs to trace the lifecycle across Go and Python.
+**Future Solution:** 
+Integrate `go.opentelemetry.io/otel` and inject tracing spans. This will allow visual waterfall charts in Jaeger or Datadog APM, instantly diagnosing whether 30-second delays are happening in Go's HTTP handling, gRPC networking, Python's PDF processing, or the LLM API itself.
+
 ---
 
 ## [P1] Architectural Scaling (Asynchronous Workflows)
@@ -54,3 +60,13 @@ Convert the `.proto` contract to use Server Streaming (`returns (stream AnalyzeR
 1. Python yields partial progress (e.g., "JD Extracted...", "Resume Extracted...", "Finalizing Score...").
 2. Go consumes this gRPC stream.
 3. Go forwards these chunks to the React frontend via Server-Sent Events (SSE) or WebSockets, creating a dynamic, ChatGPT-like loading experience.
+
+---
+
+## [P3] Advanced Testing & Optimization
+
+### 5. Fuzzing and Benchmark Suites
+**Current State:** The API is heavily tested with standard integration and unit tests, but lacks stress testing for edge cases.
+**The Problem:** High-throughput parsers (like gRPC error mappers or string allocators) might have hidden panics or memory bottlenecks.
+**Future Solution:** 
+Build out dedicated Go `fuzz` tests (`go test -fuzz`) to ensure zero-panic guarantees on all user inputs, and implement `bench` suites for any high-CPU Go routines to enforce nanosecond-level performance budgets.

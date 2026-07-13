@@ -18,6 +18,8 @@ import (
 
 var (
 	ErrInvalidCredentials = errors.New("invalid email or password")
+	ErrUserAlreadyExists  = errors.New("an account with this email already exists")
+	ErrAccountSuspended   = errors.New("account is suspended")
 )
 
 type auditService interface {
@@ -48,6 +50,11 @@ func (s *UserService) Register(ctx context.Context, email, passwordStr string, r
 
 	if !agreedToTerms {
 		return nil, errors.New("must agree to terms of service and privacy policy")
+	}
+
+	existingUser, err := s.repo.GetUserByEmail(ctx, email)
+	if err == nil && existingUser != nil {
+		return nil, ErrUserAlreadyExists
 	}
 
 	hashedPassword, err := password.HashIt(passwordStr)
@@ -90,11 +97,21 @@ func (s *UserService) Register(ctx context.Context, email, passwordStr string, r
 	}
 
 	go func() {
+		link := fmt.Sprintf("%s/verify?token=%s", s.cfg.Domain, token)
+		htmlBody := emailpkg.BuildHTMLTemplate(emailpkg.HTMLTemplateParams{
+			Title:        "Verify your email",
+			Message:      "<p>Welcome to ResumeRanker! To get started and gain access to your dashboard, please verify your email address.</p>",
+			BtnText:      "Verify Email",
+			BtnLink:      link,
+			SupportEmail: s.cfg.EmailContact,
+			Domain:  s.cfg.Domain,
+			FooterNote:   "If you did not request this email, you can safely ignore it.",
+		})
 		_ = s.emailService.SendEmail(context.Background(), &emailpkg.SendEmailRequest{
 			To:      []string{createdUser.Email},
 			Subject: "Welcome to ResumeRanker - Verify your email",
 			Text:    "Your verification token is: " + token,
-			HTML:    fmt.Sprintf(`<p>Welcome to ResumeRanker! Click <a href="%s/verify?token=%s">here</a> to verify your email.</p>`, s.cfg.FrontendURL, token),
+			HTML:    htmlBody,
 		})
 	}()
 
@@ -133,11 +150,21 @@ func (s *UserService) ForgotPassword(ctx context.Context, email string) error {
 	}
 
 	go func() {
+		link := fmt.Sprintf("%s/reset-password?token=%s", s.cfg.Domain, token)
+		htmlBody := emailpkg.BuildHTMLTemplate(emailpkg.HTMLTemplateParams{
+			Title:        "Password Reset Request",
+			Message:      "<p>You recently requested to reset your password for your ResumeRanker account.</p><p>This link is valid for <strong>1 hour</strong>.</p>",
+			BtnText:      "Reset Password",
+			BtnLink:      link,
+			SupportEmail: s.cfg.EmailContact,
+			Domain:  s.cfg.Domain,
+			FooterNote:   "If you did not request this password reset, please ignore this email or contact support if you have concerns.",
+		})
 		_ = s.emailService.SendEmail(context.Background(), &emailpkg.SendEmailRequest{
 			To:      []string{user.Email},
 			Subject: "ResumeRanker - Password Reset",
 			Text:    "Your password reset token is: " + token,
-			HTML:    fmt.Sprintf(`<p>You requested a password reset. Click <a href="%s/reset-password?token=%s">here</a> to reset your password. This link is valid for 1 hour.</p>`, s.cfg.FrontendURL, token),
+			HTML:    htmlBody,
 		})
 	}()
 
@@ -171,10 +198,17 @@ func (s *UserService) ResetPassword(ctx context.Context, token, newPassword stri
 			UserID:      &user.ID,
 		})
 		go func() {
+			htmlBody := emailpkg.BuildHTMLTemplate(emailpkg.HTMLTemplateParams{
+				Title:        "Password Reset Successful",
+				Message:      "<p>This is a confirmation that the password for your ResumeRanker account has just been reset.</p><p>If you did not make this change, please contact support immediately.</p>",
+				SupportEmail: s.cfg.EmailContact,
+				Domain:  s.cfg.Domain,
+			})
 			_ = s.emailService.SendEmail(context.Background(), &emailpkg.SendEmailRequest{
 				To:      []string{user.Email},
 				Subject: "Your Password Was Reset",
 				Text:    "This is a confirmation that the password for your ResumeRanker account has just been reset. If you did not make this change, please contact support immediately.",
+				HTML:    htmlBody,
 			})
 		}()
 	}
@@ -197,6 +231,9 @@ func (s *UserService) Authenticate(ctx context.Context, email, passwordStr strin
 	}
 
 	if user.Status != AccountStatusActive {
+		if user.Status == AccountStatusSuspended {
+			return nil, ErrAccountSuspended
+		}
 		return nil, errors.New("account is not active")
 	}
 
@@ -296,10 +333,17 @@ func (s *UserService) ChangePassword(ctx context.Context, userID uint64, oldPass
 			UserID:      &userID,
 		})
 		go func() {
+			htmlBody := emailpkg.BuildHTMLTemplate(emailpkg.HTMLTemplateParams{
+				Title:        "Password Changed",
+				Message:      "<p>This is a confirmation that the password for your ResumeRanker account has just been changed.</p><p>If you did not make this change, please contact support immediately.</p>",
+				SupportEmail: s.cfg.EmailContact,
+				Domain:  s.cfg.Domain,
+			})
 			_ = s.emailService.SendEmail(context.Background(), &emailpkg.SendEmailRequest{
 				To:      []string{user.Email},
 				Subject: "Your Password Was Changed",
 				Text:    "This is a confirmation that the password for your ResumeRanker account has just been changed. If you did not make this change, please contact support immediately.",
+				HTML:    htmlBody,
 			})
 		}()
 	}
@@ -320,10 +364,17 @@ func (s *UserService) ToggleStatus(ctx context.Context, userID uint64, status Ac
 	_, err = s.repo.UpdateUser(ctx, user)
 	if err == nil {
 		go func() {
+			htmlBody := emailpkg.BuildHTMLTemplate(emailpkg.HTMLTemplateParams{
+				Title:        "Account Status Update",
+				Message:      fmt.Sprintf("<p>Your ResumeRanker account status has been updated by an administrator.</p><p>New Status: <strong>%s</strong></p>", status),
+				SupportEmail: s.cfg.EmailContact,
+				Domain:  s.cfg.Domain,
+			})
 			_ = s.emailService.SendEmail(context.Background(), &emailpkg.SendEmailRequest{
 				To:      []string{user.Email},
 				Subject: "Account Status Update",
 				Text:    fmt.Sprintf("Your account status has been updated to: %s.", status),
+				HTML:    htmlBody,
 			})
 		}()
 	}
@@ -339,10 +390,17 @@ func (s *UserService) DeleteAccount(ctx context.Context, userID uint64) error {
 	err = s.repo.DeleteUser(ctx, userID)
 	if err == nil {
 		go func() {
+			htmlBody := emailpkg.BuildHTMLTemplate(emailpkg.HTMLTemplateParams{
+				Title:        "Account Deleted",
+				Message:      "<p>Your account and all associated data have been permanently deleted from ResumeRanker.</p><p>We're sorry to see you go.</p>",
+				SupportEmail: s.cfg.EmailContact,
+				Domain:  s.cfg.Domain,
+			})
 			_ = s.emailService.SendEmail(context.Background(), &emailpkg.SendEmailRequest{
 				To:      []string{user.Email},
 				Subject: "Account Deletion Confirmation",
 				Text:    "Your account and all associated data have been permanently deleted from ResumeRanker.",
+				HTML:    htmlBody,
 			})
 		}()
 	}
@@ -374,10 +432,19 @@ func (s *UserService) PublishAgreement(ctx context.Context, agType AgreementType
 
 			for _, user := range users {
 				if user.Status == AccountStatusActive {
+					htmlBody := emailpkg.BuildHTMLTemplate(emailpkg.HTMLTemplateParams{
+						Title:        "Legal Update",
+						Message:      fmt.Sprintf("<p>We have updated our <strong>%s</strong> to Version <strong>%s</strong>.</p><p>Please log in to your dashboard to review and accept the new terms.</p>", agType, version),
+						BtnText:      "Log In to Dashboard",
+						BtnLink:      fmt.Sprintf("%s/auth/login", s.cfg.Domain),
+						SupportEmail: s.cfg.EmailContact,
+						Domain:  s.cfg.Domain,
+					})
 					_ = s.emailService.SendEmail(ctx, &emailpkg.SendEmailRequest{
 						To:      []string{user.Email},
 						Subject: fmt.Sprintf("Legal Update: New %s Published", agType),
 						Text:    fmt.Sprintf("We have updated our %s (Version: %s). Please log in to review and accept the new terms.", agType, version),
+						HTML:    htmlBody,
 					})
 				}
 			}

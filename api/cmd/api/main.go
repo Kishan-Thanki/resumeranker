@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -24,7 +25,18 @@ import (
 )
 
 func main() {
-	baseLogger := slog.NewJSONHandler(os.Stdout, nil)
+	debugMode := strings.ToLower(os.Getenv("DEBUG")) == "true" || os.Getenv("DEBUG") == "1"
+	opts := &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	}
+	
+	var baseLogger slog.Handler
+	if debugMode {
+		opts.Level = slog.LevelDebug
+		baseLogger = slog.NewTextHandler(os.Stdout, opts)
+	} else {
+		baseLogger = slog.NewJSONHandler(os.Stdout, opts)
+	}
 
 	safeLogger := slogredact.NewHandler(baseLogger,
 		"password", "old_password", "new_password",
@@ -64,7 +76,7 @@ func main() {
 		slog.Error("failed to seed from fixtures", "err", err)
 	}
 
-	apiKeyService := apikey.NewAPIKeyService(apiKeyRepo, auditService, emailService)
+	apiKeyService := apikey.NewAPIKeyService(apiKeyRepo, auditService, emailService, cfg.Domain, cfg.EmailContact)
 
 	engineClient, err := analysis.NewGrpcEngineClient(cfg.AnalysisServiceURL)
 	if err != nil {

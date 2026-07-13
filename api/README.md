@@ -17,7 +17,7 @@ Built with performance, security, and scalability in mind, it safely abstracts e
 
 ### Intelligent Analysis Orchestration
 
-Submit a resume and a job description to the API, and the `analysis` module orchestrates a secure HTTP/2 gRPC stream to our isolated **Python AI Engine**. The Go backend acts as the gateway, enforcing quotas and authorization, while delegating the heavy CPU/LLM processing to the Python microservice.
+Submit a resume and a job description to the API, and the `analysis` module orchestrates a secure HTTP/2 gRPC stream to our isolated **Python AI Engine**. The Go backend acts as the gateway, enforcing quotas and authorization, while delegating the heavy CPU/LLM processing to the Python microservice. It natively injects a `RequestID` into the gRPC payload to enable **Distributed Tracing** across both languages, and translates raw gRPC Python errors into semantic HTTP status codes (e.g. 429 Rate Limit, 502 Bad Gateway).
 
 ### Internal API Key & Quota Management
 
@@ -73,6 +73,12 @@ Content-Type: multipart/form-data
   "total_tokens": 450
 }
 ```
+
+**Semantic Error Responses:**
+- `400 Bad Request`: Invalid/corrupt PDFs (`ErrInvalidPDF`).
+- `429 Too Many Requests`: Upstream provider rate limits (`ErrRateLimit`).
+- `502 Bad Gateway`: Python engine failed validation or threw an internal error.
+- `504 Gateway Timeout`: Python or the LLM provider took too long to respond.
 
 ---
 

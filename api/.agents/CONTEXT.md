@@ -12,7 +12,7 @@ The API follows a strict layered (Clean) architecture:
 ## Core Domains
 - `users`: User registration, authentication, profile management, and terms of service (agreements). Handles naive bulk emails via goroutines.
 - `apikey`: Creation, validation, and quota tracking of API keys.
-- `analysis`: gRPC Client that forwards PDF bytes to the isolated Python AI Engine for processing, shielding Go from heavy CPU/LLM workloads.
+- `analysis`: gRPC Client that forwards PDF bytes to the isolated Python AI Engine. It injects a `RequestID` for distributed tracing and gracefully parses gRPC error strings into semantic Go sentinel errors (`ErrRateLimit`, `ErrInvalidPDF`) to yield exact HTTP codes (429, 400).
 - `audit`: Logging of critical system events (e.g., logins, key creation).
 - `auth`: JWT session management and cookie issuance.
 - `email`: Integration with Resend for transactional emails (Verification, Password Reset, Status updates).

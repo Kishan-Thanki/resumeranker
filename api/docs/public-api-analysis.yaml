@@ -88,8 +88,14 @@ paths:
           description: Bad request (missing files or invalid format)
         "401":
           description: Unauthorized (missing or invalid API key)
+        "429":
+          description: Too Many Requests (upstream AI rate limits)
         "500":
-          description: Internal server error or AI engine failure
+          description: Internal server error
+        "502":
+          description: Bad Gateway (upstream AI engine failure or invalid response)
+        "504":
+          description: Gateway Timeout (upstream AI engine timed out)
 
   /analyze/history:
     get:

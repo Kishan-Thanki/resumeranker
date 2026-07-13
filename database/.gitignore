@@ -1,10 +1,16 @@
 # Ignore macOS folder attributes
 .DS_Store
 
-# Ignore local environment files (if any are added later)
+# Ignore local environment files
 *.env
 .env
 .env.*
+env/
+
+# Ignore local database storage volumes
+/data
+/pgdata
+postgres-data/
 
 # Ignore logs
 *.log

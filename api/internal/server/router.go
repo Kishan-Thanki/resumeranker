@@ -35,7 +35,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 
 	r.Use(httptelemetry.Middleware)
 	r.Use(middleware.Recoverer)
-	r.Use(middleware.Timeout(60 * time.Second))
+	r.Use(middleware.Timeout(180 * time.Second))
 
 	corsOptions := cors.Options{
 		AllowedOrigins:   cfg.AllowedOrigins,

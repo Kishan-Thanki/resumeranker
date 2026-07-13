@@ -18,7 +18,7 @@ type Config struct {
 	EmailFrom                string
 	EmailContact             string
 	AllowedOrigins           []string
-	FrontendURL              string
+	Domain                   string
 	SessionDurationHours     int
 	VerifyTokenDurationHours int
 	ResetTokenDurationHours  int
@@ -79,9 +79,9 @@ func Load() (*Config, error) {
 		env = "development"
 	}
 
-	frontendURL := os.Getenv("FRONTEND_URL")
+	frontendURL := os.Getenv("DOMAIN")
 	if frontendURL == "" {
-		return nil, errors.New("FRONTEND_URL environment variable is required")
+		return nil, errors.New("DOMAIN environment variable is required")
 	}
 
 	sessionDurationHours := getEnvAsInt("SESSION_DURATION_HOURS", 24)
@@ -105,7 +105,7 @@ func Load() (*Config, error) {
 		EmailFrom:                emailFrom,
 		EmailContact:             emailContact,
 		AllowedOrigins:           allowedOrigins,
-		FrontendURL:              frontendURL,
+		Domain:                   frontendURL,
 		SessionDurationHours:     sessionDurationHours,
 		VerifyTokenDurationHours: verifyTokenDurationHours,
 		ResetTokenDurationHours:  resetTokenDurationHours,

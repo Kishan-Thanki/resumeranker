@@ -15,7 +15,9 @@ import (
 )
 
 var (
-	ErrInvalidAPIKey = errors.New("invalid or expired api key")
+	ErrInvalidAPIKey   = errors.New("invalid api key")
+	ErrAPIKeyInactive  = errors.New("api key is inactive")
+	ErrAPIKeySuspended = errors.New("api key is suspended")
 )
 
 type auditService interface {
@@ -30,13 +32,17 @@ type APIKeyService struct {
 	repo         Repository
 	auditService auditService
 	emailService emailService
+	domain       string
+	emailContact string
 }
 
-func NewAPIKeyService(repo Repository, auditService auditService, emailService emailService) *APIKeyService {
+func NewAPIKeyService(repo Repository, auditService auditService, emailService emailService, domain string, emailContact string) *APIKeyService {
 	return &APIKeyService{
 		repo:         repo,
 		auditService: auditService,
 		emailService: emailService,
+		domain:       domain,
+		emailContact: emailContact,
 	}
 }
 
@@ -90,10 +96,20 @@ func (s *APIKeyService) GenerateKey(ctx context.Context, userID uint64, name str
 	userEmail, err := s.repo.GetUserEmailByID(ctx, userID)
 	if err == nil && userEmail != "" {
 		go func() {
+			htmlBody := email.BuildHTMLTemplate(email.HTMLTemplateParams{
+				Title:        "New API Key Generated",
+				Message:      "<p>A new API key was just generated for your account. If you did not authorize this, please log in and revoke it immediately.</p>",
+				BtnText:      "Manage API Keys",
+				BtnLink:      s.domain + "/dashboard",
+				SupportEmail: s.emailContact,
+				Domain:       s.domain,
+				FooterNote:   "Keep your API keys secure. Never share them publicly.",
+			})
 			_ = s.emailService.SendEmail(context.Background(), &email.SendEmailRequest{
 				To:      []string{userEmail},
 				Subject: "New API Key Generated",
 				Text:    "A new API key was just generated for your account. If you did not authorize this, please log in and revoke it immediately.",
+				HTML:    htmlBody,
 			})
 		}()
 	}
@@ -121,6 +137,12 @@ func (s *APIKeyService) ValidateKey(ctx context.Context, plainTextKey string) (*
 	}
 
 	if apiKey.Status != APIKeyStatusActive {
+		if apiKey.Status == APIKeyStatusInactive {
+			return nil, ErrAPIKeyInactive
+		}
+		if apiKey.Status == APIKeyStatusSuspended {
+			return nil, ErrAPIKeySuspended
+		}
 		return nil, ErrInvalidAPIKey
 	}
 
@@ -164,10 +186,20 @@ func (s *APIKeyService) ToggleStatus(ctx context.Context, userID, keyID uint64, 
 	userEmail, err := s.repo.GetUserEmailByID(ctx, userID)
 	if err == nil && userEmail != "" {
 		go func() {
+			htmlBody := email.BuildHTMLTemplate(email.HTMLTemplateParams{
+				Title:        "API Key Status Updated",
+				Message:      "<p>The status of your API key has been updated to: <strong>" + string(status) + "</strong>.</p>",
+				BtnText:      "Manage API Keys",
+				BtnLink:      s.domain + "/dashboard",
+				SupportEmail: s.emailContact,
+				Domain:       s.domain,
+				FooterNote:   "You can manage your API keys anytime from your dashboard.",
+			})
 			_ = s.emailService.SendEmail(context.Background(), &email.SendEmailRequest{
 				To:      []string{userEmail},
 				Subject: "API Key Status Updated",
 				Text:    "The status of your API key has been updated to: " + string(status) + ".",
+				HTML:    htmlBody,
 			})
 		}()
 	}
@@ -200,10 +232,20 @@ func (s *APIKeyService) RevokeKey(ctx context.Context, userID, keyID uint64) err
 	userEmail, err := s.repo.GetUserEmailByID(ctx, userID)
 	if err == nil && userEmail != "" {
 		go func() {
+			htmlBody := email.BuildHTMLTemplate(email.HTMLTemplateParams{
+				Title:        "API Key Revoked",
+				Message:      "<p>An API key associated with your account was successfully revoked and deleted.</p><p>Any applications using this key will no longer be able to authenticate.</p>",
+				BtnText:      "Manage API Keys",
+				BtnLink:      s.domain + "/dashboard",
+				SupportEmail: s.emailContact,
+				Domain:       s.domain,
+				FooterNote:   "If you did not perform this action, please contact support immediately.",
+			})
 			_ = s.emailService.SendEmail(context.Background(), &email.SendEmailRequest{
 				To:      []string{userEmail},
 				Subject: "API Key Revoked",
 				Text:    "An API key associated with your account was successfully revoked and deleted.",
+				HTML:    htmlBody,
 			})
 		}()
 	}

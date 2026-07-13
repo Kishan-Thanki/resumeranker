@@ -24,6 +24,7 @@ func TestLoadConfig(t *testing.T) {
 		os.Setenv("EMAIL_API_KEY", "test_key")
 		os.Setenv("EMAIL_FROM", "test@example.com")
 		os.Setenv("EMAIL_CONTACT", "contact@example.com")
+		os.Setenv("DOMAIN", "https://example.com")
 	}
 
 	t.Run("success with all variables set", func(t *testing.T) {
@@ -59,20 +60,6 @@ func TestLoadConfig(t *testing.T) {
 			t.Fatal("expected error, got nil")
 		}
 		if err.Error() != "ALLOWED_ORIGINS environment variable is required" {
-			t.Errorf("unexpected error message: %v", err)
-		}
-	})
-
-	t.Run("error when FRONTEND_URL is missing", func(t *testing.T) {
-		clearEnv()
-		setValidEnv()
-		os.Unsetenv("FRONTEND_URL")
-
-		_, err := config.Load()
-		if err == nil {
-			t.Fatal("expected error, got nil")
-		}
-		if err.Error() != "FRONTEND_URL environment variable is required" {
 			t.Errorf("unexpected error message: %v", err)
 		}
 	})

@@ -5,5 +5,17 @@ Dockerfile
 README.md
 build.sh
 run.sh
+
+# Ignore secrets
+.env
+*.env
+env/
+
+# Ignore local database volumes (prevent massive image builds)
+data/
+pgdata/
+postgres-data/
+
+# Ignore logs
 *.log
 .DS_Store
