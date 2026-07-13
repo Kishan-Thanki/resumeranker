@@ -8,6 +8,8 @@ ENV PYTHONUNBUFFERED=1 \
 
 RUN pip install uv
 
+RUN useradd --create-home appuser
+
 WORKDIR /app
 
 COPY pyproject.toml uv.lock ./
@@ -17,6 +19,8 @@ RUN uv sync --frozen
 ENV PATH="/app/.venv/bin:$PATH"
 
 COPY . /app
+
+USER appuser
 
 EXPOSE 8001
 

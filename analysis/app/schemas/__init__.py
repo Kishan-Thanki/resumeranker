@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 SectionId = Literal["skills", "experience", "education", "leadership"]
 MatchStrength = Literal["strong", "partial", "weak", "none"]
@@ -47,6 +47,13 @@ class SectionScore(BaseModel):
     label: str = Field(description="The human-readable label for this section (e.g., 'Experience')")
     score: int = Field(ge=0, le=100, description="The final calculated percentage score for this section (0-100)")
     requirements: list[RequirementMatch]
+
+    @field_validator('score')
+    @classmethod
+    def validate_score_bounds(cls, v: int) -> int:
+        if not (0 <= v <= 100):
+            raise ValueError("Score must be between 0 and 100")
+        return v
 
 class SectionsAnalysis(BaseModel):
     model_config = ConfigDict(populate_by_name=True)

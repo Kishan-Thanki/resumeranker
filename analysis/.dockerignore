@@ -2,6 +2,7 @@
 .gitignore
 .dockerignore
 .env
+env/*.env
 __pycache__
 *.pyc
 .venv
