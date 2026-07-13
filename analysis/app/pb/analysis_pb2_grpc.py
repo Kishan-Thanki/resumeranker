@@ -3,7 +3,7 @@
 import grpc
 import warnings
 
-from . import analysis_pb2 as analysis__pb2
+import analysis_pb2 as analysis__pb2
 
 GRPC_GENERATED_VERSION = '1.82.1'
 GRPC_VERSION = grpc.__version__

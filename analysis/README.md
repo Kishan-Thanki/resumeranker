@@ -6,9 +6,11 @@ This is the core Machine Learning / AI backend for **ResumeRanker**. It is a pur
 - **gRPC Only**: We do not use REST, FastAPI, or HTTP. All communication with the Go backend happens strictly over HTTP/2 gRPC streams for maximum throughput.
 - **Provider Agnostic**: The engine uses `litellm`, meaning we can hot-swap from Gemini to OpenAI to Anthropic just by changing the `.env` file. No code changes required.
 - **Extreme Concurrency**: 
-  - `pdfplumber` CPU bounds are offloaded to background threads.
+  - The gRPC server runs on `uvloop`, a drop-in C-based replacement for `asyncio` that handles tens of thousands of requests per second.
+  - `pdfplumber` CPU bounds are offloaded to background threads and throttled via `asyncio.Semaphore` (`pdf_bouncer`) to prevent OOM crashes.
   - LLM API calls are executed concurrently using `asyncio.gather` to cut latency by 50%.
 - **Zero-Cost Testing**: The integration test suite uses `@patch` to dynamically intercept LLM network calls, meaning the CI/CD pipeline runs in ~1 second and costs $0 in LLM API tokens.
+- **Datadog-Ready Tracing**: Every log emitted automatically intercepts and appends the Go-originated `request_id` via Python `contextvars` to seamlessly support distributed tracing in ELK or Datadog without manual logger passing.
 
 ## Directory Structure
 - `app/main.py`: The gRPC server entry point.
@@ -42,4 +44,4 @@ uv run pytest tests/
 ```
 
 ## Future Roadmap
-Please refer to `FUTURE_ARCHITECTURE.md` for our roadmap on implementing `uvloop`, GZIP compression, and Celery task queues.
+Please refer to `FUTURE_ARCHITECTURE.md` for our roadmap on implementing Celery task queues and dynamic strategy domains.

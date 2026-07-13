@@ -15,9 +15,16 @@ This file dictates how future AI Agents should interact with the `@analysis/` co
 
 ## 3. Performance & Concurrency
 - Never block the `asyncio` event loop.
-- If you use a CPU-bound library (like `pdfplumber`), you MUST wrap it in `asyncio.to_thread`.
+- The server runs on `uvloop` for ultra-fast C-based asyncio operations.
+- If you use a CPU-bound library (like `pdfplumber`), you MUST wrap it in `asyncio.to_thread` and throttle it with an `asyncio.Semaphore` to prevent OOM crashes.
 - Always use `asyncio.gather` for independent network tasks to minimize latency.
 
-## 4. Testing
+## 4. Structured Logging & Distributed Tracing
+- All logs must use the pre-configured `JSONFormatter` in `logger.py` to ensure Datadog compatibility.
+- Never manually pass a logger object. Use `request_id_var.get()` or `logger.info(..., extra={...})`.
+- The `request_id` contextvar binds the gRPC request ID to all async tasks in that scope.
+- Do NOT log raw `jd_text` or `resume_text` to prevent GDPR violations.
+
+## 5. Testing
 - Do NOT burn LLM API tokens in the test suite. 
 - You MUST use `unittest.mock.patch` to intercept `litellm` or `instructor` calls.

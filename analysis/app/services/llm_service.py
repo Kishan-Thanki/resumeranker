@@ -2,7 +2,9 @@ import os
 import asyncio
 import instructor
 from litellm import acompletion
-from pydantic import BaseModel
+from litellm.exceptions import RateLimitError, APIConnectionError, APIError, ContextWindowExceededError, Timeout
+from instructor.exceptions import InstructorRetryException
+from pydantic import ValidationError, BaseModel
 
 from app.schemas import (
     ExtractedRequirement,
@@ -11,6 +13,14 @@ from app.schemas import (
 )
 from app.domain.base import DomainStrategy
 from app.domain.tech import TechDomain
+from app.logger import logger
+
+class AnalysisEngineError(Exception):
+    """Base exception for analysis engine."""
+    def __init__(self, code: str, message: str):
+        self.code = code
+        self.message = message
+        super().__init__(self.message)
 
 class JDRequirementsResponse(BaseModel):
     requirements: list[ExtractedRequirement]
@@ -21,6 +31,23 @@ class ResumeClaimsResponse(BaseModel):
 MAX_CONCURRENT = int(os.environ.get("MAX_CONCURRENT_LLM_REQUESTS", 3))
 llm_bouncer = asyncio.Semaphore(MAX_CONCURRENT)
 
+def _handle_llm_exception(e: Exception, stage: str):
+    logger.exception(f"LLM exception during {stage}")
+    if isinstance(e, RateLimitError):
+        raise AnalysisEngineError("ERR_RATE_LIMIT", "The AI service is currently experiencing high load. Please try again later.")
+    elif isinstance(e, APIConnectionError):
+        raise AnalysisEngineError("ERR_API_CONNECTION", "Failed to connect to the AI service provider.")
+    elif isinstance(e, ContextWindowExceededError):
+        raise AnalysisEngineError("ERR_CONTEXT_EXCEEDED", "The provided documents are too large for the AI to process.")
+    elif isinstance(e, Timeout):
+        raise AnalysisEngineError("ERR_LLM_TIMEOUT", "The AI service took too long to respond.")
+    elif isinstance(e, (InstructorRetryException, ValidationError)):
+        raise AnalysisEngineError("ERR_LLM_VALIDATION", "The AI service returned an invalid format.")
+    elif isinstance(e, APIError):
+        raise AnalysisEngineError("ERR_AI_PROVIDER", "The AI service provider returned an error.")
+    else:
+        raise AnalysisEngineError("ERR_LLM_INTERNAL", f"An internal error occurred during {stage}.")
+
 async def _extract_jd_requirements(client, model: str, api_key: str, domain: DomainStrategy, jd_text: str) -> tuple[JDRequirementsResponse, dict]:
     msg = [
         {"role": "system", "content": domain.jd_extraction_prompt()},
@@ -28,14 +55,16 @@ async def _extract_jd_requirements(client, model: str, api_key: str, domain: Dom
     ]
     
     async with llm_bouncer:
-        resp, raw = await client.chat.completions.create_with_completion(
-            api_key=api_key,
-            model=model,
-            messages=msg,
-            response_model=JDRequirementsResponse,
-            max_retries=3,     
-            num_retries=5,     
-        )
+        try:
+            resp, raw = await client.chat.completions.create_with_completion(
+                api_key=api_key,
+                model=model,
+                messages=msg,
+                response_model=JDRequirementsResponse,
+                max_retries=1,
+            )
+        except Exception as e:
+            _handle_llm_exception(e, "JD Extraction")
         
     usage = {
         "prompt_tokens": getattr(raw.usage, "prompt_tokens", 0),
@@ -50,14 +79,16 @@ async def _extract_resume_claims(client, model: str, api_key: str, domain: Domai
     ]
     
     async with llm_bouncer:
-        resp, raw = await client.chat.completions.create_with_completion(
-            api_key=api_key,
-            model=model,
-            messages=msg,
-            response_model=ResumeClaimsResponse,
-            max_retries=3,     
-            num_retries=5,     
-        )
+        try:
+            resp, raw = await client.chat.completions.create_with_completion(
+                api_key=api_key,
+                model=model,
+                messages=msg,
+                response_model=ResumeClaimsResponse,
+                max_retries=1,
+            )
+        except Exception as e:
+            _handle_llm_exception(e, "Resume Extraction")
         
     usage = {
         "prompt_tokens": getattr(raw.usage, "prompt_tokens", 0),
@@ -73,14 +104,16 @@ async def _score_claims(client, model: str, api_key: str, domain: DomainStrategy
     ]
     
     async with llm_bouncer:
-        resp, raw = await client.chat.completions.create_with_completion(
-            api_key=api_key,
-            model=model,
-            messages=msg,
-            response_model=FinalAnalysisResult,
-            max_retries=3,     
-            num_retries=5,     
-        )
+        try:
+            resp, raw = await client.chat.completions.create_with_completion(
+                api_key=api_key,
+                model=model,
+                messages=msg,
+                response_model=FinalAnalysisResult,
+                max_retries=1,
+            )
+        except Exception as e:
+            _handle_llm_exception(e, "Claims Scoring")
         
     usage = {
         "prompt_tokens": getattr(raw.usage, "prompt_tokens", 0),
@@ -89,22 +122,18 @@ async def _score_claims(client, model: str, api_key: str, domain: DomainStrategy
     return resp, usage
 
 async def analyze_fit(jd_text: str, resume_text: str) -> tuple[FinalAnalysisResult, dict[str, int]]:
-    """
-    Executes the 3-step LLM pipeline:
-    1. Extract JD Requirements
-    2. Extract Resume Claims
-    3. Score Claims against Requirements
-    """
     api_key = os.environ.get("LLM_API_KEY")
     if not api_key:
-        raise ValueError("LLM API key is missing from environment. Cannot perform analysis.")
+        raise AnalysisEngineError("ERR_MISSING_CONFIG", "LLM API key is missing from environment.")
 
     domain: DomainStrategy = TechDomain()
     model = os.environ.get("LLM_MODEL")
     if not model:
-        raise ValueError("LLM_MODEL is missing from environment. Cannot perform analysis.")
+        raise AnalysisEngineError("ERR_MISSING_CONFIG", "LLM_MODEL is missing from environment.")
     
-    client = instructor.from_litellm(acompletion)
+    client = instructor.from_litellm(acompletion, mode=instructor.Mode.JSON)
+
+    logger.debug(f"Starting parallel extraction for JD (length: {len(jd_text)}) and Resume (length: {len(resume_text)})...")
 
     total_prompt_tokens = 0
     total_completion_tokens = 0
@@ -113,6 +142,8 @@ async def analyze_fit(jd_text: str, resume_text: str) -> tuple[FinalAnalysisResu
     res_task = _extract_resume_claims(client, model, api_key, domain, resume_text)
     
     (jd_reqs, jd_usage), (res_claims, res_usage) = await asyncio.gather(jd_task, res_task)
+    
+    logger.debug(f"Extraction completed. Extracted {len(jd_reqs.requirements)} JD requirements and {len(res_claims.claims)} Resume claims. Starting final claim scoring...")
     
     total_prompt_tokens += jd_usage["prompt_tokens"] + res_usage["prompt_tokens"]
     total_completion_tokens += jd_usage["completion_tokens"] + res_usage["completion_tokens"]

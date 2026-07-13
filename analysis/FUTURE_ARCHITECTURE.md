@@ -12,7 +12,7 @@ _These require structural changes to how Go and Python communicate._
 
 ### 1. Background Task Queueing (Celery / Redis)
 
-**Current State:** We protect against API rate limits natively using `asyncio.Semaphore`. The Go API holds the gRPC connection open until Python finishes (30-60 seconds).
+**Current State:** We protect against OOM crashes natively using an `asyncio.Semaphore` (`pdf_bouncer`). However, the Go API holds the gRPC connection open until Python finishes processing both the PDF parsing and LLM API calls (30-60 seconds).
 **The Problem:** Holding hundreds of synchronous HTTP/gRPC connections open for 60 seconds is an anti-pattern that leads to timeouts at massive scale.
 **Future Solution:**
 

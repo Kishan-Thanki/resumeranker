@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0e\x61nalysis.proto\x12\x08\x61nalysis\"A\n\x0e\x41nalyzeRequest\x12\x12\n\nresume_pdf\x18\x01 \x01(\x0c\x12\x1b\n\x13job_description_pdf\x18\x02 \x01(\x0c\"\xa5\x01\n\x0f\x41nalyzeResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x15\n\rerror_message\x18\x02 \x01(\t\x12\x13\n\x0bresult_json\x18\x03 \x01(\t\x12\r\n\x05model\x18\x04 \x01(\t\x12\x15\n\rprompt_tokens\x18\x05 \x01(\r\x12\x19\n\x11\x63ompletion_tokens\x18\x06 \x01(\r\x12\x14\n\x0ctotal_tokens\x18\x07 \x01(\r2R\n\x0e\x41nalysisEngine\x12@\n\x07\x41nalyze\x12\x18.analysis.AnalyzeRequest\x1a\x19.analysis.AnalyzeResponse\"\x00\x42@Z>github.com/kishan-thanki/resumeranker/api/internal/analysis/pbb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0e\x61nalysis.proto\x12\x08\x61nalysis\"U\n\x0e\x41nalyzeRequest\x12\x12\n\nresume_pdf\x18\x01 \x01(\x0c\x12\x1b\n\x13job_description_pdf\x18\x02 \x01(\x0c\x12\x12\n\nrequest_id\x18\x03 \x01(\t\"\xa5\x01\n\x0f\x41nalyzeResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x15\n\rerror_message\x18\x02 \x01(\t\x12\x13\n\x0bresult_json\x18\x03 \x01(\t\x12\r\n\x05model\x18\x04 \x01(\t\x12\x15\n\rprompt_tokens\x18\x05 \x01(\r\x12\x19\n\x11\x63ompletion_tokens\x18\x06 \x01(\r\x12\x14\n\x0ctotal_tokens\x18\x07 \x01(\r2R\n\x0e\x41nalysisEngine\x12@\n\x07\x41nalyze\x12\x18.analysis.AnalyzeRequest\x1a\x19.analysis.AnalyzeResponse\"\x00\x42@Z>github.com/kishan-thanki/resumeranker/api/internal/analysis/pbb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -33,9 +33,9 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'Z>github.com/kishan-thanki/resumeranker/api/internal/analysis/pb'
   _globals['_ANALYZEREQUEST']._serialized_start=28
-  _globals['_ANALYZEREQUEST']._serialized_end=93
-  _globals['_ANALYZERESPONSE']._serialized_start=96
-  _globals['_ANALYZERESPONSE']._serialized_end=261
-  _globals['_ANALYSISENGINE']._serialized_start=263
-  _globals['_ANALYSISENGINE']._serialized_end=345
+  _globals['_ANALYZEREQUEST']._serialized_end=113
+  _globals['_ANALYZERESPONSE']._serialized_start=116
+  _globals['_ANALYZERESPONSE']._serialized_end=281
+  _globals['_ANALYSISENGINE']._serialized_start=283
+  _globals['_ANALYSISENGINE']._serialized_end=365
 # @@protoc_insertion_point(module_scope)
