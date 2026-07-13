@@ -1,6 +1,3 @@
-
-
-
 :root {
     color-scheme: light dark;
 
@@ -219,16 +216,21 @@ p { color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.9375rem; }
     left: 0;
     right: 0;
     height: var(--navbar-height);
-    background: var(--bg-glass);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border-bottom: 1px solid var(--border-color);
+    background: transparent;
+    border-bottom: 1px solid transparent;
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 0 2rem;
     z-index: 100;
-    transition: background-color var(--transition-smooth), border-color var(--transition-smooth);
+    transition: background-color var(--transition-smooth), border-color var(--transition-smooth), backdrop-filter var(--transition-smooth);
+}
+
+.navbar.scrolled {
+    background: var(--bg-glass);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border-color);
 }
 
 .nav-brand a {
@@ -253,7 +255,7 @@ p { color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.9375rem; }
     color: var(--text-secondary);
 }
 
-.nav-links a:hover {
+.nav-links a:hover, .nav-links a.active {
     color: var(--text-primary);
 }
 
@@ -262,13 +264,23 @@ p { color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.9375rem; }
     position: absolute;
     bottom: -4px;
     left: 0;
-    width: 0;
-    height: 1px;
+    width: 100%;
+    height: 1.5px;
     background: var(--text-primary);
-    transition: width var(--transition-smooth);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform var(--transition-smooth);
 }
 
-.nav-links a:hover::after { width: 100%; }
+.nav-links a:hover::after, .nav-links a.active::after {
+    transform: scaleX(1);
+}
+
+.nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
 
 
 .theme-toggle {
@@ -789,13 +801,112 @@ tr:hover td {
 
 
 .content-page {
-    max-width: 720px;
+    max-width: 800px;
     margin: 0 auto;
-    padding-top: 2rem;
+    padding: calc(var(--navbar-height) + 3rem) 1.5rem 4rem;
 }
 
-.content-page h1 {
-    margin-bottom: 2rem;
+.content-page-header {
+    font-size: 2.5rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
+    background: linear-gradient(to right, var(--text-primary), var(--text-secondary));
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.04em;
+}
+
+.content-page-subtitle {
+    text-align: center;
+    font-size: 1.125rem;
+    color: var(--text-secondary);
+    margin-bottom: 3rem;
+    line-height: 1.6;
+}
+
+.prose {
+    line-height: 1.75;
+    color: var(--text-secondary);
+    font-size: 1rem;
+}
+
+.prose p {
+    margin-bottom: 1.25em;
+    color: var(--text-secondary);
+}
+
+.prose h2 {
+    color: var(--text-primary);
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-top: 2em;
+    margin-bottom: 1em;
+    letter-spacing: -0.025em;
+}
+
+.prose h3 {
+    color: var(--text-primary);
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-top: 1.5em;
+    margin-bottom: 0.75em;
+}
+
+.prose ul {
+    margin-top: 1em;
+    margin-bottom: 1em;
+    padding-left: 1.5em;
+}
+
+.prose li {
+    margin-bottom: 0.5em;
+}
+
+.prose a {
+    color: var(--text-primary);
+    text-decoration: underline;
+    text-decoration-color: var(--border-focus);
+    text-underline-offset: 4px;
+}
+
+.prose a:hover {
+    color: var(--text-primary);
+    text-decoration-color: var(--text-primary);
+}
+
+.contact-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2rem;
+}
+
+.contact-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 2.5rem 2rem;
+    text-align: center;
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
+}
+
+.contact-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--border-focus);
+}
+
+.contact-card-icon {
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 1.5rem;
+    background: var(--bg-surface-elevated);
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-primary);
 }
 
 .content-page .content-body {
@@ -975,6 +1086,19 @@ code:not(.code-block) {
     h1 { font-size: 1.75rem; }
     h2 { font-size: 1.25rem; }
 
+    .nav-brand span {
+        display: none;
+    }
+
+    #navDashBtn, #navLogout, #navLoginBtn {
+        padding: 0.4rem 0.6rem !important;
+        font-size: 0.75rem !important;
+    }
+
+    .nav-actions {
+        gap: 0.5rem;
+    }
+
     .navbar {
         padding: 0 1rem;
     }
@@ -1093,12 +1217,14 @@ code:not(.code-block) {
     }
 
     .terminal-body {
-        font-size: 0.6875rem;
+        font-size: 0.75rem;
         padding: 1rem;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
     .typing-effect {
-        white-space: pre-wrap;
+        white-space: nowrap;
         animation: none;
         border-right: none;
     }
@@ -1117,13 +1243,21 @@ code:not(.code-block) {
 
     
     .content-page {
-        padding-top: 1rem;
+        padding: calc(var(--navbar-height) + 1.5rem) 1rem 2rem;
     }
 }
 
 
 @media (max-width: 480px) {
     h1 { font-size: 1.5rem; }
+
+    .nav-brand span {
+        display: none; /* Hide text on small screens, keep only the SVG icon to prevent overlap */
+    }
+
+    .nav-actions {
+        gap: 0.5rem;
+    }
 
     .auth-card {
         padding: 1.5rem 1.25rem;
@@ -1139,15 +1273,7 @@ code:not(.code-block) {
     }
 }
 
-.content-page-header {
-    font-size: 2.5rem;
-    margin-bottom: 1.5rem;
-    text-align: center;
-    background: linear-gradient(to right, var(--text-primary), var(--text-secondary));
-    background-clip: text;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
+
 
 .content-page-subtitle {
     font-size: 1.25rem;

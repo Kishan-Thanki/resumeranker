@@ -165,6 +165,38 @@ export function initTheme() {
     });
 }
 
+export function initScrollListener() {
+    const navbar = document.querySelector('.navbar');
+    if (!navbar) return;
+    
+    const onScroll = () => {
+        if (window.scrollY > 10) {
+            navbar.classList.add('scrolled');
+        } else {
+            navbar.classList.remove('scrolled');
+        }
+    };
+    
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+}
+
+export function setActiveNavLink() {
+    const path = window.location.pathname;
+    const links = document.querySelectorAll('.nav-links a');
+    
+    links.forEach(link => {
+        const href = link.getAttribute('href');
+        if (href === '/' && path === '/') {
+            link.classList.add('active');
+        } else if (href !== '/' && path.startsWith(href)) {
+            link.classList.add('active');
+        } else {
+            link.classList.remove('active');
+        }
+    });
+}
+
 export function bindGlobalEvents() {
     const navLogout = document.getElementById('navLogout');
     if (navLogout) {
@@ -231,6 +263,8 @@ export function setupPage() {
     initGlobalComponents();
     initTheme();
     initNavigation();
+    initScrollListener();
+    setActiveNavLink();
     bindGlobalEvents();
     return checkProtectedRoutes();
 }

@@ -56,7 +56,20 @@ async function handleAuth(e, mode) {
         }
 
         if (mode === 'register') {
-            await loginHelper(email, password);
+            const form = document.getElementById('registerForm');
+            const successEl = document.getElementById('registerSuccess');
+            const emailSpan = document.getElementById('registeredEmail');
+            const footer = document.getElementById('registerFooter');
+            
+            if (form && successEl) {
+                form.classList.add('hidden');
+                if (footer) footer.classList.add('hidden');
+                if (emailSpan) emailSpan.textContent = email;
+                successEl.classList.remove('hidden');
+            } else {
+                showToast('Registration successful! Please check your email to verify your account.', false);
+                window.location.href = '/auth/login';
+            }
         } else {
             setLoggedIn(true, email);
             window.location.href = '/dashboard/dashboard';

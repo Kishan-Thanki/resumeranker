@@ -44,7 +44,7 @@ export async function apiCall(endpoint, options = {}) {
     
     if (res.status === 401 || res.status === 403) {
         if (endpoint !== '/users/login' && endpoint !== '/users/register') {
-            showToast('Session expired. Please sign in again.', true);
+            showToast('Session expired. Please log in again.', true);
             await logout(false);
         }
     }

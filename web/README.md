@@ -27,6 +27,7 @@ web/
 2. **Strict Monochromatic Design**: The UI strictly enforces a black-and-white aesthetic with native Light/Dark mode toggling. No colors are permitted.
 3. **DOM Safety**: To prevent XSS vulnerabilities, the codebase strictly avoids `innerHTML` and dynamically constructs all elements using `document.createElement`.
 4. **Secure State Management**: CSRF tokens are securely maintained in JavaScript memory closures (inside `api.js`) to prevent XSS theft, and JWTs are handled entirely via backend `HttpOnly` cookies.
+5. **Semantic Error Mapping**: The frontend (`api.js` and `ui.js`) is natively aware of the Go API's complex HTTP response states (e.g., catching `429 Too Many Requests` or `502 Bad Gateway` from the Python AI Engine) and elegantly displaying them to the user via toast notifications.
 
 ## Advanced Security
 

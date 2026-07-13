@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ResumeRanker | Verify Email</title>
+    <script>
+        (function() {
+            var t = localStorage.getItem('data-theme');
+            if (!t) t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', t);
+        })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+    <nav class="navbar" role="navigation" aria-label="Main navigation">
+        <div class="nav-brand">
+            <a href="/">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="brand-icon"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>
+                <span style="background: linear-gradient(to right, var(--text-primary), var(--text-muted)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">ResumeRanker</span>
+            </a>
+        </div>
+        <div class="nav-links">
+            <a href="/">Home</a>
+            <a href="/about">About</a>
+            <a href="/contact">Contact</a>
+        </div>
+        <div class="nav-actions">
+            <a href="/auth/login" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.875rem;">Log In</a>
+        </div>
+    </nav>
+
+    <div class="auth-layout" id="main">
+        <div class="auth-card">
+            <h2 id="verifyTitle">Verifying Email...</h2>
+            <p id="verifyMessage">Please wait while we confirm your email address.</p>
+            <div id="verifySpinner" style="text-align: center; margin: 2rem 0;">
+                <span class="loader" style="border-color: var(--text-primary); border-bottom-color: transparent;"></span>
+            </div>
+            <div id="verifyError" class="alert alert-error hidden"></div>
+            <div id="verifySuccess" class="alert alert-success hidden">Your email has been verified successfully!</div>
+            
+            <a href="/auth/login" class="btn btn-primary btn-lg btn-full mt-2 hidden" id="verifyLoginBtn">
+                <span class="btn-text">Proceed to Login</span>
+            </a>
+        </div>
+    </div>
+
+    <script type="module">
+        import { apiCall } from '/assets/js/api.js';
+        
+        document.addEventListener('DOMContentLoaded', async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+            
+            const spinner = document.getElementById('verifySpinner');
+            const errorEl = document.getElementById('verifyError');
+            const successEl = document.getElementById('verifySuccess');
+            const loginBtn = document.getElementById('verifyLoginBtn');
+            const title = document.getElementById('verifyTitle');
+            const message = document.getElementById('verifyMessage');
+
+            if (!token) {
+                spinner.classList.add('hidden');
+                errorEl.textContent = 'No verification token provided in the URL.';
+                errorEl.classList.remove('hidden');
+                title.textContent = 'Verification Failed';
+                message.textContent = 'The link is invalid.';
+                return;
+            }
+
+            try {
+                const res = await apiCall('/users/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: token })
+                });
+
+                if (!res.ok) {
+                    let errMsg = 'Verification failed. The link may have expired.';
+                    try {
+                        const data = await res.json();
+                        errMsg = data.error || errMsg;
+                    } catch(e) {}
+                    throw new Error(errMsg);
+                }
+
+                spinner.classList.add('hidden');
+                successEl.classList.remove('hidden');
+                loginBtn.classList.remove('hidden');
+                title.textContent = 'Email Verified';
+                message.textContent = 'Thank you for verifying your email address.';
+                
+            } catch (err) {
+                spinner.classList.add('hidden');
+                errorEl.textContent = err.message;
+                errorEl.classList.remove('hidden');
+                title.textContent = 'Verification Failed';
+                message.textContent = 'We could not verify your email.';
+            }
+        });
+    </script>
+</body>
+</html>

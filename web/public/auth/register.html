@@ -21,12 +21,22 @@
     <a href="#main" class="skip-link">Skip to content</a>
 
     <nav class="navbar" role="navigation" aria-label="Main navigation">
-        <div class="nav-brand"><a href="/">ResumeRanker</a></div>
+        <div class="nav-brand">
+            <a href="/">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="brand-icon"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>
+                <span style="background: linear-gradient(to right, var(--text-primary), var(--text-muted)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">ResumeRanker</span>
+            </a>
+        </div>
         <div class="nav-links">
+            <a href="/">Home</a>
+            <a href="/about">About</a>
+            <a href="/contact">Contact</a>
             <a href="/docs/public" target="_blank" rel="noopener">API Docs</a>
-            <a href="/auth/login">Sign In</a>
         </div>
         <div class="nav-actions">
+            <a href="/auth/login" id="navLoginBtn" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.875rem;">Log In</a>
+            <a href="/dashboard/dashboard" id="navDashBtn" class="btn btn-primary hidden" style="padding: 0.5rem 1rem; font-size: 0.875rem;">Dashboard</a>
+            <a href="#" id="navLogout" class="btn btn-secondary hidden" style="padding: 0.5rem 1rem; font-size: 0.875rem;">Logout</a>
             <button class="theme-toggle" id="themeToggleBtn" aria-label="Toggle theme">
                 <svg class="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
                 <svg class="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
@@ -61,8 +71,16 @@
                     <span class="loader hidden"></span>
                 </button>
             </form>
-            <p class="auth-footer-text">
-                Already have an account? <a href="/auth/login">Sign In</a>
+            
+            <div id="registerSuccess" class="hidden" style="text-align: center; padding: 1rem 0;">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 1rem auto; display: block;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                <h3 style="margin-bottom: 0.5rem;">Check your email</h3>
+                <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">We've sent a verification link to <strong id="registeredEmail" style="color: var(--text-primary);"></strong>. Please verify your account before logging in.</p>
+                <a href="/auth/login" class="btn btn-secondary btn-full">Go to Log In</a>
+            </div>
+
+            <p class="auth-footer-text" id="registerFooter">
+                Already have an account? <a href="/auth/login">Log In</a>
             </p>
         </div>
     </div>

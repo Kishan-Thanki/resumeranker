@@ -15,3 +15,7 @@ These rules apply strictly to any AI agent modifying the `@web` directory.
 4. **Decoupled Architecture**: 
    - The web container uses Caddy for routing and static file serving.
    - The web container is completely stateless. It communicates with the backend exclusively via relative paths (e.g., `/api/v1/...`) routed through Caddy's reverse proxy.
+5. **Semantic Error Handling**:
+   - The Go backend returns explicit HTTP codes (400, 401, 429, 502, 504). The frontend (`api.js` / `ui.js`) must gracefully parse these and show user-friendly toasts (e.g., "Too many requests" instead of generic failures).
+6. **Hardcoded Domain Name**:
+   - Never use generic placeholder domains (e.g., `resumeranker.io`). The absolute production domain is `resumeranker.kishanthanki.dev` and all support emails must be sent from `noreply@resumeranker.kishanthanki.dev`.

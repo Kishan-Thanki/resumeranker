@@ -12,7 +12,14 @@
     }
 
     handle_errors {
-        rewrite * /error.html
-        file_server
+        @404 expression `{err.status_code} == 404`
+        handle @404 {
+            rewrite * /404.html
+            file_server
+        }
+        handle {
+            rewrite * /error.html
+            file_server
+        }
     }
 }
