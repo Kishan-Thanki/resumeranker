@@ -1,0 +1,9 @@
+.git
+.gitignore
+.dockerignore
+.env
+__pycache__
+*.pyc
+.venv
+.ruff_cache
+.mypy_cache

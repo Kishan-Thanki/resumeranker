@@ -1,0 +1,57 @@
+# ==========================================
+# Python Core
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# ==========================================
+# Virtual Environments
+# ==========================================
+.venv/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# ==========================================
+# Environment Variables & Secrets
+# ==========================================
+# Ignore all .env files (dev.env, prod.env, etc.)
+*.env
+env/*.env
+# Explicitly ALLOW example.env so it gets committed to GitHub
+!example.env
+!env/example.env
+
+# ==========================================
+# Testing & Coverage
+# ==========================================
+.pytest_cache/
+.tox/
+.nox/
+.coverage
+htmlcov/
+coverage.xml
+
+# ==========================================
+# Tooling & IDEs
+# ==========================================
+.mypy_cache/
+.ruff_cache/
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# ==========================================
+# OS Generated Files
+# ==========================================
+Thumbs.db
+.Trashes
