@@ -10,9 +10,9 @@
 ResumeRanker is built using a modern, polyglot microservice architecture. It strictly separates the web-facing logic from the heavy CPU/AI computation.
 
 ### The 4 Core Components:
-- **`web/`**: The Frontend interface, served blazingly fast via Caddy.
-- **`api/`**: The Go (Golang) monolithic backend. It acts as the gatekeeper, handling JWT authentication, PostgreSQL interactions, quotas, and routing.
-- **`analysis/`**: The pure-Python AI Engine. It receives PDFs via gRPC, parses them on background threads, and orchestrates requests to external LLMs (Gemini/OpenAI) using strict Pydantic JSON schemas.
+- **`web/`**: The Frontend interface (Vanilla ES6/HTML/CSS) served blazingly fast via Caddy.
+- **`api/`**: The Go (Golang) monolithic backend. It acts as the gateway, translating internal Python errors into semantic HTTP status codes, propagating `RequestID` distributed tracing, and handling auth/PostgreSQL.
+- **`analysis/`**: The pure-Python AI Engine running on `uvloop`. It receives PDFs via gRPC, parses them securely via `Semaphore` thread bouncers, and orchestrates LLM requests.
 - **`database/`**: The isolated PostgreSQL database container.
 
 ### Shared Contracts:
@@ -22,31 +22,22 @@ ResumeRanker is built using a modern, polyglot microservice architecture. It str
 
 ## How to Spin Up
 
-To manually spin up the full local development environment, you must build and run each Docker component separately. Run the following commands from the root of the project:
+We use Docker Compose to orchestrate the entire polyglot stack seamlessly.
 
-### 1. Database
-```bash
-./database/build.sh
-./database/run.sh
-```
-
-### 2. Python AI Engine
+### 1. Configure Environment
+Before starting, ensure you have your environment variables configured.
 *(Important: Create your `analysis/env/dev.env` with your LLM API Key first)*
+
+### 2. Boot the Cluster
+Run the following from the root of the project to build and launch all 4 microservices simultaneously:
+
 ```bash
-./analysis/build.sh
-./analysis/run.sh
+docker compose up --build -d
 ```
 
-### 3. Go API (Includes Migrations)
+To view the aggregated, distributed-traced logs across the entire system:
 ```bash
-./api/build.sh
-./api/run.sh
-```
-
-### 4. Web Frontend
-```bash
-./web/build.sh
-./web/run.sh
+docker compose logs -f
 ```
 
 ---

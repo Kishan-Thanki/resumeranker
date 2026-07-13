@@ -44,3 +44,13 @@ go.work.sum
 
 # App-specific build outputs
 api/api
+
+# Python environments & cache
+.venv/
+__pycache__/
+*.pyc
+
+# Temporary scratch files
+te
+
+mysample
