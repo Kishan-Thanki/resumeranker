@@ -13,22 +13,24 @@ import (
 
 const createAPIKey = `-- name: CreateAPIKey :one
 INSERT INTO api_keys (
-    user_id, name, key_prefix, key_selector, key_hash, status, token_quota, tokens_used, expires_at
+    user_id, name, key_prefix, key_selector, key_hash, status, requests_per_minute, requests_per_day, token_quota, tokens_used, expires_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9
-) RETURNING id, user_id, name, key_selector, key_hash, status, token_quota, tokens_used, expires_at, last_used_at, created_at, updated_at, deleted_at, key_prefix
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+) RETURNING id, user_id, name, key_selector, key_hash, status, token_quota, tokens_used, expires_at, last_used_at, created_at, updated_at, deleted_at, key_prefix, requests_per_minute, requests_per_day
 `
 
 type CreateAPIKeyParams struct {
-	UserID      int64              `json:"user_id"`
-	Name        string             `json:"name"`
-	KeyPrefix   string             `json:"key_prefix"`
-	KeySelector string             `json:"key_selector"`
-	KeyHash     string             `json:"key_hash"`
-	Status      string             `json:"status"`
-	TokenQuota  int64              `json:"token_quota"`
-	TokensUsed  int64              `json:"tokens_used"`
-	ExpiresAt   pgtype.Timestamptz `json:"expires_at"`
+	UserID            int64              `json:"user_id"`
+	Name              string             `json:"name"`
+	KeyPrefix         string             `json:"key_prefix"`
+	KeySelector       string             `json:"key_selector"`
+	KeyHash           string             `json:"key_hash"`
+	Status            string             `json:"status"`
+	RequestsPerMinute int32              `json:"requests_per_minute"`
+	RequestsPerDay    int32              `json:"requests_per_day"`
+	TokenQuota        int64              `json:"token_quota"`
+	TokensUsed        int64              `json:"tokens_used"`
+	ExpiresAt         pgtype.Timestamptz `json:"expires_at"`
 }
 
 func (q *Queries) CreateAPIKey(ctx context.Context, arg CreateAPIKeyParams) (ApiKey, error) {
@@ -39,6 +41,8 @@ func (q *Queries) CreateAPIKey(ctx context.Context, arg CreateAPIKeyParams) (Api
 		arg.KeySelector,
 		arg.KeyHash,
 		arg.Status,
+		arg.RequestsPerMinute,
+		arg.RequestsPerDay,
 		arg.TokenQuota,
 		arg.TokensUsed,
 		arg.ExpiresAt,
@@ -59,6 +63,8 @@ func (q *Queries) CreateAPIKey(ctx context.Context, arg CreateAPIKeyParams) (Api
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.KeyPrefix,
+		&i.RequestsPerMinute,
+		&i.RequestsPerDay,
 	)
 	return i, err
 }
@@ -75,7 +81,7 @@ func (q *Queries) DeleteAPIKey(ctx context.Context, id int64) error {
 }
 
 const getAPIKeyByID = `-- name: GetAPIKeyByID :one
-SELECT id, user_id, name, key_selector, key_hash, status, token_quota, tokens_used, expires_at, last_used_at, created_at, updated_at, deleted_at, key_prefix FROM api_keys
+SELECT id, user_id, name, key_selector, key_hash, status, token_quota, tokens_used, expires_at, last_used_at, created_at, updated_at, deleted_at, key_prefix, requests_per_minute, requests_per_day FROM api_keys
 WHERE id = $1 AND deleted_at IS NULL
 `
 
@@ -97,12 +103,14 @@ func (q *Queries) GetAPIKeyByID(ctx context.Context, id int64) (ApiKey, error) {
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.KeyPrefix,
+		&i.RequestsPerMinute,
+		&i.RequestsPerDay,
 	)
 	return i, err
 }
 
 const getAPIKeyBySelector = `-- name: GetAPIKeyBySelector :one
-SELECT id, user_id, name, key_selector, key_hash, status, token_quota, tokens_used, expires_at, last_used_at, created_at, updated_at, deleted_at, key_prefix FROM api_keys
+SELECT id, user_id, name, key_selector, key_hash, status, token_quota, tokens_used, expires_at, last_used_at, created_at, updated_at, deleted_at, key_prefix, requests_per_minute, requests_per_day FROM api_keys
 WHERE key_selector = $1 AND deleted_at IS NULL
 `
 
@@ -124,6 +132,8 @@ func (q *Queries) GetAPIKeyBySelector(ctx context.Context, keySelector string) (
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.KeyPrefix,
+		&i.RequestsPerMinute,
+		&i.RequestsPerDay,
 	)
 	return i, err
 }
@@ -141,7 +151,7 @@ func (q *Queries) GetUserEmailByID(ctx context.Context, id int64) (string, error
 }
 
 const listAPIKeysByUserID = `-- name: ListAPIKeysByUserID :many
-SELECT id, user_id, name, key_selector, key_hash, status, token_quota, tokens_used, expires_at, last_used_at, created_at, updated_at, deleted_at, key_prefix FROM api_keys
+SELECT id, user_id, name, key_selector, key_hash, status, token_quota, tokens_used, expires_at, last_used_at, created_at, updated_at, deleted_at, key_prefix, requests_per_minute, requests_per_day FROM api_keys
 WHERE user_id = $1 AND deleted_at IS NULL
 ORDER BY created_at DESC
 `
@@ -170,6 +180,8 @@ func (q *Queries) ListAPIKeysByUserID(ctx context.Context, userID int64) ([]ApiK
 			&i.UpdatedAt,
 			&i.DeletedAt,
 			&i.KeyPrefix,
+			&i.RequestsPerMinute,
+			&i.RequestsPerDay,
 		); err != nil {
 			return nil, err
 		}
@@ -185,7 +197,7 @@ const updateAPIKey = `-- name: UpdateAPIKey :one
 UPDATE api_keys
 SET status = $2, token_quota = $3, tokens_used = $4, expires_at = $5, last_used_at = $6, updated_at = NOW()
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, user_id, name, key_selector, key_hash, status, token_quota, tokens_used, expires_at, last_used_at, created_at, updated_at, deleted_at, key_prefix
+RETURNING id, user_id, name, key_selector, key_hash, status, token_quota, tokens_used, expires_at, last_used_at, created_at, updated_at, deleted_at, key_prefix, requests_per_minute, requests_per_day
 `
 
 type UpdateAPIKeyParams struct {
@@ -222,6 +234,8 @@ func (q *Queries) UpdateAPIKey(ctx context.Context, arg UpdateAPIKeyParams) (Api
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.KeyPrefix,
+		&i.RequestsPerMinute,
+		&i.RequestsPerDay,
 	)
 	return i, err
 }

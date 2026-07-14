@@ -1,0 +1,3 @@
+ALTER TABLE api_keys
+ADD COLUMN requests_per_minute INTEGER NOT NULL DEFAULT 1,
+ADD COLUMN requests_per_day INTEGER NOT NULL DEFAULT 6;

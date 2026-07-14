@@ -49,20 +49,22 @@ type AnalysisResult struct {
 }
 
 type ApiKey struct {
-	ID          int64              `json:"id"`
-	UserID      int64              `json:"user_id"`
-	Name        string             `json:"name"`
-	KeySelector string             `json:"key_selector"`
-	KeyHash     string             `json:"key_hash"`
-	Status      string             `json:"status"`
-	TokenQuota  int64              `json:"token_quota"`
-	TokensUsed  int64              `json:"tokens_used"`
-	ExpiresAt   pgtype.Timestamptz `json:"expires_at"`
-	LastUsedAt  pgtype.Timestamptz `json:"last_used_at"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
-	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
-	KeyPrefix   string             `json:"key_prefix"`
+	ID                int64              `json:"id"`
+	UserID            int64              `json:"user_id"`
+	Name              string             `json:"name"`
+	KeySelector       string             `json:"key_selector"`
+	KeyHash           string             `json:"key_hash"`
+	Status            string             `json:"status"`
+	TokenQuota        int64              `json:"token_quota"`
+	TokensUsed        int64              `json:"tokens_used"`
+	ExpiresAt         pgtype.Timestamptz `json:"expires_at"`
+	LastUsedAt        pgtype.Timestamptz `json:"last_used_at"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt         pgtype.Timestamptz `json:"deleted_at"`
+	KeyPrefix         string             `json:"key_prefix"`
+	RequestsPerMinute int32              `json:"requests_per_minute"`
+	RequestsPerDay    int32              `json:"requests_per_day"`
 }
 
 type AuditEvent struct {

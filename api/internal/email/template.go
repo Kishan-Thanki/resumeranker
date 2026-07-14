@@ -117,7 +117,7 @@ type HTMLTemplateParams struct {
 	BtnText      string
 	BtnLink      string
 	SupportEmail string
-	Domain  string
+	Domain       string
 	FooterNote   string
 }
 
@@ -130,7 +130,7 @@ func BuildHTMLTemplate(p HTMLTemplateParams) string {
 		BtnText      string
 		BtnLink      string
 		SupportEmail string
-		Domain  string
+		Domain       string
 		FooterNote   string
 	}{
 		Title:        p.Title,
@@ -138,7 +138,7 @@ func BuildHTMLTemplate(p HTMLTemplateParams) string {
 		BtnText:      p.BtnText,
 		BtnLink:      p.BtnLink,
 		SupportEmail: p.SupportEmail,
-		Domain:  p.Domain,
+		Domain:       p.Domain,
 		FooterNote:   p.FooterNote,
 	}
 

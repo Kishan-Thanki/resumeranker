@@ -3,11 +3,11 @@ import os
 from unittest.mock import patch, AsyncMock
 
 from app.services.llm_service import analyze_fit, JDRequirementsResponse, ResumeClaimsResponse
-from app.schemas import (
-    FinalAnalysisResult, 
-    SectionsAnalysis, 
-    SectionScore
-)
+from app.schemas import SectionScore
+from app.domain.tech import TechDomain
+
+FinalAnalysisResult = TechDomain().get_final_schema()
+SectionsAnalysis = FinalAnalysisResult.model_fields['sections_analysis'].annotation
 
 class FakeUsage:
     prompt_tokens = 10
@@ -18,7 +18,7 @@ class FakeRaw:
 
 final_resp = FinalAnalysisResult(
     complete_analysis="Candidate is a good fit.",
-    sections_analysis=SectionsAnalysis(skills="good", experience="good", education="good", leadership="good"),
+    sections_analysis=SectionsAnalysis(skills="good", experience="good", education="good", project="good"),
     sections=[
         SectionScore(id="skills", label="Skills", score=90, requirements=[])
     ]
@@ -31,7 +31,7 @@ async def custom_create_with_completion(*args, **kwargs):
         return JDRequirementsResponse(requirements=[]), FakeRaw()
     elif model == ResumeClaimsResponse:
         return ResumeClaimsResponse(claims=[]), FakeRaw()
-    elif model == FinalAnalysisResult:
+    elif getattr(model, "__name__", None) == "DynamicFinalAnalysisResult":
         return final_resp, FakeRaw()
     raise ValueError(f"Unknown model requested: {model}")
 

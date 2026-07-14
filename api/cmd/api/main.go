@@ -20,6 +20,7 @@ import (
 	"github.com/kishan-thanki/resumeranker/api/internal/config"
 	"github.com/kishan-thanki/resumeranker/api/internal/database"
 	"github.com/kishan-thanki/resumeranker/api/internal/email"
+	"github.com/kishan-thanki/resumeranker/api/internal/ratelimit"
 	"github.com/kishan-thanki/resumeranker/api/internal/server"
 	"github.com/kishan-thanki/resumeranker/api/internal/users"
 )
@@ -29,7 +30,7 @@ func main() {
 	opts := &slog.HandlerOptions{
 		Level: slog.LevelInfo,
 	}
-	
+
 	var baseLogger slog.Handler
 	if debugMode {
 		opts.Level = slog.LevelDebug
@@ -76,7 +77,13 @@ func main() {
 		slog.Error("failed to seed from fixtures", "err", err)
 	}
 
-	apiKeyService := apikey.NewAPIKeyService(apiKeyRepo, auditService, emailService, cfg.Domain, cfg.EmailContact)
+	rateLimitService, err := ratelimit.NewService(cfg.RedisURL)
+	if err != nil {
+		slog.Error("failed to initialize rate limit service", "err", err)
+		os.Exit(1)
+	}
+
+	apiKeyService := apikey.NewAPIKeyService(apiKeyRepo, auditService, emailService, rateLimitService, cfg.Domain, cfg.EmailContact)
 
 	engineClient, err := analysis.NewGrpcEngineClient(cfg.AnalysisServiceURL)
 	if err != nil {
@@ -84,7 +91,17 @@ func main() {
 		os.Exit(1)
 	}
 	defer engineClient.Close()
-	analysisService := analysis.NewAnalysisService(analysisRepo, auditService, apiKeyService, engineClient, cfg.PaginationDefaultLimit)
+
+	analysisService := analysis.NewAnalysisService(
+		analysisRepo,
+		auditService,
+		apiKeyService,
+		rateLimitService,
+		engineClient,
+		cfg.PaginationDefaultLimit,
+		cfg.GlobalAnalysisRPMLimit,
+		cfg.GlobalAnalysisRPDLimit,
+	)
 
 	authManager := auth.NewManager(cfg.JWTSecret, cfg.Environment, cfg.SessionDurationHours)
 

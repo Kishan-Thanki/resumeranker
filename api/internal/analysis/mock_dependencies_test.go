@@ -109,3 +109,22 @@ func (m *MockRepository) DeleteResult(ctx context.Context, id uint64) error {
 	}
 	return nil
 }
+
+type MockRateLimiter struct {
+	CheckGlobalLimitFunc func(ctx context.Context, rpmLimit, rpdLimit int) error
+	CheckKeyLimitFunc    func(ctx context.Context, apiKeyID uint64, rpmLimit, rpdLimit int) error
+}
+
+func (m *MockRateLimiter) CheckGlobalLimit(ctx context.Context, rpmLimit, rpdLimit int) error {
+	if m.CheckGlobalLimitFunc != nil {
+		return m.CheckGlobalLimitFunc(ctx, rpmLimit, rpdLimit)
+	}
+	return nil
+}
+
+func (m *MockRateLimiter) CheckKeyLimit(ctx context.Context, apiKeyID uint64, rpmLimit, rpdLimit int) error {
+	if m.CheckKeyLimitFunc != nil {
+		return m.CheckKeyLimitFunc(ctx, apiKeyID, rpmLimit, rpdLimit)
+	}
+	return nil
+}

@@ -15,6 +15,7 @@ type apiKeyService interface {
 	ListKeys(ctx context.Context, userID uint64) ([]*APIKey, error)
 	ToggleStatus(ctx context.Context, userID, keyID uint64, status APIKeyStatus) error
 	RevokeKey(ctx context.Context, userID, keyID uint64) error
+	GetAPIKeyStats(ctx context.Context, userID, keyID uint64) (*APIKeyUsageResponse, error)
 }
 
 type APIKeyHandler struct {
@@ -131,4 +132,27 @@ func (h *APIKeyHandler) RevokeKey(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"message": "key revoked successfully"})
+}
+
+func (h *APIKeyHandler) GetAPIKeyStats(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(ctxkey.UserID).(uint64)
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	idStr := chi.URLParam(r, "id")
+	keyID, err := strconv.ParseUint(idStr, 10, 64)
+	if err != nil {
+		http.Error(w, "invalid key id", http.StatusBadRequest)
+		return
+	}
+
+	stats, err := h.apiKeyService.GetAPIKeyStats(r.Context(), userID, keyID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(stats)
 }

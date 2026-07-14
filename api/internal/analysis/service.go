@@ -33,6 +33,11 @@ type auditService interface {
 	LogEvent(ctx context.Context, event *audit.AuditEvent) error
 }
 
+type RateLimiter interface {
+	CheckGlobalLimit(ctx context.Context, rpmLimit, rpdLimit int) error
+	CheckKeyLimit(ctx context.Context, apiKeyID uint64, rpmLimit, rpdLimit int) error
+}
+
 type EngineRequest struct {
 	ResumePDF         []byte `json:"resume_pdf"`
 	JobDescriptionPDF []byte `json:"job_description_pdf"`
@@ -52,26 +57,35 @@ type EngineClient interface {
 }
 
 type AnalysisService struct {
-	repo         Repository
-	auditService auditService
-	keyService   APIKeyValidator
-	engineClient EngineClient
-	defaultLimit int
+	repo           Repository
+	auditService   auditService
+	keyService     APIKeyValidator
+	rateLimiter    RateLimiter
+	engineClient   EngineClient
+	defaultLimit   int
+	globalRPMLimit int
+	globalRPDLimit int
 }
 
 func NewAnalysisService(
 	repo Repository,
 	auditService auditService,
 	keyService APIKeyValidator,
+	rateLimiter RateLimiter,
 	engineClient EngineClient,
 	defaultLimit int,
+	globalRPMLimit int,
+	globalRPDLimit int,
 ) *AnalysisService {
 	return &AnalysisService{
-		repo:         repo,
-		auditService: auditService,
-		keyService:   keyService,
-		engineClient: engineClient,
-		defaultLimit: defaultLimit,
+		repo:           repo,
+		auditService:   auditService,
+		keyService:     keyService,
+		rateLimiter:    rateLimiter,
+		engineClient:   engineClient,
+		defaultLimit:   defaultLimit,
+		globalRPMLimit: globalRPMLimit,
+		globalRPDLimit: globalRPDLimit,
 	}
 }
 
@@ -93,6 +107,26 @@ func (s *AnalysisService) ProcessResume(ctx context.Context, plainTextKey string
 			APIKeyID:    &apiKey.ID,
 		})
 		return nil, ErrInsufficientQuota
+	}
+
+	if err := s.rateLimiter.CheckGlobalLimit(ctx, s.globalRPMLimit, s.globalRPDLimit); err != nil {
+		_ = s.auditService.LogEvent(ctx, &audit.AuditEvent{
+			Type:        audit.AuditEventAPIKeyUsed,
+			Description: "global rate limit exceeded",
+			UserID:      &apiKey.UserID,
+			APIKeyID:    &apiKey.ID,
+		})
+		return nil, ErrRateLimit
+	}
+
+	if err := s.rateLimiter.CheckKeyLimit(ctx, apiKey.ID, int(apiKey.RequestsPerMinute), int(apiKey.RequestsPerDay)); err != nil {
+		_ = s.auditService.LogEvent(ctx, &audit.AuditEvent{
+			Type:        audit.AuditEventAPIKeyUsed,
+			Description: "api key rate limit exceeded",
+			UserID:      &apiKey.UserID,
+			APIKeyID:    &apiKey.ID,
+		})
+		return nil, ErrRateLimit
 	}
 
 	now := time.Now()
@@ -127,7 +161,7 @@ func (s *AnalysisService) ProcessResume(ctx context.Context, plainTextKey string
 	if err != nil {
 		errStr := err.Error()
 		var retErr error = ErrAnalysisFailed
-		
+
 		if strings.Contains(errStr, "ERR_RATE_LIMIT") {
 			retErr = ErrRateLimit
 			errStr = ErrRateLimit.Error()

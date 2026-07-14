@@ -28,19 +28,25 @@ type emailService interface {
 	SendEmail(ctx context.Context, req *email.SendEmailRequest) error
 }
 
+type RateLimiter interface {
+	GetKeyUsage(ctx context.Context, apiKeyID uint64) (rpmUsed, rpdUsed int, err error)
+}
+
 type APIKeyService struct {
 	repo         Repository
 	auditService auditService
 	emailService emailService
+	rateLimiter  RateLimiter
 	domain       string
 	emailContact string
 }
 
-func NewAPIKeyService(repo Repository, auditService auditService, emailService emailService, domain string, emailContact string) *APIKeyService {
+func NewAPIKeyService(repo Repository, auditService auditService, emailService emailService, rateLimiter RateLimiter, domain string, emailContact string) *APIKeyService {
 	return &APIKeyService{
 		repo:         repo,
 		auditService: auditService,
 		emailService: emailService,
+		rateLimiter:  rateLimiter,
 		domain:       domain,
 		emailContact: emailContact,
 	}
@@ -69,14 +75,21 @@ func (s *APIKeyService) GenerateKey(ctx context.Context, userID uint64, name str
 
 	keyHash := password.HashSHA256(verifier)
 
+	shortPrefix := selector
+	if len(selector) > 4 {
+		shortPrefix = selector[:4]
+	}
+
 	apiKey := &APIKey{
-		UserID:      userID,
-		Name:        name,
-		KeyPrefix:   "rr_" + strings.ToLower(selector) + "_",
-		KeySelector: selector,
-		KeyHash:     keyHash,
-		Status:      APIKeyStatusActive,
-		TokenQuota:  quota,
+		UserID:            userID,
+		Name:              name,
+		KeyPrefix:         "rr_" + strings.ToLower(shortPrefix) + "_",
+		KeySelector:       selector,
+		KeyHash:           keyHash,
+		Status:            APIKeyStatusActive,
+		RequestsPerMinute: 1,
+		RequestsPerDay:    6,
+		TokenQuota:        quota,
 	}
 
 	createdKey, err := s.repo.Create(ctx, apiKey)
@@ -251,4 +264,29 @@ func (s *APIKeyService) RevokeKey(ctx context.Context, userID, keyID uint64) err
 	}
 
 	return nil
+}
+
+func (s *APIKeyService) GetAPIKeyStats(ctx context.Context, userID, keyID uint64) (*APIKeyUsageResponse, error) {
+	apiKey, err := s.repo.GetByID(ctx, keyID)
+	if err != nil {
+		return nil, err
+	}
+
+	if apiKey.UserID != userID {
+		return nil, errors.New("unauthorized: key does not belong to user")
+	}
+
+	rpmUsed, rpdUsed, err := s.rateLimiter.GetKeyUsage(ctx, keyID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &APIKeyUsageResponse{
+		RPMUsed:    rpmUsed,
+		RPMLimit:   apiKey.RequestsPerMinute,
+		RPDUsed:    rpdUsed,
+		RPDLimit:   apiKey.RequestsPerDay,
+		TokensUsed: apiKey.TokensUsed,
+		TokenQuota: apiKey.TokenQuota,
+	}, nil
 }

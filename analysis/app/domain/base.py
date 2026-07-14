@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from pydantic import BaseModel
 from app.schemas import SectionId
 
 class DomainStrategy(ABC):
@@ -42,4 +43,9 @@ class DomainStrategy(ABC):
     @abstractmethod
     def section_weights(self) -> dict[SectionId, float]:
         """Returns the scoring weight for each section (must sum to 1.0)"""
+        pass
+
+    @abstractmethod
+    def get_final_schema(self) -> type[BaseModel]:
+        """Dynamically generates and returns the FinalAnalysisResult Pydantic schema for this domain."""
         pass

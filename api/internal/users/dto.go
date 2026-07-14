@@ -25,10 +25,10 @@ type ToggleStatusRequest struct {
 }
 
 type AgreementResponse struct {
-	ID          uint64 `json:"id"`
-	Type        string `json:"type"`
-	Version     string `json:"version"`
-	Content     string `json:"content"`
+	ID      uint64 `json:"id"`
+	Type    string `json:"type"`
+	Version string `json:"version"`
+	Content string `json:"content"`
 }
 
 type AcceptAgreementsRequest struct {

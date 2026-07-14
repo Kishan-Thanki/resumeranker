@@ -90,7 +90,9 @@ func TestProcessResume(t *testing.T) {
 			engine := analysis.NewMockEngineClient("http://mock")
 			engine.Scenario = tt.mockEngine
 
-			svc := analysis.NewAnalysisService(repo, auditSvc, keySvc, engine, 50)
+			rateLimiter := &analysis.MockRateLimiter{}
+
+			svc := analysis.NewAnalysisService(repo, auditSvc, keySvc, rateLimiter, engine, 50, 1, 6)
 
 			res, err := svc.ProcessResume(context.Background(), tt.plainTextKey, "resume.pdf", "jd.pdf", []byte(tt.resumeText), []byte(tt.jobDescription))
 
@@ -121,8 +123,9 @@ func BenchmarkProcessResume(b *testing.B) {
 	auditSvc := &analysis.MockAuditService{}
 	keySvc := &analysis.MockAPIKeyValidator{}
 	engine := analysis.NewMockEngineClient("http://mock")
+	rateLimiter := &analysis.MockRateLimiter{}
 
-	svc := analysis.NewAnalysisService(repo, auditSvc, keySvc, engine, 50)
+	svc := analysis.NewAnalysisService(repo, auditSvc, keySvc, rateLimiter, engine, 50, 1, 6)
 	ctx := context.Background()
 
 	b.ResetTimer()
@@ -141,7 +144,8 @@ func FuzzProcessResume(f *testing.F) {
 	auditSvc := &analysis.MockAuditService{}
 	keySvc := &analysis.MockAPIKeyValidator{}
 	engine := analysis.NewMockEngineClient("http://mock")
-	svc := analysis.NewAnalysisService(repo, auditSvc, keySvc, engine, 50)
+	rateLimiter := &analysis.MockRateLimiter{}
+	svc := analysis.NewAnalysisService(repo, auditSvc, keySvc, rateLimiter, engine, 50, 1, 6)
 
 	f.Fuzz(func(t *testing.T, plainTextKey, resumeText, jobDescription string) {
 

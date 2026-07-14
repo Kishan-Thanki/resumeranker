@@ -121,6 +121,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 			})
 
 			r.Get("/keys", cfg.APIKeyHandler.ListKeys)
+			r.Get("/keys/{id}/stats", cfg.APIKeyHandler.GetAPIKeyStats)
 			r.Put("/keys/{id}/status", cfg.APIKeyHandler.ToggleStatus)
 			r.Delete("/keys/{id}", cfg.APIKeyHandler.RevokeKey)
 

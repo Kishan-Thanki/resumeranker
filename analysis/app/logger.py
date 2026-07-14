@@ -8,7 +8,16 @@ from datetime import datetime
 request_id_var: contextvars.ContextVar[str] = contextvars.ContextVar("request_id", default="")
 
 class JSONFormatter(logging.Formatter):
+    """
+    Custom logging formatter that outputs log records as JSON strings.
+    Automatically includes standard fields like timestamp, level, and message,
+    along with any extra contextual attributes passed to the logger.
+    """
     def format(self, record):
+        """
+        Formats a LogRecord into a JSON string.
+        Injects the current request_id from contextvars and captures exception tracebacks.
+        """
         log_obj = {
             "timestamp": datetime.utcfromtimestamp(record.created).isoformat() + "Z",
             "level": record.levelname,
@@ -38,6 +47,11 @@ class JSONFormatter(logging.Formatter):
         return json.dumps(log_obj)
 
 def setup_logger(name: str = "analysis") -> logging.Logger:
+    """
+    Initializes and configures the standard Python logger for the application.
+    Sets the log level based on the environment (defaulting to INFO) and
+    attaches the JSONFormatter to the stream handler.
+    """
     logger = logging.getLogger(name)
     
     if logger.hasHandlers():

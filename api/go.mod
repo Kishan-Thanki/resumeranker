@@ -11,6 +11,7 @@ require (
 	github.com/gorilla/csrf v1.7.3
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/kishan-thanki/logger/v2 v2.0.0
+	github.com/redis/go-redis/v9 v9.21.0
 	github.com/resend/resend-go/v2 v2.28.0
 	golang.org/x/crypto v0.53.0
 	google.golang.org/grpc v1.82.0
@@ -18,12 +19,14 @@ require (
 )
 
 require (
+	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/gorilla/securecookie v1.1.2 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.10 // indirect
-	github.com/zeebo/xxh3 v1.0.2 // indirect
+	github.com/zeebo/xxh3 v1.1.0 // indirect
+	go.uber.org/atomic v1.11.0 // indirect
 	golang.org/x/net v0.55.0 // indirect
 	golang.org/x/sync v0.21.0 // indirect
 	golang.org/x/sys v0.46.0 // indirect

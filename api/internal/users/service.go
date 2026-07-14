@@ -104,7 +104,7 @@ func (s *UserService) Register(ctx context.Context, email, passwordStr string, r
 			BtnText:      "Verify Email",
 			BtnLink:      link,
 			SupportEmail: s.cfg.EmailContact,
-			Domain:  s.cfg.Domain,
+			Domain:       s.cfg.Domain,
 			FooterNote:   "If you did not request this email, you can safely ignore it.",
 		})
 		_ = s.emailService.SendEmail(context.Background(), &emailpkg.SendEmailRequest{
@@ -157,7 +157,7 @@ func (s *UserService) ForgotPassword(ctx context.Context, email string) error {
 			BtnText:      "Reset Password",
 			BtnLink:      link,
 			SupportEmail: s.cfg.EmailContact,
-			Domain:  s.cfg.Domain,
+			Domain:       s.cfg.Domain,
 			FooterNote:   "If you did not request this password reset, please ignore this email or contact support if you have concerns.",
 		})
 		_ = s.emailService.SendEmail(context.Background(), &emailpkg.SendEmailRequest{
@@ -202,7 +202,7 @@ func (s *UserService) ResetPassword(ctx context.Context, token, newPassword stri
 				Title:        "Password Reset Successful",
 				Message:      "<p>This is a confirmation that the password for your ResumeRanker account has just been reset.</p><p>If you did not make this change, please contact support immediately.</p>",
 				SupportEmail: s.cfg.EmailContact,
-				Domain:  s.cfg.Domain,
+				Domain:       s.cfg.Domain,
 			})
 			_ = s.emailService.SendEmail(context.Background(), &emailpkg.SendEmailRequest{
 				To:      []string{user.Email},
@@ -337,7 +337,7 @@ func (s *UserService) ChangePassword(ctx context.Context, userID uint64, oldPass
 				Title:        "Password Changed",
 				Message:      "<p>This is a confirmation that the password for your ResumeRanker account has just been changed.</p><p>If you did not make this change, please contact support immediately.</p>",
 				SupportEmail: s.cfg.EmailContact,
-				Domain:  s.cfg.Domain,
+				Domain:       s.cfg.Domain,
 			})
 			_ = s.emailService.SendEmail(context.Background(), &emailpkg.SendEmailRequest{
 				To:      []string{user.Email},
@@ -368,7 +368,7 @@ func (s *UserService) ToggleStatus(ctx context.Context, userID uint64, status Ac
 				Title:        "Account Status Update",
 				Message:      fmt.Sprintf("<p>Your ResumeRanker account status has been updated by an administrator.</p><p>New Status: <strong>%s</strong></p>", status),
 				SupportEmail: s.cfg.EmailContact,
-				Domain:  s.cfg.Domain,
+				Domain:       s.cfg.Domain,
 			})
 			_ = s.emailService.SendEmail(context.Background(), &emailpkg.SendEmailRequest{
 				To:      []string{user.Email},
@@ -394,7 +394,7 @@ func (s *UserService) DeleteAccount(ctx context.Context, userID uint64) error {
 				Title:        "Account Deleted",
 				Message:      "<p>Your account and all associated data have been permanently deleted from ResumeRanker.</p><p>We're sorry to see you go.</p>",
 				SupportEmail: s.cfg.EmailContact,
-				Domain:  s.cfg.Domain,
+				Domain:       s.cfg.Domain,
 			})
 			_ = s.emailService.SendEmail(context.Background(), &emailpkg.SendEmailRequest{
 				To:      []string{user.Email},
@@ -438,7 +438,7 @@ func (s *UserService) PublishAgreement(ctx context.Context, agType AgreementType
 						BtnText:      "Log In to Dashboard",
 						BtnLink:      fmt.Sprintf("%s/auth/login", s.cfg.Domain),
 						SupportEmail: s.cfg.EmailContact,
-						Domain:  s.cfg.Domain,
+						Domain:       s.cfg.Domain,
 					})
 					_ = s.emailService.SendEmail(ctx, &emailpkg.SendEmailRequest{
 						To:      []string{user.Email},

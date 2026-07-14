@@ -24,6 +24,9 @@ type Config struct {
 	ResetTokenDurationHours  int
 	PaginationDefaultLimit   int
 	BulkEmailBatchSize       int
+	GlobalAnalysisRPMLimit   int
+	GlobalAnalysisRPDLimit   int
+	RedisURL                 string
 }
 
 func Load() (*Config, error) {
@@ -94,6 +97,12 @@ func Load() (*Config, error) {
 
 	bulkEmailBatchSize := getEnvAsInt("BULK_EMAIL_BATCH_SIZE", 100)
 
+	globalAnalysisRPMLimit := getEnvAsInt("GLOBAL_ANALYSIS_RPM_LIMIT", 1)
+
+	globalAnalysisRPDLimit := getEnvAsInt("GLOBAL_ANALYSIS_RPD_LIMIT", 6)
+
+	redisURL := os.Getenv("REDIS_URL")
+
 	return &Config{
 		Environment:              env,
 		DatabaseURL:              dbURL,
@@ -111,6 +120,9 @@ func Load() (*Config, error) {
 		ResetTokenDurationHours:  resetTokenDurationHours,
 		PaginationDefaultLimit:   paginationDefaultLimit,
 		BulkEmailBatchSize:       bulkEmailBatchSize,
+		GlobalAnalysisRPMLimit:   globalAnalysisRPMLimit,
+		GlobalAnalysisRPDLimit:   globalAnalysisRPDLimit,
+		RedisURL:                 redisURL,
 	}, nil
 }
 

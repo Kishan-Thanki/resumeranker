@@ -41,7 +41,6 @@ func TestMiddleware(t *testing.T) {
 
 	t.Run("missing header", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
-		// Missing cookie!
 		rr := httptest.NewRecorder()
 
 		mw.ServeHTTP(rr, req)
@@ -90,7 +89,7 @@ func TestAdminMiddleware(t *testing.T) {
 			t.Errorf("expected status 200, got %d", rr.Code)
 		}
 	})
-	
+
 	t.Run("valid owner role", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
 

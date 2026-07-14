@@ -9,13 +9,13 @@ import (
 )
 
 type MockRepository struct {
-	CreateFunc        func(ctx context.Context, apiKey *apikey.APIKey) (*apikey.APIKey, error)
-	GetByIDFunc       func(ctx context.Context, id uint64) (*apikey.APIKey, error)
-	GetBySelectorFunc func(ctx context.Context, selector string) (*apikey.APIKey, error)
-	ListByUserIDFunc  func(ctx context.Context, userID uint64) ([]*apikey.APIKey, error)
-	UpdateFunc        func(ctx context.Context, apiKey *apikey.APIKey) (*apikey.APIKey, error)
-	DeleteFunc        func(ctx context.Context, id uint64) error
-	IsUserActiveFunc  func(ctx context.Context, userID uint64) (bool, error)
+	CreateFunc           func(ctx context.Context, apiKey *apikey.APIKey) (*apikey.APIKey, error)
+	GetByIDFunc          func(ctx context.Context, id uint64) (*apikey.APIKey, error)
+	GetBySelectorFunc    func(ctx context.Context, selector string) (*apikey.APIKey, error)
+	ListByUserIDFunc     func(ctx context.Context, userID uint64) ([]*apikey.APIKey, error)
+	UpdateFunc           func(ctx context.Context, apiKey *apikey.APIKey) (*apikey.APIKey, error)
+	DeleteFunc           func(ctx context.Context, id uint64) error
+	IsUserActiveFunc     func(ctx context.Context, userID uint64) (bool, error)
 	GetUserEmailByIDFunc func(ctx context.Context, userID uint64) (string, error)
 }
 
@@ -104,6 +104,7 @@ type MockAPIKeyService struct {
 	ListKeysFunc     func(ctx context.Context, userID uint64) ([]*apikey.APIKey, error)
 	ToggleStatusFunc func(ctx context.Context, userID, keyID uint64, status apikey.APIKeyStatus) error
 	RevokeKeyFunc    func(ctx context.Context, userID, keyID uint64) error
+	GetAPIKeyStatsFunc func(ctx context.Context, userID, keyID uint64) (*apikey.APIKeyUsageResponse, error)
 }
 
 func (m *MockAPIKeyService) GenerateKey(ctx context.Context, userID uint64, name string, quota uint64) (string, *apikey.APIKey, error) {
@@ -146,4 +147,22 @@ func (m *MockAPIKeyService) RevokeKey(ctx context.Context, userID, keyID uint64)
 		return m.RevokeKeyFunc(ctx, userID, keyID)
 	}
 	return nil
+}
+
+func (m *MockAPIKeyService) GetAPIKeyStats(ctx context.Context, userID, keyID uint64) (*apikey.APIKeyUsageResponse, error) {
+	if m.GetAPIKeyStatsFunc != nil {
+		return m.GetAPIKeyStatsFunc(ctx, userID, keyID)
+	}
+	return &apikey.APIKeyUsageResponse{}, nil
+}
+
+type MockRateLimiter struct {
+	GetKeyUsageFunc func(ctx context.Context, apiKeyID uint64) (rpmUsed, rpdUsed int, err error)
+}
+
+func (m *MockRateLimiter) GetKeyUsage(ctx context.Context, apiKeyID uint64) (rpmUsed, rpdUsed int, err error) {
+	if m.GetKeyUsageFunc != nil {
+		return m.GetKeyUsageFunc(ctx, apiKeyID)
+	}
+	return 0, 0, nil
 }

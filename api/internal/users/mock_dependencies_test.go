@@ -162,22 +162,22 @@ func (m *MockEmailService) SendEmail(ctx context.Context, req *email.SendEmailRe
 }
 
 type MockUserService struct {
-	RegisterFunc         func(ctx context.Context, email, password string, role users.Role, agreedToTerms bool) (*users.User, error)
-	AuthenticateFunc     func(ctx context.Context, email, password string) (*users.User, error)
-	AcceptTermsFunc      func(ctx context.Context, userID uint64, version string) error
-	HasAcceptedTermsFunc func(ctx context.Context, userID uint64, version string) (bool, error)
+	RegisterFunc             func(ctx context.Context, email, password string, role users.Role, agreedToTerms bool) (*users.User, error)
+	AuthenticateFunc         func(ctx context.Context, email, password string) (*users.User, error)
+	AcceptTermsFunc          func(ctx context.Context, userID uint64, version string) error
+	HasAcceptedTermsFunc     func(ctx context.Context, userID uint64, version string) (bool, error)
 	GetPendingAgreementsFunc func(ctx context.Context, userID uint64) ([]*users.Agreement, error)
-	AcceptAgreementsFunc func(ctx context.Context, userID uint64, agreementIDs []uint64) error
-	ChangePasswordFunc   func(ctx context.Context, userID uint64, oldPassword, newPassword string) error
-	ToggleStatusFunc     func(ctx context.Context, userID uint64, status users.AccountStatus) error
-	DeleteAccountFunc    func(ctx context.Context, userID uint64) error
-	GetLatestAgreementsFunc func(ctx context.Context) ([]*users.Agreement, error)
-	VerifyEmailFunc      func(ctx context.Context, token string) error
-	PublishAgreementFunc func(ctx context.Context, agType users.AgreementType, version, content string) (*users.Agreement, error)
-	ForgotPasswordFunc   func(ctx context.Context, email string) error
-	ResetPasswordFunc    func(ctx context.Context, token, newPassword string) error
-	GetMeFunc            func(ctx context.Context, userID uint64) (*users.User, error)
-	ListUsersFunc        func(ctx context.Context, limit, offset int32) ([]*users.User, error)
+	AcceptAgreementsFunc     func(ctx context.Context, userID uint64, agreementIDs []uint64) error
+	ChangePasswordFunc       func(ctx context.Context, userID uint64, oldPassword, newPassword string) error
+	ToggleStatusFunc         func(ctx context.Context, userID uint64, status users.AccountStatus) error
+	DeleteAccountFunc        func(ctx context.Context, userID uint64) error
+	GetLatestAgreementsFunc  func(ctx context.Context) ([]*users.Agreement, error)
+	VerifyEmailFunc          func(ctx context.Context, token string) error
+	PublishAgreementFunc     func(ctx context.Context, agType users.AgreementType, version, content string) (*users.Agreement, error)
+	ForgotPasswordFunc       func(ctx context.Context, email string) error
+	ResetPasswordFunc        func(ctx context.Context, token, newPassword string) error
+	GetMeFunc                func(ctx context.Context, userID uint64) (*users.User, error)
+	ListUsersFunc            func(ctx context.Context, limit, offset int32) ([]*users.User, error)
 }
 
 func (m *MockUserService) Register(ctx context.Context, email, password string, role users.Role, agreedToTerms bool) (*users.User, error) {

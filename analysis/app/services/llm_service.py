@@ -3,13 +3,12 @@ import asyncio
 import instructor
 from litellm import acompletion
 from litellm.exceptions import RateLimitError, APIConnectionError, APIError, ContextWindowExceededError, Timeout
-from instructor.exceptions import InstructorRetryException
+from instructor.core import InstructorRetryException
 from pydantic import ValidationError, BaseModel
 
 from app.schemas import (
     ExtractedRequirement,
-    ResumeClaim,
-    FinalAnalysisResult
+    ResumeClaim
 )
 from app.domain.base import DomainStrategy
 from app.domain.tech import TechDomain
@@ -96,7 +95,7 @@ async def _extract_resume_claims(client, model: str, api_key: str, domain: Domai
     }
     return resp, usage
 
-async def _score_claims(client, model: str, api_key: str, domain: DomainStrategy, jd_reqs: JDRequirementsResponse, res_claims: ResumeClaimsResponse) -> tuple[FinalAnalysisResult, dict]:
+async def _score_claims(client, model: str, api_key: str, domain: DomainStrategy, jd_reqs: JDRequirementsResponse, res_claims: ResumeClaimsResponse) -> tuple[BaseModel, dict]:
     user_prompt = f"JD Requirements:\n{jd_reqs.model_dump_json(indent=2)}\n\nResume Claims:\n{res_claims.model_dump_json(indent=2)}"
     msg = [
         {"role": "system", "content": domain.scoring_prompt()},
@@ -109,7 +108,7 @@ async def _score_claims(client, model: str, api_key: str, domain: DomainStrategy
                 api_key=api_key,
                 model=model,
                 messages=msg,
-                response_model=FinalAnalysisResult,
+                response_model=domain.get_final_schema(),
                 max_retries=1,
             )
         except Exception as e:
@@ -121,7 +120,7 @@ async def _score_claims(client, model: str, api_key: str, domain: DomainStrategy
     }
     return resp, usage
 
-async def analyze_fit(jd_text: str, resume_text: str) -> tuple[FinalAnalysisResult, dict[str, int]]:
+async def analyze_fit(jd_text: str, resume_text: str) -> tuple[BaseModel, dict[str, int]]:
     api_key = os.environ.get("LLM_API_KEY")
     if not api_key:
         raise AnalysisEngineError("ERR_MISSING_CONFIG", "LLM API key is missing from environment.")

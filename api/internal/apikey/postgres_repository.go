@@ -24,15 +24,17 @@ func NewPostgresRepository(pool *pgxpool.Pool) *PostgresRepository {
 func (r *PostgresRepository) Create(ctx context.Context, apiKey *APIKey) (*APIKey, error) {
 
 	k, err := r.queries.CreateAPIKey(ctx, db.CreateAPIKeyParams{
-		UserID:      int64(apiKey.UserID),
-		Name:        apiKey.Name,
-		KeyPrefix:   apiKey.KeyPrefix,
-		KeySelector: apiKey.KeySelector,
-		KeyHash:     apiKey.KeyHash,
-		Status:      string(apiKey.Status),
-		TokenQuota:  int64(apiKey.TokenQuota),
-		TokensUsed:  int64(apiKey.TokensUsed),
-		ExpiresAt:   toPgTimestamp(apiKey.ExpiresAt),
+		UserID:            int64(apiKey.UserID),
+		Name:              apiKey.Name,
+		KeyPrefix:         apiKey.KeyPrefix,
+		KeySelector:       apiKey.KeySelector,
+		KeyHash:           apiKey.KeyHash,
+		Status:            string(apiKey.Status),
+		RequestsPerMinute: int32(apiKey.RequestsPerMinute),
+		RequestsPerDay:    int32(apiKey.RequestsPerDay),
+		TokenQuota:        int64(apiKey.TokenQuota),
+		TokensUsed:        int64(apiKey.TokensUsed),
+		ExpiresAt:         toPgTimestamp(apiKey.ExpiresAt),
 	})
 	if err != nil {
 		return nil, err
@@ -136,20 +138,22 @@ func mapDBAPIKeyToModel(k db.ApiKey) *APIKey {
 	}
 
 	return &APIKey{
-		ID:          uint64(k.ID),
-		UserID:      uint64(k.UserID),
-		Name:        k.Name,
-		KeyPrefix:   k.KeyPrefix,
-		KeySelector: k.KeySelector,
-		KeyHash:     k.KeyHash,
-		Status:      APIKeyStatus(k.Status),
-		TokenQuota:  uint64(k.TokenQuota),
-		TokensUsed:  uint64(k.TokensUsed),
-		ExpiresAt:   expiresAt,
-		LastUsedAt:  lastUsedAt,
-		CreatedAt:   k.CreatedAt.Time,
-		UpdatedAt:   k.UpdatedAt.Time,
-		DeletedAt:   deletedAt,
+		ID:                uint64(k.ID),
+		UserID:            uint64(k.UserID),
+		Name:              k.Name,
+		KeyPrefix:         k.KeyPrefix,
+		KeySelector:       k.KeySelector,
+		KeyHash:           k.KeyHash,
+		Status:            APIKeyStatus(k.Status),
+		RequestsPerMinute: uint64(k.RequestsPerMinute),
+		RequestsPerDay:    uint64(k.RequestsPerDay),
+		TokenQuota:        uint64(k.TokenQuota),
+		TokensUsed:        uint64(k.TokensUsed),
+		ExpiresAt:         expiresAt,
+		LastUsedAt:        lastUsedAt,
+		CreatedAt:         k.CreatedAt.Time,
+		UpdatedAt:         k.UpdatedAt.Time,
+		DeletedAt:         deletedAt,
 	}
 }
 

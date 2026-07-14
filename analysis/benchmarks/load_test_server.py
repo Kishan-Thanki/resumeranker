@@ -18,7 +18,7 @@ async def simulate_pdf_parsing(*args, **kwargs):
     await asyncio.sleep(0.5)
     return "Valid extracted dummy text covering the 100 character minimum requirement. " * 5
 
-@patch("app.main.extract_text_from_pdf_bytes", side_effect=simulate_pdf_parsing)
+@patch("app.servicer.extract_text_from_pdf_bytes", side_effect=simulate_pdf_parsing)
 @patch("app.services.llm_service.instructor.from_litellm")
 @patch.dict(os.environ, {"LLM_API_KEY": "fake_key", "LLM_MODEL": "fake_model", "MAX_CONCURRENT_LLM_REQUESTS": "100"})
 def start_mock_server(mock_from_litellm, mock_pdf_extract):
