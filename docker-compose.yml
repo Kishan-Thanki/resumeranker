@@ -24,6 +24,17 @@ services:
       timeout: 3s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
   migrate:
     image: migrate/migrate
     volumes:
@@ -39,6 +50,7 @@ services:
       - ./api/env/dev.env
     environment:
       DATABASE_URL: postgres://postgres:postgres@database:5432/resumeranker?sslmode=disable
+      REDIS_URL: redis:6379
       ANALYSIS_SERVICE_URL: analysis:8001
     ports:
       - "9080:8080"
@@ -47,6 +59,8 @@ services:
         condition: service_healthy
       analysis:
         condition: service_started
+      redis:
+        condition: service_healthy
       migrate:
         condition: service_completed_successfully
     restart: unless-stopped

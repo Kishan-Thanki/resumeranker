@@ -112,3 +112,10 @@ make test
 # Run tests including Postgres database integration tests
 make test-integration
 ```
+
+---
+
+## License
+
+This project is proprietary and confidential. All rights are reserved. 
+Please see the [LICENSE](./LICENSE) file for more details.

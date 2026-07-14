@@ -65,3 +65,10 @@ docker run -d \
 - **`API_UPSTREAM`**: Caddy will automatically route all `/api/*` traffic to this internal destination (e.g., your Go API Docker container).
 
 _Note: The frontend Javascript relies entirely on Caddy's routing. It uses the relative path `/api/v1` and requires no custom injection._
+
+---
+
+## License
+
+This project is proprietary and confidential. All rights are reserved. 
+Please see the [LICENSE](./LICENSE) file for more details.

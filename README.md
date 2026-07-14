@@ -57,3 +57,10 @@ Each core component has its own deeply detailed `README.md` and `.agents/` docum
 If you are a developer (or an AI Agent) diving into a specific stack, **you must read the `README.md` inside that specific directory** before modifying code:
 - Go API Rules: `api/.agents/AGENTS.md`
 - Python AI Rules: `analysis/.agents/AGENTS.md`
+
+---
+
+## License
+
+This project is proprietary and confidential. All rights are reserved. 
+Please see the [LICENSE](./LICENSE) file for more details.
