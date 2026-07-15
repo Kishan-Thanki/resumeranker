@@ -1,0 +1,146 @@
+/* Usage Card Horizontal Layout */
+.usage-card-row {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    box-shadow: var(--shadow-sm);
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+.usage-card-row:hover {
+    box-shadow: var(--shadow-md);
+}
+.usage-col-identity {
+    flex: 1;
+    min-width: 200px;
+}
+.usage-title-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+.usage-title-row h3 {
+    margin: 0;
+    font-size: 1.125rem;
+}
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+.status-active { background: var(--success); box-shadow: 0 0 8px rgba(34, 197, 94, 0.4); }
+.status-inactive { background: var(--text-muted); }
+.mono-badge {
+    background: var(--bg-hover);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+}
+.usage-col-metrics {
+    display: flex;
+    gap: 2rem;
+    padding: 0 2rem;
+    border-left: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-color);
+}
+.metric-box {
+    display: flex;
+    flex-direction: column;
+}
+.metric-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    margin-bottom: 0.25rem;
+    font-weight: 600;
+}
+.metric-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+.metric-limit {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+.usage-col-volume {
+    flex: 1.5;
+    min-width: 250px;
+}
+.volume-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+}
+.progress-bar-container {
+    height: 6px;
+    background: var(--bg-hover);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+}
+.progress-bar-fill {
+    height: 100%;
+    border-radius: var(--radius-full);
+    transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.volume-footer {
+    text-align: right;
+}
+.progress-ring-container {
+    position: relative;
+    width: 72px;
+    height: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 1.5rem;
+}
+.progress-ring__circle {
+    stroke-linecap: round;
+    transition: stroke-dashoffset 1s ease-in-out;
+    transform: rotate(-90deg);
+    transform-origin: 50% 50%;
+}
+.progress-ring-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.volume-details {
+    flex: 1;
+}
+
+@media (max-width: 768px) {
+    .usage-card-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1.5rem;
+    }
+    .usage-col-metrics {
+        padding: 1.5rem 0;
+        border-left: none;
+        border-right: none;
+        border-top: 1px solid var(--border-color);
+        border-bottom: 1px solid var(--border-color);
+        width: 100%;
+        justify-content: space-between;
+    }
+    .usage-col-identity, .usage-col-volume {
+        width: 100%;
+    }
+}

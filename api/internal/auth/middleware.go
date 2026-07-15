@@ -16,16 +16,16 @@ func Middleware(secret string) func(http.Handler) http.Handler {
 				http.Error(w, "missing or invalid authorization cookie", http.StatusUnauthorized)
 				return
 			}
-			tokenStr := cookie.Value
 
-			userID, role, err := ValidateToken(tokenStr, secret)
+			claims, err := ValidateToken(cookie.Value, secret)
 			if err != nil {
 				http.Error(w, "unauthorized", http.StatusUnauthorized)
 				return
 			}
 
-			ctx := context.WithValue(r.Context(), ctxkey.UserID, userID)
-			ctx = context.WithValue(ctx, ctxkey.UserRole, role)
+			ctx := context.WithValue(r.Context(), ctxkey.UserID, claims.UserID)
+			ctx = context.WithValue(ctx, ctxkey.UserRole, claims.Role)
+
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
@@ -38,6 +38,7 @@ func AdminMiddleware(next http.Handler) http.Handler {
 			http.Error(w, "forbidden: requires admin privileges", http.StatusForbidden)
 			return
 		}
+
 		next.ServeHTTP(w, r)
 	})
 }
@@ -50,16 +51,16 @@ func WebAuthMiddleware(secret string) func(http.Handler) http.Handler {
 				http.Redirect(w, r, "/", http.StatusFound)
 				return
 			}
-			tokenStr := cookie.Value
 
-			userID, role, err := ValidateToken(tokenStr, secret)
+			claims, err := ValidateToken(cookie.Value, secret)
 			if err != nil {
 				http.Redirect(w, r, "/", http.StatusFound)
 				return
 			}
 
-			ctx := context.WithValue(r.Context(), ctxkey.UserID, userID)
-			ctx = context.WithValue(ctx, ctxkey.UserRole, role)
+			ctx := context.WithValue(r.Context(), ctxkey.UserID, claims.UserID)
+			ctx = context.WithValue(ctx, ctxkey.UserRole, claims.Role)
+
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

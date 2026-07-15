@@ -243,7 +243,7 @@ export function initNavigation() {
 export function checkProtectedRoutes() {
     const path = window.location.pathname;
     const isLoggedIn = getIsLoggedIn();
-    const protectedRoutes = ['/dashboard/dashboard', '/dashboard/guide', '/dashboard/account'];
+    const protectedRoutes = ['/dashboard', '/dashboard/guide', '/dashboard/account'];
     const isProtected = protectedRoutes.some(route => path.includes(route));
 
     if (isProtected && !isLoggedIn) {
@@ -252,8 +252,8 @@ export function checkProtectedRoutes() {
     }
 
     const isPublicHome = path === '/' || path === '' || path.includes('index');
-    if (isLoggedIn && (path.includes('login') || path.includes('register') || isPublicHome)) {
-        window.location.href = '/dashboard/dashboard';
+    if (isLoggedIn && (path.includes('login') || path.includes('register'))) {
+        window.location.href = '/dashboard';
         return false;
     }
     return true;

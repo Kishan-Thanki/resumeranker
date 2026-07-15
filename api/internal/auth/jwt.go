@@ -2,10 +2,13 @@ package auth
 
 import (
 	"errors"
+	"strconv"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 )
+
+const issuer = "auth-service"
 
 var (
 	ErrInvalidToken = errors.New("invalid or expired token")
@@ -17,14 +20,18 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-func GenerateToken(userID uint64, role string, secret string, duration time.Duration) (string, error) {
+func GenerateToken(userID uint64, role, secret string, duration time.Duration) (string, error) {
+	now := time.Now()
+
 	claims := Claims{
 		UserID: userID,
 		Role:   role,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(duration)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			NotBefore: jwt.NewNumericDate(time.Now()),
+			Issuer:    issuer,
+			Subject:   strconv.FormatUint(userID, 10),
+			IssuedAt:  jwt.NewNumericDate(now),
+			NotBefore: jwt.NewNumericDate(now),
+			ExpiresAt: jwt.NewNumericDate(now.Add(duration)),
 		},
 	}
 
@@ -32,21 +39,26 @@ func GenerateToken(userID uint64, role string, secret string, duration time.Dura
 	return token.SignedString([]byte(secret))
 }
 
-func ValidateToken(tokenString string, secret string) (uint64, string, error) {
-	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+func ValidateToken(tokenString, secret string) (*Claims, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (any, error) {
+		if token.Method != jwt.SigningMethodHS256 {
 			return nil, ErrInvalidToken
 		}
 		return []byte(secret), nil
 	})
 
 	if err != nil {
-		return 0, "", ErrInvalidToken
+		return nil, ErrInvalidToken
 	}
 
-	if claims, ok := token.Claims.(*Claims); ok && token.Valid {
-		return claims.UserID, claims.Role, nil
+	claims, ok := token.Claims.(*Claims)
+	if !ok || !token.Valid {
+		return nil, ErrInvalidToken
 	}
 
-	return 0, "", ErrInvalidToken
+	if claims.Issuer != issuer {
+		return nil, ErrInvalidToken
+	}
+
+	return claims, nil
 }

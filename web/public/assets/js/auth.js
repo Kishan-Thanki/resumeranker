@@ -72,7 +72,7 @@ async function handleAuth(e, mode) {
             }
         } else {
             setLoggedIn(true, email);
-            window.location.href = '/dashboard/dashboard';
+            window.location.href = '/dashboard';
         }
     } catch (err) {
         if (errorEl) {
@@ -94,7 +94,7 @@ async function loginHelper(email, password) {
     if (!res.ok) throw new Error('Login failed after registration');
 
     setLoggedIn(true, email);
-    window.location.href = '/dashboard/dashboard';
+    window.location.href = '/dashboard';
 }
 
 document.addEventListener('DOMContentLoaded', async () => {

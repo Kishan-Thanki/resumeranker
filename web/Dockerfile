@@ -26,12 +26,9 @@ RUN passwd -l root
 
 RUN setcap cap_net_bind_service=+ep /usr/sbin/caddy
 
-COPY entrypoint.sh /entrypoint.sh
+RUN chown -R admin:admin /var/www/html /etc/caddy /var/log
 
-RUN chmod +x /entrypoint.sh
-
-RUN chown -R admin:admin /var/www/html /etc/caddy
-
+USER admin
 EXPOSE 80 443
 
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]

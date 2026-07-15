@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Learn about ResumeRanker — the AI-powered resume parsing and ranking API built to bridge state-of-the-art NLP models and Applicant Tracking Systems.">
-    <title>ResumeRanker | About Us</title>
+    <title>ResumeRanker | Analysis Report</title>
     <script>
         (function() {
             var t = localStorage.getItem('data-theme');
@@ -47,49 +46,20 @@
         </div>
     </nav>
 
-    <div class="main-content content-page" id="main">
-        <h1 class="content-page-header">About ResumeRanker</h1>
+    <div class="main-content" id="main">
+        <div class="report-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem;">
+            <a href="/dashboard/history" class="btn btn-secondary btn-sm" style="margin-top: 0.5rem;">&larr; Back to History</a>
+            <div style="text-align: center;">
+                <h2 id="reportTitle" style="margin: 0;">Analysis Report</h2>
+                <div id="reportSubtitle" class="text-muted mt-2" style="font-size: 0.95rem; font-weight: 500;"></div>
+            </div>
+            <div style="width: 100px;"></div>
+        </div>
         
-        <div class="content-body prose">
-            <p class="content-page-subtitle">
-                Bridging the gap between state-of-the-art AI models and modern Applicant Tracking Systems.
-            </p>
-
-            <section class="content-card">
-                <h2>Our Mission</h2>
-                <p>
-                    We believe that evaluating candidates shouldn't rely on basic keyword
-                    matching or rigid legacy systems that overlook human potential. 
-                </p>
-                <p>
-                    Our platform leverages advanced Natural Language Processing to contextually understand candidate experience, drastically reducing time-to-hire while helping teams discover the best talent without inherent human biases.
-                </p>
-            </section>
-
-            <section class="content-section">
-                <h2>Why We Built This</h2>
-                <p>
-                    Recruiting is fundamentally broken. Standard ATS software parses resumes by blindly looking for exact text matches, discarding highly qualified candidates who simply used different terminology.
-                </p>
-                <p>
-                    ResumeRanker replaces these outdated heuristics with true semantic understanding, enabling developers to build smarter hiring platforms and internal tools via our robust API.
-                </p>
-            </section>
+        <div id="reportContent">
+            <div class="loader-ring" style="margin: 40px auto;"></div>
         </div>
     </div>
-
-    <footer class="footer">
-        <div class="footer-content">
-            <div>&copy; 2026 ResumeRanker. All rights reserved.</div>
-            <div class="footer-links">
-                <a href="/about">About</a>
-                <a href="/contact">Contact</a>
-                <a href="/legal/terms">Terms of Service</a>
-                <a href="/legal/privacy">Privacy Policy</a>
-            </div>
-        </div>
-    </footer>
-
-    <script type="module" src="/assets/js/main.js"></script>
+    <script type="module" src="/assets/js/report.js"></script>
 </body>
 </html>

@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Learn about ResumeRanker — the AI-powered resume parsing and ranking API built to bridge state-of-the-art NLP models and Applicant Tracking Systems.">
-    <title>ResumeRanker | About Us</title>
+    <title>ResumeRanker | History</title>
     <script>
         (function() {
             var t = localStorage.getItem('data-theme');
@@ -15,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/assets/css/style.css">
+    <link rel="stylesheet" href="/assets/css/style.css?v=3">
 </head>
 <body>
     <a href="#main" class="skip-link">Skip to content</a>
@@ -47,49 +46,27 @@
         </div>
     </nav>
 
-    <div class="main-content content-page" id="main">
-        <h1 class="content-page-header">About ResumeRanker</h1>
-        
-        <div class="content-body prose">
-            <p class="content-page-subtitle">
-                Bridging the gap between state-of-the-art AI models and modern Applicant Tracking Systems.
-            </p>
-
-            <section class="content-card">
-                <h2>Our Mission</h2>
-                <p>
-                    We believe that evaluating candidates shouldn't rely on basic keyword
-                    matching or rigid legacy systems that overlook human potential. 
-                </p>
-                <p>
-                    Our platform leverages advanced Natural Language Processing to contextually understand candidate experience, drastically reducing time-to-hire while helping teams discover the best talent without inherent human biases.
-                </p>
-            </section>
-
-            <section class="content-section">
-                <h2>Why We Built This</h2>
-                <p>
-                    Recruiting is fundamentally broken. Standard ATS software parses resumes by blindly looking for exact text matches, discarding highly qualified candidates who simply used different terminology.
-                </p>
-                <p>
-                    ResumeRanker replaces these outdated heuristics with true semantic understanding, enabling developers to build smarter hiring platforms and internal tools via our robust API.
-                </p>
-            </section>
-        </div>
-    </div>
-
-    <footer class="footer">
-        <div class="footer-content">
-            <div>&copy; 2026 ResumeRanker. All rights reserved.</div>
-            <div class="footer-links">
-                <a href="/about">About</a>
-                <a href="/contact">Contact</a>
-                <a href="/legal/terms">Terms of Service</a>
-                <a href="/legal/privacy">Privacy Policy</a>
+    <div class="main-content" id="main">
+        <section class="dashboard-layout">
+            <aside class="dashboard-sidebar" role="navigation" aria-label="Dashboard navigation">
+                <a href="/dashboard/analyze" class="sidebar-item">Analyze Resume</a>
+                <a href="/dashboard/history" class="sidebar-item active">Analysis History</a>
+                <a href="/dashboard" class="sidebar-item">API Keys</a>
+                <a href="/dashboard/guide" class="sidebar-item">Integration Guide</a>
+                <a href="/dashboard/usage" class="sidebar-item">Usage & Limits</a>
+                <a href="/dashboard/account" class="sidebar-item">Account</a>
+            </aside>
+            <div class="dashboard-content">
+                <div class="dashboard-header mb-4">
+                    <h2>Analysis History</h2>
+                    <p class="text-muted text-sm mt-2">View your past resume analysis reports.</p>
+                </div>
+                <div class="history-grid-container" id="historyContainer">
+                    <div class="loader-ring" style="margin: 40px auto;"></div>
+                </div>
             </div>
-        </div>
-    </footer>
-
-    <script type="module" src="/assets/js/main.js"></script>
+        </section>
+    </div>
+    <script type="module" src="/assets/js/history.js?v=3"></script>
 </body>
 </html>

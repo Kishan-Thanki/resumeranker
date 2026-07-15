@@ -10,55 +10,65 @@ import (
 func TestJWTGenerationAndValidation(t *testing.T) {
 	t.Parallel()
 
-	secret := "testsecret123"
+	const secret = "testsecret123"
+
 	userID := uint64(42)
 	role := "admin"
 
 	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+
 		token, err := auth.GenerateToken(userID, role, secret, time.Hour)
 		if err != nil {
 			t.Fatalf("unexpected error generating token: %v", err)
 		}
 
-		gotID, gotRole, err := auth.ValidateToken(token, secret)
+		claims, err := auth.ValidateToken(token, secret)
 		if err != nil {
 			t.Fatalf("unexpected error validating token: %v", err)
 		}
 
-		if gotID != userID {
-			t.Errorf("expected user ID %d, got %d", userID, gotID)
+		if claims.UserID != userID {
+			t.Errorf("expected user ID %d, got %d", userID, claims.UserID)
 		}
-		if gotRole != role {
-			t.Errorf("expected role %s, got %s", role, gotRole)
+
+		if claims.Role != role {
+			t.Errorf("expected role %q, got %q", role, claims.Role)
 		}
 	})
 
 	t.Run("expired token", func(t *testing.T) {
+		t.Parallel()
+
 		token, err := auth.GenerateToken(userID, role, secret, -time.Hour)
 		if err != nil {
 			t.Fatalf("unexpected error generating token: %v", err)
 		}
 
-		_, _, err = auth.ValidateToken(token, secret)
+		_, err = auth.ValidateToken(token, secret)
 		if err != auth.ErrInvalidToken {
 			t.Errorf("expected ErrInvalidToken, got %v", err)
 		}
 	})
 
 	t.Run("wrong secret", func(t *testing.T) {
+		t.Parallel()
+
 		token, err := auth.GenerateToken(userID, role, secret, time.Hour)
 		if err != nil {
 			t.Fatalf("unexpected error generating token: %v", err)
 		}
 
-		_, _, err = auth.ValidateToken(token, "wrongsecret")
+		_, err = auth.ValidateToken(token, "wrongsecret")
 		if err != auth.ErrInvalidToken {
 			t.Errorf("expected ErrInvalidToken, got %v", err)
 		}
 	})
 
 	t.Run("malformed token", func(t *testing.T) {
-		_, _, err := auth.ValidateToken("not.a.valid.jwt", secret)
+		t.Parallel()
+
+		_, err := auth.ValidateToken("not.a.valid.jwt", secret)
 		if err != auth.ErrInvalidToken {
 			t.Errorf("expected ErrInvalidToken, got %v", err)
 		}
