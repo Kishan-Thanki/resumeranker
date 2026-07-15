@@ -15,6 +15,7 @@ WHERE email = $1 AND deleted_at IS NULL;
 
 -- name: ListUsers :many
 SELECT * FROM users
+WHERE deleted_at IS NULL
 ORDER BY created_at DESC
 LIMIT $1 OFFSET $2;
 
@@ -25,8 +26,8 @@ WHERE id = $1 AND deleted_at IS NULL
 RETURNING *;
 
 -- name: DeleteUser :exec
-DELETE FROM users
-WHERE id = $1;
+UPDATE users SET deleted_at = NOW(), updated_at = NOW()
+WHERE id = $1 AND deleted_at IS NULL;
 
 -- name: GetUserByVerificationToken :one
 SELECT * FROM users
@@ -83,3 +84,8 @@ INNER JOIN (
 ) latest_a ON a.type = latest_a.type AND a.published_at = latest_a.max_published_at
 LEFT JOIN user_agreements ua ON a.id = ua.agreement_id AND ua.user_id = $1
 WHERE ua.id IS NULL;
+
+
+-- name: CountUsers :one
+SELECT COUNT(*) FROM users
+WHERE deleted_at IS NULL;

@@ -2,8 +2,10 @@ package users
 
 import (
 	"context"
+	"errors"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/kishan-thanki/resumeranker/api/internal/users/db"
@@ -21,6 +23,8 @@ func NewPostgresRepository(pool *pgxpool.Pool) *PostgresRepository {
 	}
 }
 
+// CreateUser creates a new user in the database.
+// Note: This method mutates the input *User struct by setting the ID, CreatedAt, and UpdatedAt fields.
 func (r *PostgresRepository) CreateUser(ctx context.Context, user *User) (*User, error) {
 
 	u, err := r.queries.CreateUser(ctx, db.CreateUserParams{
@@ -36,6 +40,10 @@ func (r *PostgresRepository) CreateUser(ctx context.Context, user *User) (*User,
 		PasswordResetExpiresAt: toPgTimestamp(user.PasswordResetExpiresAt),
 	})
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return nil, ErrUserAlreadyExists
+		}
 		return nil, err
 	}
 
@@ -47,87 +55,40 @@ func (r *PostgresRepository) CreateUser(ctx context.Context, user *User) (*User,
 }
 
 func (r *PostgresRepository) GetUserByID(ctx context.Context, id uint64) (*User, error) {
-
 	u, err := r.queries.GetUserByID(ctx, int64(id))
 	if err != nil {
 		return nil, err
 	}
-
-	var deletedAt *time.Time
-	if u.DeletedAt.Valid {
-		deletedAt = &u.DeletedAt.Time
-	}
-
-	var verifyExpiresAt *time.Time
-	if u.VerificationExpiresAt.Valid {
-		verifyExpiresAt = &u.VerificationExpiresAt.Time
-	}
-
-	var resetExpiresAt *time.Time
-	if u.PasswordResetExpiresAt.Valid {
-		resetExpiresAt = &u.PasswordResetExpiresAt.Time
-	}
-
-	return &User{
-		ID:                     uint64(u.ID),
-		Email:                  u.Email,
-		PasswordHash:           u.PasswordHash,
-		Role:                   Role(u.Role),
-		Status:                 AccountStatus(u.Status),
-		Metadata:               u.Metadata,
-		IsVerified:             u.IsVerified,
-		VerificationToken:      fromPgText(u.VerificationToken),
-		VerificationExpiresAt:  verifyExpiresAt,
-		PasswordResetToken:     fromPgText(u.PasswordResetToken),
-		PasswordResetExpiresAt: resetExpiresAt,
-		CreatedAt:              u.CreatedAt.Time,
-		UpdatedAt:              u.UpdatedAt.Time,
-		DeletedAt:              deletedAt,
-	}, nil
+	return userFromRow(u), nil
 }
 
 func (r *PostgresRepository) GetUserByEmail(ctx context.Context, email string) (*User, error) {
-
 	u, err := r.queries.GetUserByEmail(ctx, email)
 	if err != nil {
 		return nil, err
 	}
+	return userFromRow(u), nil
+}
 
-	var deletedAt *time.Time
-	if u.DeletedAt.Valid {
-		deletedAt = &u.DeletedAt.Time
+func (r *PostgresRepository) GetUserByVerificationToken(ctx context.Context, token string) (*User, error) {
+	pgToken := toPgText(&token)
+	u, err := r.queries.GetUserByVerificationToken(ctx, pgToken)
+	if err != nil {
+		return nil, err
 	}
+	return userFromRow(u), nil
+}
 
-	var verifyExpiresAt *time.Time
-	if u.VerificationExpiresAt.Valid {
-		verifyExpiresAt = &u.VerificationExpiresAt.Time
+func (r *PostgresRepository) GetUserByPasswordResetToken(ctx context.Context, token string) (*User, error) {
+	pgToken := toPgText(&token)
+	u, err := r.queries.GetUserByPasswordResetToken(ctx, pgToken)
+	if err != nil {
+		return nil, err
 	}
-
-	var resetExpiresAt *time.Time
-	if u.PasswordResetExpiresAt.Valid {
-		resetExpiresAt = &u.PasswordResetExpiresAt.Time
-	}
-
-	return &User{
-		ID:                     uint64(u.ID),
-		Email:                  u.Email,
-		PasswordHash:           u.PasswordHash,
-		Role:                   Role(u.Role),
-		Status:                 AccountStatus(u.Status),
-		Metadata:               u.Metadata,
-		IsVerified:             u.IsVerified,
-		VerificationToken:      fromPgText(u.VerificationToken),
-		VerificationExpiresAt:  verifyExpiresAt,
-		PasswordResetToken:     fromPgText(u.PasswordResetToken),
-		PasswordResetExpiresAt: resetExpiresAt,
-		CreatedAt:              u.CreatedAt.Time,
-		UpdatedAt:              u.UpdatedAt.Time,
-		DeletedAt:              deletedAt,
-	}, nil
+	return userFromRow(u), nil
 }
 
 func (r *PostgresRepository) ListUsers(ctx context.Context, limit, offset int32) ([]*User, error) {
-
 	users, err := r.queries.ListUsers(ctx, db.ListUsersParams{
 		Limit:  limit,
 		Offset: offset,
@@ -138,41 +99,13 @@ func (r *PostgresRepository) ListUsers(ctx context.Context, limit, offset int32)
 
 	result := make([]*User, len(users))
 	for i, u := range users {
-		var deletedAt *time.Time
-		if u.DeletedAt.Valid {
-			deletedAt = &u.DeletedAt.Time
-		}
-
-		var verifyExpiresAt *time.Time
-		if u.VerificationExpiresAt.Valid {
-			verifyExpiresAt = &u.VerificationExpiresAt.Time
-		}
-
-		var resetExpiresAt *time.Time
-		if u.PasswordResetExpiresAt.Valid {
-			resetExpiresAt = &u.PasswordResetExpiresAt.Time
-		}
-
-		result[i] = &User{
-			ID:                     uint64(u.ID),
-			Email:                  u.Email,
-			PasswordHash:           u.PasswordHash,
-			Role:                   Role(u.Role),
-			Status:                 AccountStatus(u.Status),
-			Metadata:               u.Metadata,
-			IsVerified:             u.IsVerified,
-			VerificationToken:      fromPgText(u.VerificationToken),
-			VerificationExpiresAt:  verifyExpiresAt,
-			PasswordResetToken:     fromPgText(u.PasswordResetToken),
-			PasswordResetExpiresAt: resetExpiresAt,
-			CreatedAt:              u.CreatedAt.Time,
-			UpdatedAt:              u.UpdatedAt.Time,
-			DeletedAt:              deletedAt,
-		}
+		result[i] = userFromRow(u)
 	}
 	return result, nil
 }
 
+// UpdateUser updates an existing user in the database.
+// Note: This method mutates the input *User struct by setting the UpdatedAt field.
 func (r *PostgresRepository) UpdateUser(ctx context.Context, user *User) (*User, error) {
 
 	u, err := r.queries.UpdateUser(ctx, db.UpdateUserParams{
@@ -201,126 +134,12 @@ func (r *PostgresRepository) DeleteUser(ctx context.Context, id uint64) error {
 	return r.queries.DeleteUser(ctx, int64(id))
 }
 
-func (r *PostgresRepository) GetUserByVerificationToken(ctx context.Context, token string) (*User, error) {
-
-	pgToken := toPgText(&token)
-	u, err := r.queries.GetUserByVerificationToken(ctx, pgToken)
-	if err != nil {
-		return nil, err
-	}
-
-	var deletedAt *time.Time
-	if u.DeletedAt.Valid {
-		deletedAt = &u.DeletedAt.Time
-	}
-
-	var verifyExpiresAt *time.Time
-	if u.VerificationExpiresAt.Valid {
-		verifyExpiresAt = &u.VerificationExpiresAt.Time
-	}
-
-	var resetExpiresAt *time.Time
-	if u.PasswordResetExpiresAt.Valid {
-		resetExpiresAt = &u.PasswordResetExpiresAt.Time
-	}
-
-	return &User{
-		ID:                     uint64(u.ID),
-		Email:                  u.Email,
-		PasswordHash:           u.PasswordHash,
-		Role:                   Role(u.Role),
-		Status:                 AccountStatus(u.Status),
-		Metadata:               u.Metadata,
-		IsVerified:             u.IsVerified,
-		VerificationToken:      fromPgText(u.VerificationToken),
-		VerificationExpiresAt:  verifyExpiresAt,
-		PasswordResetToken:     fromPgText(u.PasswordResetToken),
-		PasswordResetExpiresAt: resetExpiresAt,
-		CreatedAt:              u.CreatedAt.Time,
-		UpdatedAt:              u.UpdatedAt.Time,
-		DeletedAt:              deletedAt,
-	}, nil
-}
-
 func (r *PostgresRepository) VerifyUserEmail(ctx context.Context, id uint64) (*User, error) {
-
 	u, err := r.queries.VerifyUserEmail(ctx, int64(id))
 	if err != nil {
 		return nil, err
 	}
-
-	var deletedAt *time.Time
-	if u.DeletedAt.Valid {
-		deletedAt = &u.DeletedAt.Time
-	}
-
-	var verifyExpiresAt *time.Time
-	if u.VerificationExpiresAt.Valid {
-		verifyExpiresAt = &u.VerificationExpiresAt.Time
-	}
-
-	var resetExpiresAt *time.Time
-	if u.PasswordResetExpiresAt.Valid {
-		resetExpiresAt = &u.PasswordResetExpiresAt.Time
-	}
-
-	return &User{
-		ID:                     uint64(u.ID),
-		Email:                  u.Email,
-		PasswordHash:           u.PasswordHash,
-		Role:                   Role(u.Role),
-		Status:                 AccountStatus(u.Status),
-		Metadata:               u.Metadata,
-		IsVerified:             u.IsVerified,
-		VerificationToken:      fromPgText(u.VerificationToken),
-		VerificationExpiresAt:  verifyExpiresAt,
-		PasswordResetToken:     fromPgText(u.PasswordResetToken),
-		PasswordResetExpiresAt: resetExpiresAt,
-		CreatedAt:              u.CreatedAt.Time,
-		UpdatedAt:              u.UpdatedAt.Time,
-		DeletedAt:              deletedAt,
-	}, nil
-}
-
-func (r *PostgresRepository) GetUserByPasswordResetToken(ctx context.Context, token string) (*User, error) {
-
-	pgToken := toPgText(&token)
-	u, err := r.queries.GetUserByPasswordResetToken(ctx, pgToken)
-	if err != nil {
-		return nil, err
-	}
-
-	var deletedAt *time.Time
-	if u.DeletedAt.Valid {
-		deletedAt = &u.DeletedAt.Time
-	}
-
-	var verifyExpiresAt *time.Time
-	if u.VerificationExpiresAt.Valid {
-		verifyExpiresAt = &u.VerificationExpiresAt.Time
-	}
-
-	var resetExpiresAt *time.Time
-	if u.PasswordResetExpiresAt.Valid {
-		resetExpiresAt = &u.PasswordResetExpiresAt.Time
-	}
-
-	return &User{
-		ID:                     uint64(u.ID),
-		Email:                  u.Email,
-		PasswordHash:           u.PasswordHash,
-		Role:                   Role(u.Role),
-		Status:                 AccountStatus(u.Status),
-		Metadata:               u.Metadata,
-		IsVerified:             u.IsVerified,
-		VerificationToken:      fromPgText(u.VerificationToken),
-		VerificationExpiresAt:  verifyExpiresAt,
-		PasswordResetToken:     fromPgText(u.PasswordResetToken),
-		PasswordResetExpiresAt: resetExpiresAt,
-		CreatedAt:              u.CreatedAt.Time,
-		UpdatedAt:              u.UpdatedAt.Time,
-		DeletedAt:              deletedAt,
-	}, nil
+	return userFromRow(u), nil
 }
 
 func (r *PostgresRepository) CreateAgreement(ctx context.Context, agreement *Agreement) (*Agreement, error) {
@@ -336,32 +155,23 @@ func (r *PostgresRepository) CreateAgreement(ctx context.Context, agreement *Agr
 	}
 
 	agreement.ID = uint64(a.ID)
-	agreement.CreatedAt = a.CreatedAt.Time
-	agreement.UpdatedAt = a.UpdatedAt.Time
 
 	return agreement, nil
 }
 
-func (r *PostgresRepository) GetAgreementByID(ctx context.Context, id uint64) (*Agreement, error) {
+func (r *PostgresRepository) CountUsers(ctx context.Context) (int64, error) {
+	return r.queries.CountUsers(ctx)
+}
 
+func (r *PostgresRepository) GetAgreementByID(ctx context.Context, id uint64) (*Agreement, error) {
 	a, err := r.queries.GetAgreementByID(ctx, int64(id))
 	if err != nil {
 		return nil, err
 	}
-
-	return &Agreement{
-		ID:          uint64(a.ID),
-		Type:        AgreementType(a.Type),
-		Version:     a.Version,
-		Content:     a.Content,
-		PublishedAt: a.PublishedAt.Time,
-		CreatedAt:   a.CreatedAt.Time,
-		UpdatedAt:   a.UpdatedAt.Time,
-	}, nil
+	return agreementFromRow(a), nil
 }
 
 func (r *PostgresRepository) GetAgreementByTypeAndVersion(ctx context.Context, agType AgreementType, version string) (*Agreement, error) {
-
 	a, err := r.queries.GetAgreementByTypeAndVersion(ctx, db.GetAgreementByTypeAndVersionParams{
 		Type:    string(agType),
 		Version: version,
@@ -369,16 +179,20 @@ func (r *PostgresRepository) GetAgreementByTypeAndVersion(ctx context.Context, a
 	if err != nil {
 		return nil, err
 	}
+	return agreementFromRow(a), nil
+}
 
-	return &Agreement{
-		ID:          uint64(a.ID),
-		Type:        AgreementType(a.Type),
-		Version:     a.Version,
-		Content:     a.Content,
-		PublishedAt: a.PublishedAt.Time,
-		CreatedAt:   a.CreatedAt.Time,
-		UpdatedAt:   a.UpdatedAt.Time,
-	}, nil
+func (r *PostgresRepository) GetLatestAgreements(ctx context.Context) ([]*Agreement, error) {
+	agreements, err := r.queries.GetLatestAgreements(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]*Agreement, len(agreements))
+	for i, a := range agreements {
+		result[i] = agreementFromRow(a)
+	}
+	return result, nil
 }
 
 func (r *PostgresRepository) CreateUserAgreement(ctx context.Context, userAgreement *UserAgreement) (*UserAgreement, error) {
@@ -392,8 +206,7 @@ func (r *PostgresRepository) CreateUserAgreement(ctx context.Context, userAgreem
 	}
 
 	userAgreement.ID = uint64(ua.ID)
-	userAgreement.CreatedAt = ua.CreatedAt.Time
-	userAgreement.UpdatedAt = ua.UpdatedAt.Time
+	userAgreement.AcceptedAt = ua.CreatedAt.Time
 
 	return userAgreement, nil
 }
@@ -405,27 +218,6 @@ func (r *PostgresRepository) HasUserAcceptedAgreement(ctx context.Context, userI
 	})
 }
 
-func (r *PostgresRepository) GetLatestAgreements(ctx context.Context) ([]*Agreement, error) {
-	agreements, err := r.queries.GetLatestAgreements(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	result := make([]*Agreement, len(agreements))
-	for i, a := range agreements {
-		result[i] = &Agreement{
-			ID:          uint64(a.ID),
-			Type:        AgreementType(a.Type),
-			Version:     a.Version,
-			Content:     a.Content,
-			PublishedAt: a.PublishedAt.Time,
-			CreatedAt:   a.CreatedAt.Time,
-			UpdatedAt:   a.UpdatedAt.Time,
-		}
-	}
-	return result, nil
-}
-
 func (r *PostgresRepository) GetPendingAgreementsForUser(ctx context.Context, userID uint64) ([]*Agreement, error) {
 	agreements, err := r.queries.GetPendingAgreementsForUser(ctx, int64(userID))
 	if err != nil {
@@ -434,17 +226,38 @@ func (r *PostgresRepository) GetPendingAgreementsForUser(ctx context.Context, us
 
 	result := make([]*Agreement, len(agreements))
 	for i, a := range agreements {
-		result[i] = &Agreement{
-			ID:          uint64(a.ID),
-			Type:        AgreementType(a.Type),
-			Version:     a.Version,
-			Content:     a.Content,
-			PublishedAt: a.PublishedAt.Time,
-			CreatedAt:   a.CreatedAt.Time,
-			UpdatedAt:   a.UpdatedAt.Time,
-		}
+		result[i] = agreementFromRow(a)
 	}
 	return result, nil
+}
+
+func userFromRow(u db.User) *User {
+	return &User{
+		ID:                     uint64(u.ID),
+		Email:                  u.Email,
+		PasswordHash:           u.PasswordHash,
+		Role:                   Role(u.Role),
+		Status:                 AccountStatus(u.Status),
+		Metadata:               u.Metadata,
+		IsVerified:             u.IsVerified,
+		VerificationToken:      fromPgText(u.VerificationToken),
+		VerificationExpiresAt:  fromPgTimestamptz(u.VerificationExpiresAt),
+		PasswordResetToken:     fromPgText(u.PasswordResetToken),
+		PasswordResetExpiresAt: fromPgTimestamptz(u.PasswordResetExpiresAt),
+		CreatedAt:              u.CreatedAt.Time,
+		UpdatedAt:              u.UpdatedAt.Time,
+		DeletedAt:              fromPgTimestamptz(u.DeletedAt),
+	}
+}
+
+func agreementFromRow(a db.Agreement) *Agreement {
+	return &Agreement{
+		ID:          uint64(a.ID),
+		Type:        AgreementType(a.Type),
+		Version:     a.Version,
+		Content:     a.Content,
+		PublishedAt: a.PublishedAt.Time,
+	}
 }
 
 func toPgTimestamp(t *time.Time) pgtype.Timestamptz {
@@ -452,6 +265,13 @@ func toPgTimestamp(t *time.Time) pgtype.Timestamptz {
 		return pgtype.Timestamptz{Valid: false}
 	}
 	return pgtype.Timestamptz{Time: *t, Valid: true}
+}
+
+func fromPgTimestamptz(t pgtype.Timestamptz) *time.Time {
+	if !t.Valid {
+		return nil
+	}
+	return &t.Time
 }
 
 func toPgText(s *string) pgtype.Text {

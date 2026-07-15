@@ -24,7 +24,7 @@ type AnalysisRequest struct {
 	ID          int64              `json:"id"`
 	RequestID   string             `json:"request_id"`
 	UserID      int64              `json:"user_id"`
-	ApiKeyID    int64              `json:"api_key_id"`
+	ApiKeyID    pgtype.Int8        `json:"api_key_id"`
 	Status      string             `json:"status"`
 	Error       pgtype.Text        `json:"error"`
 	Metadata    []byte             `json:"metadata"`

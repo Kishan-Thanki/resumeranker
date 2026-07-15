@@ -12,14 +12,6 @@ import (
 	"github.com/kishan-thanki/resumeranker/api/internal/users"
 )
 
-type mockAuthManager struct{}
-
-func (m *mockAuthManager) IssueSessionCookie(w http.ResponseWriter, userID uint64, role string) error {
-	return nil
-}
-
-func (m *mockAuthManager) ClearSessionCookie(w http.ResponseWriter) {}
-
 func TestUserHandler_Register(t *testing.T) {
 	t.Parallel()
 
@@ -47,6 +39,28 @@ func TestUserHandler_Register(t *testing.T) {
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
+			name: "missing email",
+			payload: map[string]string{
+				"email":    "",
+				"password": "password123",
+			},
+			mockRegister: func(ctx context.Context, email, password string, role users.Role, agreedToTerms bool) (*users.User, error) {
+				return nil, errors.New("email is required")
+			},
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name: "duplicate email",
+			payload: map[string]string{
+				"email":    "test@example.com",
+				"password": "password123",
+			},
+			mockRegister: func(ctx context.Context, email, password string, role users.Role, agreedToTerms bool) (*users.User, error) {
+				return nil, users.ErrUserAlreadyExists
+			},
+			expectedStatus: http.StatusConflict,
+		},
+		{
 			name: "service error",
 			payload: map[string]string{
 				"email":    "test@example.com",
@@ -67,7 +81,7 @@ func TestUserHandler_Register(t *testing.T) {
 			svc := &MockUserService{
 				RegisterFunc: tt.mockRegister,
 			}
-			h := users.NewUserHandler(svc, &mockAuthManager{}, 50)
+			h := users.NewUserHandler(svc, &MockAuthManager{}, 50)
 
 			var buf bytes.Buffer
 			_ = json.NewEncoder(&buf).Encode(tt.payload)
@@ -125,7 +139,7 @@ func TestUserHandler_Login(t *testing.T) {
 			svc := &MockUserService{
 				AuthenticateFunc: tt.mockAuthenticate,
 			}
-			h := users.NewUserHandler(svc, &mockAuthManager{}, 50)
+			h := users.NewUserHandler(svc, &MockAuthManager{}, 50)
 
 			var buf bytes.Buffer
 			_ = json.NewEncoder(&buf).Encode(tt.payload)

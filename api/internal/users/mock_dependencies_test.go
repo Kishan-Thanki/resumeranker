@@ -2,137 +2,149 @@ package users_test
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/kishan-thanki/resumeranker/api/internal/audit"
 	"github.com/kishan-thanki/resumeranker/api/internal/email"
 	"github.com/kishan-thanki/resumeranker/api/internal/users"
 )
 
-type MockRepository struct {
-	CreateUserFunc                   func(ctx context.Context, user *users.User) (*users.User, error)
-	GetUserByIDFunc                  func(ctx context.Context, id uint64) (*users.User, error)
-	GetUserByEmailFunc               func(ctx context.Context, email string) (*users.User, error)
-	ListUsersFunc                    func(ctx context.Context, limit, offset int32) ([]*users.User, error)
-	UpdateUserFunc                   func(ctx context.Context, user *users.User) (*users.User, error)
-	DeleteUserFunc                   func(ctx context.Context, id uint64) error
-	GetUserByVerificationTokenFunc   func(ctx context.Context, token string) (*users.User, error)
-	GetUserByPasswordResetTokenFunc  func(ctx context.Context, token string) (*users.User, error)
-	VerifyUserEmailFunc              func(ctx context.Context, id uint64) (*users.User, error)
+type MockUserRepository struct {
+	CreateUserFunc                  func(ctx context.Context, user *users.User) (*users.User, error)
+	GetUserByIDFunc                 func(ctx context.Context, id uint64) (*users.User, error)
+	GetUserByEmailFunc              func(ctx context.Context, email string) (*users.User, error)
+	GetUserByVerificationTokenFunc  func(ctx context.Context, token string) (*users.User, error)
+	GetUserByPasswordResetTokenFunc func(ctx context.Context, token string) (*users.User, error)
+	ListUsersFunc                   func(ctx context.Context, limit, offset int32) ([]*users.User, error)
+	CountUsersFunc                  func(ctx context.Context) (int64, error)
+	UpdateUserFunc                  func(ctx context.Context, user *users.User) (*users.User, error)
+	DeleteUserFunc                  func(ctx context.Context, id uint64) error
+	VerifyUserEmailFunc             func(ctx context.Context, id uint64) (*users.User, error)
+}
+
+type MockAgreementRepository struct {
 	CreateAgreementFunc              func(ctx context.Context, agreement *users.Agreement) (*users.Agreement, error)
 	GetAgreementByIDFunc             func(ctx context.Context, id uint64) (*users.Agreement, error)
 	GetAgreementByTypeAndVersionFunc func(ctx context.Context, agType users.AgreementType, version string) (*users.Agreement, error)
+	GetLatestAgreementsFunc          func(ctx context.Context) ([]*users.Agreement, error)
 	CreateUserAgreementFunc          func(ctx context.Context, userAgreement *users.UserAgreement) (*users.UserAgreement, error)
 	HasUserAcceptedAgreementFunc     func(ctx context.Context, userID uint64, agreementID uint64) (bool, error)
-	GetLatestAgreementsFunc          func(ctx context.Context) ([]*users.Agreement, error)
 	GetPendingAgreementsForUserFunc  func(ctx context.Context, userID uint64) ([]*users.Agreement, error)
 }
 
-func (m *MockRepository) CreateUser(ctx context.Context, user *users.User) (*users.User, error) {
+func (m *MockUserRepository) CreateUser(ctx context.Context, user *users.User) (*users.User, error) {
 	if m.CreateUserFunc != nil {
 		return m.CreateUserFunc(ctx, user)
 	}
 	return user, nil
 }
 
-func (m *MockRepository) GetUserByID(ctx context.Context, id uint64) (*users.User, error) {
+func (m *MockUserRepository) GetUserByID(ctx context.Context, id uint64) (*users.User, error) {
 	if m.GetUserByIDFunc != nil {
 		return m.GetUserByIDFunc(ctx, id)
 	}
 	return nil, nil
 }
 
-func (m *MockRepository) GetUserByEmail(ctx context.Context, email string) (*users.User, error) {
+func (m *MockUserRepository) GetUserByEmail(ctx context.Context, email string) (*users.User, error) {
 	if m.GetUserByEmailFunc != nil {
 		return m.GetUserByEmailFunc(ctx, email)
 	}
 	return nil, nil
 }
 
-func (m *MockRepository) ListUsers(ctx context.Context, limit, offset int32) ([]*users.User, error) {
+func (m *MockUserRepository) ListUsers(ctx context.Context, limit, offset int32) ([]*users.User, error) {
 	if m.ListUsersFunc != nil {
 		return m.ListUsersFunc(ctx, limit, offset)
 	}
 	return nil, nil
 }
 
-func (m *MockRepository) UpdateUser(ctx context.Context, user *users.User) (*users.User, error) {
+func (m *MockUserRepository) CountUsers(ctx context.Context) (int64, error) {
+	if m.CountUsersFunc != nil {
+		return m.CountUsersFunc(ctx)
+	}
+	return 0, nil
+}
+
+func (m *MockUserRepository) UpdateUser(ctx context.Context, user *users.User) (*users.User, error) {
 	if m.UpdateUserFunc != nil {
 		return m.UpdateUserFunc(ctx, user)
 	}
 	return user, nil
 }
 
-func (m *MockRepository) DeleteUser(ctx context.Context, id uint64) error {
+func (m *MockUserRepository) DeleteUser(ctx context.Context, id uint64) error {
 	if m.DeleteUserFunc != nil {
 		return m.DeleteUserFunc(ctx, id)
 	}
 	return nil
 }
 
-func (m *MockRepository) GetUserByVerificationToken(ctx context.Context, token string) (*users.User, error) {
+func (m *MockUserRepository) GetUserByVerificationToken(ctx context.Context, token string) (*users.User, error) {
 	if m.GetUserByVerificationTokenFunc != nil {
 		return m.GetUserByVerificationTokenFunc(ctx, token)
 	}
 	return nil, nil
 }
 
-func (m *MockRepository) GetUserByPasswordResetToken(ctx context.Context, token string) (*users.User, error) {
+func (m *MockUserRepository) GetUserByPasswordResetToken(ctx context.Context, token string) (*users.User, error) {
 	if m.GetUserByPasswordResetTokenFunc != nil {
 		return m.GetUserByPasswordResetTokenFunc(ctx, token)
 	}
 	return nil, nil
 }
 
-func (m *MockRepository) VerifyUserEmail(ctx context.Context, id uint64) (*users.User, error) {
+func (m *MockUserRepository) VerifyUserEmail(ctx context.Context, id uint64) (*users.User, error) {
 	if m.VerifyUserEmailFunc != nil {
 		return m.VerifyUserEmailFunc(ctx, id)
 	}
 	return nil, nil
 }
 
-func (m *MockRepository) CreateAgreement(ctx context.Context, agreement *users.Agreement) (*users.Agreement, error) {
+func (m *MockAgreementRepository) CreateAgreement(ctx context.Context, agreement *users.Agreement) (*users.Agreement, error) {
 	if m.CreateAgreementFunc != nil {
 		return m.CreateAgreementFunc(ctx, agreement)
 	}
 	return agreement, nil
 }
 
-func (m *MockRepository) GetAgreementByID(ctx context.Context, id uint64) (*users.Agreement, error) {
+func (m *MockAgreementRepository) GetAgreementByID(ctx context.Context, id uint64) (*users.Agreement, error) {
 	if m.GetAgreementByIDFunc != nil {
 		return m.GetAgreementByIDFunc(ctx, id)
 	}
 	return nil, nil
 }
 
-func (m *MockRepository) GetAgreementByTypeAndVersion(ctx context.Context, agType users.AgreementType, version string) (*users.Agreement, error) {
+func (m *MockAgreementRepository) GetAgreementByTypeAndVersion(ctx context.Context, agType users.AgreementType, version string) (*users.Agreement, error) {
 	if m.GetAgreementByTypeAndVersionFunc != nil {
 		return m.GetAgreementByTypeAndVersionFunc(ctx, agType, version)
 	}
 	return nil, nil
 }
 
-func (m *MockRepository) CreateUserAgreement(ctx context.Context, userAgreement *users.UserAgreement) (*users.UserAgreement, error) {
+func (m *MockAgreementRepository) CreateUserAgreement(ctx context.Context, userAgreement *users.UserAgreement) (*users.UserAgreement, error) {
 	if m.CreateUserAgreementFunc != nil {
 		return m.CreateUserAgreementFunc(ctx, userAgreement)
 	}
 	return userAgreement, nil
 }
 
-func (m *MockRepository) HasUserAcceptedAgreement(ctx context.Context, userID uint64, agreementID uint64) (bool, error) {
+func (m *MockAgreementRepository) HasUserAcceptedAgreement(ctx context.Context, userID uint64, agreementID uint64) (bool, error) {
 	if m.HasUserAcceptedAgreementFunc != nil {
 		return m.HasUserAcceptedAgreementFunc(ctx, userID, agreementID)
 	}
 	return false, nil
 }
 
-func (m *MockRepository) GetLatestAgreements(ctx context.Context) ([]*users.Agreement, error) {
+func (m *MockAgreementRepository) GetLatestAgreements(ctx context.Context) ([]*users.Agreement, error) {
 	if m.GetLatestAgreementsFunc != nil {
 		return m.GetLatestAgreementsFunc(ctx)
 	}
 	return nil, nil
 }
 
-func (m *MockRepository) GetPendingAgreementsForUser(ctx context.Context, userID uint64) ([]*users.Agreement, error) {
+func (m *MockAgreementRepository) GetPendingAgreementsForUser(ctx context.Context, userID uint64) ([]*users.Agreement, error) {
 	if m.GetPendingAgreementsForUserFunc != nil {
 		return m.GetPendingAgreementsForUserFunc(ctx, userID)
 	}
@@ -177,7 +189,7 @@ type MockUserService struct {
 	ForgotPasswordFunc       func(ctx context.Context, email string) error
 	ResetPasswordFunc        func(ctx context.Context, token, newPassword string) error
 	GetMeFunc                func(ctx context.Context, userID uint64) (*users.User, error)
-	ListUsersFunc            func(ctx context.Context, limit, offset int32) ([]*users.User, error)
+	ListUsersFunc      func(ctx context.Context, limit int32, offset int32) ([]*users.User, int64, error)
 }
 
 func (m *MockUserService) Register(ctx context.Context, email, password string, role users.Role, agreedToTerms bool) (*users.User, error) {
@@ -285,9 +297,43 @@ func (m *MockUserService) GetMe(ctx context.Context, userID uint64) (*users.User
 	return nil, nil
 }
 
-func (m *MockUserService) ListUsers(ctx context.Context, limit, offset int32) ([]*users.User, error) {
+func (m *MockUserService) ListUsers(ctx context.Context, limit, offset int32) ([]*users.User, int64, error) {
 	if m.ListUsersFunc != nil {
 		return m.ListUsersFunc(ctx, limit, offset)
 	}
-	return nil, nil
+	return nil, 0, nil
+}
+
+type MockAuthManager struct {
+	RequireAuthFunc        func(http.Handler) http.Handler
+	RequireRoleFunc        func(string) func(http.Handler) http.Handler
+	IssueSessionCookieFunc func(w http.ResponseWriter, userID uint64, role string) error
+	ClearSessionCookieFunc func(w http.ResponseWriter)
+}
+
+func (m *MockAuthManager) RequireAuth(next http.Handler) http.Handler {
+	if m.RequireAuthFunc != nil {
+		return m.RequireAuthFunc(next)
+	}
+	return next
+}
+
+func (m *MockAuthManager) RequireRole(role string) func(http.Handler) http.Handler {
+	if m.RequireRoleFunc != nil {
+		return m.RequireRoleFunc(role)
+	}
+	return func(next http.Handler) http.Handler { return next }
+}
+
+func (m *MockAuthManager) IssueSessionCookie(w http.ResponseWriter, userID uint64, role string) error {
+	if m.IssueSessionCookieFunc != nil {
+		return m.IssueSessionCookieFunc(w, userID, role)
+	}
+	return nil
+}
+
+func (m *MockAuthManager) ClearSessionCookie(w http.ResponseWriter) {
+	if m.ClearSessionCookieFunc != nil {
+		m.ClearSessionCookieFunc(w)
+	}
 }

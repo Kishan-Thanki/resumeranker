@@ -4,8 +4,10 @@ package users_test
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/kishan-thanki/resumeranker/api/internal/users"
@@ -33,8 +35,9 @@ func TestPostgresRepository_Integration(t *testing.T) {
 	t.Run("Create and Get User Lifecycle", func(t *testing.T) {
 		ctx := context.Background()
 
+		email := fmt.Sprintf("integration_test_%d@example.com", time.Now().UnixNano())
 		user := &users.User{
-			Email:        "integration_test@example.com",
+			Email:        email,
 			PasswordHash: "hashedpassword",
 			Role:         users.RoleUser,
 			Status:       users.AccountStatusActive,
@@ -44,12 +47,15 @@ func TestPostgresRepository_Integration(t *testing.T) {
 		if err != nil {
 			t.Skipf("skipping test due to DB error (likely needs migration): %v", err)
 		}
+		t.Cleanup(func() {
+			_ = repo.DeleteUser(context.Background(), createdUser.ID)
+		})
 
 		if createdUser.ID == 0 {
 			t.Error("expected ID to be set")
 		}
 
-		fetchedUser, err := repo.GetUserByEmail(ctx, "integration_test@example.com")
+		fetchedUser, err := repo.GetUserByEmail(ctx, email)
 		if err != nil {
 			t.Errorf("failed to get user: %v", err)
 		}
@@ -71,6 +77,11 @@ func TestPostgresRepository_Integration(t *testing.T) {
 		err = repo.DeleteUser(ctx, updatedUser.ID)
 		if err != nil {
 			t.Errorf("failed to delete user: %v", err)
+		}
+
+		_, err = repo.GetUserByID(ctx, updatedUser.ID)
+		if err == nil {
+			t.Error("expected error getting soft-deleted user, got nil")
 		}
 	})
 }

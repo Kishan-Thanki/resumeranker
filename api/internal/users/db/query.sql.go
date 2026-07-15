@@ -11,6 +11,18 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countUsers = `-- name: CountUsers :one
+SELECT COUNT(*) FROM users
+WHERE deleted_at IS NULL
+`
+
+func (q *Queries) CountUsers(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countUsers)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createAgreement = `-- name: CreateAgreement :one
 INSERT INTO agreements (
     type, version, content, published_at
@@ -128,8 +140,8 @@ func (q *Queries) CreateUserAgreement(ctx context.Context, arg CreateUserAgreeme
 }
 
 const deleteUser = `-- name: DeleteUser :exec
-DELETE FROM users
-WHERE id = $1
+UPDATE users SET deleted_at = NOW(), updated_at = NOW()
+WHERE id = $1 AND deleted_at IS NULL
 `
 
 func (q *Queries) DeleteUser(ctx context.Context, id int64) error {
@@ -383,6 +395,7 @@ func (q *Queries) HasUserAcceptedAgreement(ctx context.Context, arg HasUserAccep
 
 const listUsers = `-- name: ListUsers :many
 SELECT id, email, password_hash, role, status, metadata, created_at, updated_at, deleted_at, is_verified, verification_token, verification_expires_at, password_reset_token, password_reset_expires_at FROM users
+WHERE deleted_at IS NULL
 ORDER BY created_at DESC
 LIMIT $1 OFFSET $2
 `

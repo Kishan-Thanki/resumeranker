@@ -3,6 +3,7 @@ package users_test
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 
 	"github.com/kishan-thanki/resumeranker/api/internal/config"
@@ -56,12 +57,14 @@ func TestUserService_Register(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			repo := &MockRepository{
+			agreementRepo := &MockAgreementRepository{}
+			repo := &MockUserRepository{
 				CreateUserFunc: tt.mockRepo,
 			}
 			auditSvc := &MockAuditService{}
 			emailSvc := &MockEmailService{}
-			svc := users.NewUserService(repo, auditSvc, emailSvc, &config.Config{})
+			var wg sync.WaitGroup
+			svc := users.NewUserService(repo, agreementRepo, auditSvc, emailSvc, &config.Config{}, &wg)
 
 			createdUser, err := svc.Register(context.Background(), tt.email, tt.password, tt.role, true)
 
@@ -158,12 +161,14 @@ func TestUserService_Authenticate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			repo := &MockRepository{
+			agreementRepo := &MockAgreementRepository{}
+			repo := &MockUserRepository{
 				GetUserByEmailFunc: tt.mockRepo,
 			}
 			auditSvc := &MockAuditService{}
 			emailSvc := &MockEmailService{}
-			svc := users.NewUserService(repo, auditSvc, emailSvc, &config.Config{})
+			var wg sync.WaitGroup
+			svc := users.NewUserService(repo, agreementRepo, auditSvc, emailSvc, &config.Config{}, &wg)
 
 			u, err := svc.Authenticate(context.Background(), tt.email, tt.password)
 
@@ -190,7 +195,8 @@ func BenchmarkAuthenticate(b *testing.B) {
 
 	validHash, _ := password.HashIt("benchmarkpassword")
 
-	repo := &MockRepository{
+	agreementRepo := &MockAgreementRepository{}
+	repo := &MockUserRepository{
 		GetUserByEmailFunc: func(ctx context.Context, email string) (*users.User, error) {
 			return &users.User{
 				ID:           1,
@@ -203,7 +209,8 @@ func BenchmarkAuthenticate(b *testing.B) {
 	}
 	auditSvc := &MockAuditService{}
 	emailSvc := &MockEmailService{}
-	svc := users.NewUserService(repo, auditSvc, emailSvc, &config.Config{})
+	var wg sync.WaitGroup
+	svc := users.NewUserService(repo, agreementRepo, auditSvc, emailSvc, &config.Config{}, &wg)
 	ctx := context.Background()
 
 	b.ResetTimer()
@@ -219,7 +226,8 @@ func FuzzAuthenticate(f *testing.F) {
 	f.Add("invalidemail", "wrongpassword")
 	f.Add("", "")
 
-	repo := &MockRepository{
+	agreementRepo := &MockAgreementRepository{}
+	repo := &MockUserRepository{
 		GetUserByEmailFunc: func(ctx context.Context, email string) (*users.User, error) {
 			return &users.User{
 				ID:           1,
@@ -232,7 +240,8 @@ func FuzzAuthenticate(f *testing.F) {
 	}
 	auditSvc := &MockAuditService{}
 	emailSvc := &MockEmailService{}
-	svc := users.NewUserService(repo, auditSvc, emailSvc, &config.Config{})
+	var wg sync.WaitGroup
+	svc := users.NewUserService(repo, agreementRepo, auditSvc, emailSvc, &config.Config{}, &wg)
 
 	f.Fuzz(func(t *testing.T, email, pass string) {
 		_, _ = svc.Authenticate(context.Background(), email, pass)

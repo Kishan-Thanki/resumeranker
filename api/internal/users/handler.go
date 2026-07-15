@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -16,18 +17,12 @@ type userService interface {
 	VerifyEmail(ctx context.Context, token string) error
 	Authenticate(ctx context.Context, email, password string) (*User, error)
 	GetMe(ctx context.Context, userID uint64) (*User, error)
-	ListUsers(ctx context.Context, limit, offset int32) ([]*User, error)
-	AcceptTerms(ctx context.Context, userID uint64, version string) error
-	HasAcceptedTerms(ctx context.Context, userID uint64, version string) (bool, error)
-	GetPendingAgreements(ctx context.Context, userID uint64) ([]*Agreement, error)
-	AcceptAgreements(ctx context.Context, userID uint64, agreementIDs []uint64) error
+	ListUsers(ctx context.Context, limit, offset int32) ([]*User, int64, error)
 	ChangePassword(ctx context.Context, userID uint64, oldPassword, newPassword string) error
 	ForgotPassword(ctx context.Context, email string) error
 	ResetPassword(ctx context.Context, token, newPassword string) error
 	ToggleStatus(ctx context.Context, userID uint64, status AccountStatus) error
 	DeleteAccount(ctx context.Context, userID uint64) error
-	GetLatestAgreements(ctx context.Context) ([]*Agreement, error)
-	PublishAgreement(ctx context.Context, agType AgreementType, version, content string) (*Agreement, error)
 }
 
 type authManager interface {
@@ -52,241 +47,208 @@ func NewUserHandler(userService userService, authManager authManager, defaultLim
 func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var req RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+		return
+	}
+
+	if req.Email == "" || req.Password == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "email and password are required"})
 		return
 	}
 
 	user, err := h.userService.Register(r.Context(), req.Email, req.Password, RoleUser, req.AgreedToTerms)
 	if err != nil {
 		if errors.Is(err, ErrUserAlreadyExists) {
-			http.Error(w, err.Error(), http.StatusConflict)
+			writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
 			return
 		}
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]uint64{"user_id": user.ID})
+	writeJSON(w, http.StatusCreated, map[string]uint64{"user_id": user.ID})
 }
 
 func (h *UserHandler) VerifyEmail(w http.ResponseWriter, r *http.Request) {
 	var req VerifyEmailRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+		return
+	}
+
+	if req.Token == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "token is required"})
 		return
 	}
 
 	err := h.userService.VerifyEmail(r.Context(), req.Token)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "email verified successfully"})
-}
-
-func (h *UserHandler) GetPendingAgreements(w http.ResponseWriter, r *http.Request) {
-	userID, ok := r.Context().Value(ctxkey.UserID).(uint64)
-	if !ok {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	agreements, err := h.userService.GetPendingAgreements(r.Context(), userID)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	responses := make([]AgreementResponse, len(agreements))
-	for i, a := range agreements {
-		responses[i] = AgreementResponse{
-			ID:      a.ID,
-			Type:    string(a.Type),
-			Version: a.Version,
-			Content: a.Content,
-		}
-	}
-
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(responses)
-}
-
-func (h *UserHandler) AcceptAgreements(w http.ResponseWriter, r *http.Request) {
-	userID, ok := r.Context().Value(ctxkey.UserID).(uint64)
-	if !ok {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	var req AcceptAgreementsRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
-		return
-	}
-
-	err := h.userService.AcceptAgreements(r.Context(), userID, req.AgreementIDs)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "agreements accepted successfully"})
+	writeJSON(w, http.StatusOK, map[string]string{"message": "email verified successfully"})
 }
 
 func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+		return
+	}
+
+	if req.Email == "" || req.Password == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "email and password are required"})
 		return
 	}
 
 	user, err := h.userService.Authenticate(r.Context(), req.Email, req.Password)
 	if err != nil {
 		if errors.Is(err, ErrAccountSuspended) {
-			http.Error(w, "Your account has been suspended. Please contact support.", http.StatusForbidden)
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "Your account has been suspended. Please contact support."})
 			return
 		}
-		http.Error(w, "invalid credentials", http.StatusUnauthorized)
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid credentials"})
 		return
 	}
 
 	if err := h.authManager.IssueSessionCookie(w, user.ID, string(user.Role)); err != nil {
-		http.Error(w, "failed to issue session", http.StatusInternalServerError)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to issue session"})
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"message": "logged in successfully",
 	})
 }
 
 func (h *UserHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	h.authManager.ClearSessionCookie(w)
-
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "logged out successfully"})
+	writeJSON(w, http.StatusOK, map[string]string{"message": "logged out successfully"})
 }
 
 func (h *UserHandler) GetMe(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value(ctxkey.UserID).(uint64)
 	if !ok {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return
 	}
 
 	user, err := h.userService.GetMe(r.Context(), userID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(user)
+	writeJSON(w, http.StatusOK, toUserResponse(user))
 }
 
 func (h *UserHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value(ctxkey.UserID).(uint64)
 	if !ok {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return
 	}
 
 	var req ChangePasswordRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+		return
+	}
+
+	if req.OldPassword == "" || req.NewPassword == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "old and new password are required"})
 		return
 	}
 
 	err := h.userService.ChangePassword(r.Context(), userID, req.OldPassword, req.NewPassword)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		if errors.Is(err, ErrIncorrectPassword) {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		} else {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		}
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "password changed successfully"})
+	writeJSON(w, http.StatusOK, map[string]string{"message": "password changed successfully"})
 }
 
 func (h *UserHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		Email string `json:"email"`
-	}
+	var req ForgotPasswordRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+		return
+	}
+
+	if req.Email == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "email is required"})
 		return
 	}
 
 	_ = h.userService.ForgotPassword(r.Context(), req.Email)
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "if an account exists, a password reset link has been sent"})
+	writeJSON(w, http.StatusOK, map[string]string{"message": "if an account exists, a password reset link has been sent"})
 }
 
 func (h *UserHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		Token       string `json:"token"`
-		NewPassword string `json:"new_password"`
-	}
+	var req ResetPasswordRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+		return
+	}
+
+	if req.Token == "" || req.NewPassword == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "token and new password are required"})
 		return
 	}
 
 	err := h.userService.ResetPassword(r.Context(), req.Token, req.NewPassword)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "password reset successfully"})
+	writeJSON(w, http.StatusOK, map[string]string{"message": "password reset successfully"})
 }
 
 func (h *UserHandler) ToggleStatus(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	userID, err := strconv.ParseUint(idStr, 10, 64)
 	if err != nil {
-		http.Error(w, "invalid user id", http.StatusBadRequest)
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid user id"})
 		return
 	}
 
 	var req ToggleStatusRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
 		return
 	}
 
 	err = h.userService.ToggleStatus(r.Context(), userID, req.Status)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "account status updated successfully"})
+	writeJSON(w, http.StatusOK, map[string]string{"message": "account status updated successfully"})
 }
 
 func (h *UserHandler) DeleteAccount(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value(ctxkey.UserID).(uint64)
 	if !ok {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return
 	}
 
 	err := h.userService.DeleteAccount(r.Context(), userID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "account deleted successfully"})
+	writeJSON(w, http.StatusOK, map[string]string{"message": "account deleted successfully"})
 }
 
 func (h *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
@@ -303,59 +265,29 @@ func (h *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 		offset = o
 	}
 
-	users, err := h.userService.ListUsers(r.Context(), int32(limit), int32(offset))
+	users, count, err := h.userService.ListUsers(r.Context(), int32(limit), int32(offset))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(users)
+	resp := make([]UserResponse, len(users))
+	for i, u := range users {
+		resp[i] = toUserResponse(u)
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"users": resp,
+		"total": count,
+	})
 }
 
-func (h *UserHandler) GetLatestAgreements(w http.ResponseWriter, r *http.Request) {
-	agreements, err := h.userService.GetLatestAgreements(r.Context())
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	response := make([]AgreementResponse, len(agreements))
-	for i, a := range agreements {
-		response[i] = AgreementResponse{
-			ID:      a.ID,
-			Type:    string(a.Type),
-			Version: a.Version,
-			Content: a.Content,
+func writeJSON(w http.ResponseWriter, status int, data interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	if data != nil {
+		if err := json.NewEncoder(w).Encode(data); err != nil {
+			slog.Error("failed to encode json response", "err", err)
 		}
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
-}
-
-func (h *UserHandler) PublishAgreement(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		Type    AgreementType `json:"type"`
-		Version string        `json:"version"`
-		Content string        `json:"content"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
-		return
-	}
-
-	agreement, err := h.userService.PublishAgreement(r.Context(), req.Type, req.Version, req.Content)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(AgreementResponse{
-		ID:      agreement.ID,
-		Type:    string(agreement.Type),
-		Version: agreement.Version,
-		Content: agreement.Content,
-	})
 }

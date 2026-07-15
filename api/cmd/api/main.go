@@ -2,15 +2,19 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
+	"github.com/hibiken/asynq"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/kishan-thanki/logger/v2/slogctx"
 	"github.com/kishan-thanki/logger/v2/slogredact"
 	"github.com/kishan-thanki/resumeranker/api/internal/analysis"
@@ -26,7 +30,55 @@ import (
 )
 
 func main() {
-	debugMode := strings.ToLower(os.Getenv("DEBUG")) == "true" || os.Getenv("DEBUG") == "1"
+	if err := run(context.Background(), os.Getenv); err != nil {
+		slog.Error("application stopped with error", slog.Any("error", err))
+		os.Exit(1)
+	}
+}
+
+func run(ctx context.Context, getenv func(string) string) error {
+	setupLogger(strings.ToLower(getenv("DEBUG")) == "true" || getenv("DEBUG") == "1")
+
+	cfg, err := config.Load(getenv)
+	if err != nil {
+		return err
+	}
+
+	pool, err := database.Connect(ctx, cfg.DatabaseURL)
+	if err != nil {
+		return err
+	}
+	defer pool.Close()
+
+	engineClient, err := analysis.NewGrpcEngineClient(cfg.AnalysisServiceURL)
+	if err != nil {
+		return err
+	}
+	defer engineClient.Close()
+
+	redisOpt := asynq.RedisClientOpt{Addr: cfg.RedisAddr, DB: cfg.RedisDB}
+	asynqClient := asynq.NewClient(redisOpt)
+	defer asynqClient.Close()
+
+	var wg sync.WaitGroup
+
+	router, analysisService, err := buildDependencies(ctx, cfg, pool, engineClient, asynqClient, &wg)
+	if err != nil {
+		return err
+	}
+
+	errs := make(chan error, 2)
+	httpSrv := startHTTPServer(cfg.Port, router, errs)
+	asynqSrv := startWorkerServer(redisOpt, cfg.AsynqConcurrency, analysisService, errs)
+
+	if err := waitForShutdown(httpSrv, asynqSrv, &wg, errs); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func setupLogger(debugMode bool) {
 	opts := &slog.HandlerOptions{
 		Level: slog.LevelInfo,
 	}
@@ -47,21 +99,17 @@ func main() {
 	)
 
 	ctxLogger := slogctx.NewHandler(safeLogger)
-
 	slog.SetDefault(slog.New(ctxLogger))
+}
 
-	cfg, err := config.Load()
-	if err != nil {
-		slog.Error("failed to load configuration", slog.Any("error", err))
-		os.Exit(1)
-	}
-
-	ctx := context.Background()
-	pool, err := database.Connect(ctx, cfg.DatabaseURL)
-	if err != nil {
-		slog.Error("database connection failed", slog.Any("error", err))
-		os.Exit(1)
-	}
+func buildDependencies(
+	ctx context.Context,
+	cfg *config.Config,
+	pool *pgxpool.Pool,
+	engineClient analysis.EngineClient,
+	asynqClient *asynq.Client,
+	wg *sync.WaitGroup,
+) (http.Handler, *analysis.AnalysisService, error) {
 
 	userRepo := users.NewPostgresRepository(pool)
 	apiKeyRepo := apikey.NewPostgresRepository(pool)
@@ -69,29 +117,16 @@ func main() {
 	auditRepo := audit.NewPostgresRepository(pool)
 
 	emailService := email.NewResendService(cfg.EmailAPIKey, cfg.EmailFrom)
-
 	auditService := audit.NewAuditService(auditRepo, cfg.PaginationDefaultLimit)
-	userService := users.NewUserService(userRepo, auditService, emailService, cfg)
-
-	if err := userService.SeedFromFixtures(ctx, "fixtures/seeds.json"); err != nil {
-		slog.Error("failed to seed from fixtures", "err", err)
-	}
-
-	rateLimitService, err := ratelimit.NewService(cfg.RedisURL)
+	rateLimitService, err := ratelimit.NewService(cfg.RedisAddr)
 	if err != nil {
-		slog.Error("failed to initialize rate limit service", "err", err)
-		os.Exit(1)
+		return nil, nil, err
 	}
+	authManager := auth.NewManager(cfg.JWTSecret, cfg.Environment, cfg.SessionDurationHours)
 
-	apiKeyService := apikey.NewAPIKeyService(apiKeyRepo, auditService, emailService, rateLimitService, cfg.Domain, cfg.EmailContact)
-
-	engineClient, err := analysis.NewGrpcEngineClient(cfg.AnalysisServiceURL)
-	if err != nil {
-		slog.Error("failed to initialize engine client", "err", err)
-		os.Exit(1)
-	}
-	defer engineClient.Close()
-
+	agreementService := users.NewAgreementService(userRepo, emailService, cfg)
+	userService := users.NewUserService(userRepo, userRepo, auditService, emailService, cfg, wg)
+	apiKeyService := apikey.NewAPIKeyService(apiKeyRepo, auditService, emailService, rateLimitService, cfg.Domain, cfg.EmailContact, wg)
 	analysisService := analysis.NewAnalysisService(
 		analysisRepo,
 		auditService,
@@ -101,46 +136,94 @@ func main() {
 		cfg.PaginationDefaultLimit,
 		cfg.GlobalAnalysisRPMLimit,
 		cfg.GlobalAnalysisRPDLimit,
+		asynqClient,
 	)
 
-	authManager := auth.NewManager(cfg.JWTSecret, cfg.Environment, cfg.SessionDurationHours)
+	if cfg.IsDevelopment() {
+		b, err := os.ReadFile(cfg.FixturesPath)
+		if err != nil {
+			slog.Error("failed to read fixtures file", "err", err)
+		} else {
+			var f users.Fixtures
+			if err := json.Unmarshal(b, &f); err != nil {
+				slog.Error("failed to parse fixtures file", "err", err)
+			} else {
+				if err := users.SeedFromFixtures(ctx, userService, agreementService, cfg, &f); err != nil {
+					slog.Error("failed to seed from fixtures", "err", err)
+				}
+			}
+		}
+	}
 
 	userHandler := users.NewUserHandler(userService, authManager, cfg.PaginationDefaultLimit)
+	agreementHandler := users.NewAgreementHandler(agreementService, userRepo)
 	apiKeyHandler := apikey.NewAPIKeyHandler(apiKeyService)
 	analysisHandler := analysis.NewAnalysisHandler(analysisService, cfg.PaginationDefaultLimit)
 	auditHandler := audit.NewAuditHandler(auditService, cfg.PaginationDefaultLimit)
 
 	router := server.NewRouter(server.RouterConfig{
-		Environment:     cfg.Environment,
-		UserHandler:     userHandler,
-		APIKeyHandler:   apiKeyHandler,
-		AnalysisHandler: analysisHandler,
-		AuditHandler:    auditHandler,
-		JWTSecret:       cfg.JWTSecret,
-		CSRFAuthKey:     cfg.CSRFAuthKey,
-		AllowedOrigins:  cfg.AllowedOrigins,
+		Environment:      cfg.Environment,
+		UserHandler:      userHandler,
+		AgreementHandler: agreementHandler,
+		APIKeyHandler:    apiKeyHandler,
+		AnalysisHandler:  analysisHandler,
+		AuditHandler:     auditHandler,
+		JWTSecret:        cfg.JWTSecret,
+		CSRFAuthKey:      cfg.CSRFAuthKey,
+		AllowedOrigins:   cfg.AllowedOrigins,
 	})
 
+	return router, analysisService, nil
+}
+
+func startHTTPServer(port string, handler http.Handler, errs chan<- error) *http.Server {
 	srv := &http.Server{
-		Addr:    ":" + cfg.Port,
-		Handler: router,
+		Addr:    ":" + port,
+		Handler: handler,
 	}
 
 	go func() {
-		slog.Info("Starting API server", slog.String("port", srv.Addr))
+		slog.Info("Starting API server", slog.String("port", port))
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			slog.Error("server failed", slog.Any("error", err))
-			os.Exit(1)
+			errs <- err
 		}
 	}()
 
+	return srv
+}
+
+func startWorkerServer(redisOpt asynq.RedisClientOpt, concurrency int, analysisService *analysis.AnalysisService, errs chan<- error) *asynq.Server {
+	asynqSrv := asynq.NewServer(redisOpt, asynq.Config{Concurrency: concurrency})
+	mux := asynq.NewServeMux()
+	mux.Handle(analysis.TypeAnalyzeResume, analysis.NewAnalyzeResumeProcessor(analysisService))
+
+	go func() {
+		slog.Info("Starting Asynq worker server")
+		if err := asynqSrv.Run(mux); err != nil {
+			slog.Error("asynq server failed", "err", err)
+			errs <- err
+		}
+	}()
+
+	return asynqSrv
+}
+
+func waitForShutdown(srv *http.Server, asynqSrv *asynq.Server, wg *sync.WaitGroup, errs <-chan error) error {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
-	sig := <-quit
-	slog.Info("Initiating graceful shutdown...", slog.String("signal", sig.String()))
+	var fatalErr error
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Duration(time.Second))
+	select {
+	case err := <-errs:
+		slog.Error("Fatal startup error received, aborting...", slog.Any("error", err))
+		fatalErr = err
+	case sig := <-quit:
+		slog.Info("Initiating graceful shutdown...", slog.String("signal", sig.String()))
+	}
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	if err := srv.Shutdown(shutdownCtx); err != nil {
@@ -149,6 +232,20 @@ func main() {
 		slog.Info("HTTP server stopped accepting connections")
 	}
 
-	pool.Close()
-	slog.Info("Database connection pool closed. Shutdown complete.")
+	asynqSrv.Shutdown()
+
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		slog.Info("All background tasks finished cleanly")
+	case <-shutdownCtx.Done():
+		slog.Warn("Timeout exceeded waiting for background tasks, forcing exit")
+	}
+
+	return fatalErr
 }

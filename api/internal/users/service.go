@@ -2,11 +2,9 @@ package users
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"log/slog"
-	"os"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,12 +12,6 @@ import (
 	"github.com/kishan-thanki/resumeranker/api/internal/config"
 	emailpkg "github.com/kishan-thanki/resumeranker/api/internal/email"
 	"github.com/kishan-thanki/resumeranker/api/internal/password"
-)
-
-var (
-	ErrInvalidCredentials = errors.New("invalid email or password")
-	ErrUserAlreadyExists  = errors.New("an account with this email already exists")
-	ErrAccountSuspended   = errors.New("account is suspended")
 )
 
 type auditService interface {
@@ -31,18 +23,22 @@ type emailService interface {
 }
 
 type UserService struct {
-	repo         Repository
-	auditService auditService
-	emailService emailService
-	cfg          *config.Config
+	repo          UserRepository
+	agreementRepo AgreementRepository
+	auditService  auditService
+	emailService  emailService
+	cfg           *config.Config
+	wg            *sync.WaitGroup
 }
 
-func NewUserService(repo Repository, auditService auditService, emailService emailService, cfg *config.Config) *UserService {
+func NewUserService(repo UserRepository, agreementRepo AgreementRepository, auditService auditService, emailService emailService, cfg *config.Config, wg *sync.WaitGroup) *UserService {
 	return &UserService{
-		repo:         repo,
-		auditService: auditService,
-		emailService: emailService,
-		cfg:          cfg,
+		repo:          repo,
+		agreementRepo: agreementRepo,
+		auditService:  auditService,
+		emailService:  emailService,
+		cfg:           cfg,
+		wg:            wg,
 	}
 }
 
@@ -50,11 +46,6 @@ func (s *UserService) Register(ctx context.Context, email, passwordStr string, r
 
 	if !agreedToTerms {
 		return nil, errors.New("must agree to terms of service and privacy policy")
-	}
-
-	existingUser, err := s.repo.GetUserByEmail(ctx, email)
-	if err == nil && existingUser != nil {
-		return nil, ErrUserAlreadyExists
 	}
 
 	hashedPassword, err := password.HashIt(passwordStr)
@@ -86,17 +77,19 @@ func (s *UserService) Register(ctx context.Context, email, passwordStr string, r
 		UserID:      &createdUser.ID,
 	})
 
-	latestAgreements, err := s.repo.GetLatestAgreements(ctx)
+	latestAgreements, err := s.agreementRepo.GetLatestAgreements(ctx)
 	if err == nil {
 		for _, agreement := range latestAgreements {
-			_, _ = s.repo.CreateUserAgreement(ctx, &UserAgreement{
+			_, _ = s.agreementRepo.CreateUserAgreement(ctx, &UserAgreement{
 				UserID:      createdUser.ID,
 				AgreementID: agreement.ID,
 			})
 		}
 	}
 
+	s.wg.Add(1)
 	go func() {
+		defer s.wg.Done()
 		link := fmt.Sprintf("%s/verify?token=%s", s.cfg.Domain, token)
 		htmlBody := emailpkg.BuildHTMLTemplate(emailpkg.HTMLTemplateParams{
 			Title:        "Verify your email",
@@ -149,11 +142,13 @@ func (s *UserService) ForgotPassword(ctx context.Context, email string) error {
 		return err
 	}
 
+	s.wg.Add(1)
 	go func() {
+		defer s.wg.Done()
 		link := fmt.Sprintf("%s/reset-password?token=%s", s.cfg.Domain, token)
 		htmlBody := emailpkg.BuildHTMLTemplate(emailpkg.HTMLTemplateParams{
 			Title:        "Password Reset Request",
-			Message:      "<p>You recently requested to reset your password for your ResumeRanker account.</p><p>This link is valid for <strong>1 hour</strong>.</p>",
+			Message:      fmt.Sprintf("<p>You recently requested to reset your password for your ResumeRanker account.</p><p>This link is valid for <strong>%d hours</strong>.</p>", s.cfg.ResetTokenDurationHours),
 			BtnText:      "Reset Password",
 			BtnLink:      link,
 			SupportEmail: s.cfg.EmailContact,
@@ -197,7 +192,9 @@ func (s *UserService) ResetPassword(ctx context.Context, token, newPassword stri
 			Description: "user reset password successfully",
 			UserID:      &user.ID,
 		})
+		s.wg.Add(1)
 		go func() {
+			defer s.wg.Done()
 			htmlBody := emailpkg.BuildHTMLTemplate(emailpkg.HTMLTemplateParams{
 				Title:        "Password Reset Successful",
 				Message:      "<p>This is a confirmation that the password for your ResumeRanker account has just been reset.</p><p>If you did not make this change, please contact support immediately.</p>",
@@ -253,59 +250,22 @@ func (s *UserService) GetMe(ctx context.Context, userID uint64) (*User, error) {
 	return user, nil
 }
 
-func (s *UserService) ListUsers(ctx context.Context, limit, offset int32) ([]*User, error) {
+func (s *UserService) ListUsers(ctx context.Context, limit, offset int32) ([]*User, int64, error) {
 	if limit <= 0 || limit > 100 {
 		limit = 50
 	}
 	if offset < 0 {
 		offset = 0
 	}
-	return s.repo.ListUsers(ctx, limit, offset)
-}
-
-func (s *UserService) GetPendingAgreements(ctx context.Context, userID uint64) ([]*Agreement, error) {
-	return s.repo.GetPendingAgreementsForUser(ctx, userID)
-}
-
-func (s *UserService) GetLatestAgreements(ctx context.Context) ([]*Agreement, error) {
-	return s.repo.GetLatestAgreements(ctx)
-}
-
-func (s *UserService) AcceptAgreements(ctx context.Context, userID uint64, agreementIDs []uint64) error {
-	for _, id := range agreementIDs {
-		_, err := s.repo.CreateUserAgreement(ctx, &UserAgreement{
-			UserID:      userID,
-			AgreementID: id,
-		})
-		if err != nil {
-			return errors.Join(errors.New("failed to accept agreement"), err)
-		}
-	}
-	return nil
-}
-
-func (s *UserService) AcceptTerms(ctx context.Context, userID uint64, version string) error {
-	agreement, err := s.repo.GetAgreementByTypeAndVersion(ctx, AgreementTypeTermsOfService, version)
+	users, err := s.repo.ListUsers(ctx, limit, offset)
 	if err != nil {
-		return errors.Join(errors.New("failed to fetch agreement"), err)
+		return nil, 0, err
 	}
-
-	userAgreement := &UserAgreement{
-		UserID:      userID,
-		AgreementID: agreement.ID,
-	}
-
-	_, err = s.repo.CreateUserAgreement(ctx, userAgreement)
-	return err
-}
-
-func (s *UserService) HasAcceptedTerms(ctx context.Context, userID uint64, version string) (bool, error) {
-	agreement, err := s.repo.GetAgreementByTypeAndVersion(ctx, AgreementTypeTermsOfService, version)
+	count, err := s.repo.CountUsers(ctx)
 	if err != nil {
-		return false, err
+		return nil, 0, err
 	}
-
-	return s.repo.HasUserAcceptedAgreement(ctx, userID, agreement.ID)
+	return users, count, nil
 }
 
 func (s *UserService) ChangePassword(ctx context.Context, userID uint64, oldPassword, newPassword string) error {
@@ -316,7 +276,7 @@ func (s *UserService) ChangePassword(ctx context.Context, userID uint64, oldPass
 
 	match, err := password.VerifyHash(oldPassword, user.PasswordHash)
 	if err != nil || !match {
-		return errors.New("incorrect old password")
+		return ErrIncorrectPassword
 	}
 
 	hashedPassword, err := password.HashIt(newPassword)
@@ -332,7 +292,9 @@ func (s *UserService) ChangePassword(ctx context.Context, userID uint64, oldPass
 			Description: "user changed password successfully",
 			UserID:      &userID,
 		})
+		s.wg.Add(1)
 		go func() {
+			defer s.wg.Done()
 			htmlBody := emailpkg.BuildHTMLTemplate(emailpkg.HTMLTemplateParams{
 				Title:        "Password Changed",
 				Message:      "<p>This is a confirmation that the password for your ResumeRanker account has just been changed.</p><p>If you did not make this change, please contact support immediately.</p>",
@@ -351,6 +313,10 @@ func (s *UserService) ChangePassword(ctx context.Context, userID uint64, oldPass
 }
 
 func (s *UserService) ToggleStatus(ctx context.Context, userID uint64, status AccountStatus) error {
+	if !status.IsValid() {
+		return ErrInvalidStatus
+	}
+
 	user, err := s.repo.GetUserByID(ctx, userID)
 	if err != nil {
 		return err
@@ -363,7 +329,9 @@ func (s *UserService) ToggleStatus(ctx context.Context, userID uint64, status Ac
 	user.Status = status
 	_, err = s.repo.UpdateUser(ctx, user)
 	if err == nil {
+		s.wg.Add(1)
 		go func() {
+			defer s.wg.Done()
 			htmlBody := emailpkg.BuildHTMLTemplate(emailpkg.HTMLTemplateParams{
 				Title:        "Account Status Update",
 				Message:      fmt.Sprintf("<p>Your ResumeRanker account status has been updated by an administrator.</p><p>New Status: <strong>%s</strong></p>", status),
@@ -389,7 +357,9 @@ func (s *UserService) DeleteAccount(ctx context.Context, userID uint64) error {
 
 	err = s.repo.DeleteUser(ctx, userID)
 	if err == nil {
+		s.wg.Add(1)
 		go func() {
+			defer s.wg.Done()
 			htmlBody := emailpkg.BuildHTMLTemplate(emailpkg.HTMLTemplateParams{
 				Title:        "Account Deleted",
 				Message:      "<p>Your account and all associated data have been permanently deleted from ResumeRanker.</p><p>We're sorry to see you go.</p>",
@@ -405,136 +375,4 @@ func (s *UserService) DeleteAccount(ctx context.Context, userID uint64) error {
 		}()
 	}
 	return err
-}
-
-func (s *UserService) PublishAgreement(ctx context.Context, agType AgreementType, version, content string) (*Agreement, error) {
-	publishedAt := time.Now()
-	agreement, err := s.repo.CreateAgreement(ctx, &Agreement{
-		Type:        agType,
-		Version:     version,
-		Content:     content,
-		PublishedAt: publishedAt,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	go func() {
-		ctx := context.Background()
-		var offset int32 = 0
-		limit := int32(s.cfg.BulkEmailBatchSize)
-
-		for {
-			users, err := s.repo.ListUsers(ctx, limit, offset)
-			if err != nil || len(users) == 0 {
-				break
-			}
-
-			for _, user := range users {
-				if user.Status == AccountStatusActive {
-					htmlBody := emailpkg.BuildHTMLTemplate(emailpkg.HTMLTemplateParams{
-						Title:        "Legal Update",
-						Message:      fmt.Sprintf("<p>We have updated our <strong>%s</strong> to Version <strong>%s</strong>.</p><p>Please log in to your dashboard to review and accept the new terms.</p>", agType, version),
-						BtnText:      "Log In to Dashboard",
-						BtnLink:      fmt.Sprintf("%s/auth/login", s.cfg.Domain),
-						SupportEmail: s.cfg.EmailContact,
-						Domain:       s.cfg.Domain,
-					})
-					_ = s.emailService.SendEmail(ctx, &emailpkg.SendEmailRequest{
-						To:      []string{user.Email},
-						Subject: fmt.Sprintf("Legal Update: New %s Published", agType),
-						Text:    fmt.Sprintf("We have updated our %s (Version: %s). Please log in to review and accept the new terms.", agType, version),
-						HTML:    htmlBody,
-					})
-				}
-			}
-
-			if len(users) < int(limit) {
-				break
-			}
-			offset += limit
-		}
-	}()
-
-	slog.Info("Agreement published, bulk email dispatch started", "type", agType, "version", version)
-
-	return agreement, nil
-}
-
-type Fixtures struct {
-	Users []struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
-		Role     Role   `json:"role"`
-	} `json:"users"`
-	Agreements []struct {
-		Type    AgreementType `json:"type"`
-		Version string        `json:"version"`
-		Content string        `json:"content"`
-	} `json:"agreements"`
-}
-
-func (s *UserService) SeedFromFixtures(ctx context.Context, filepath string) error {
-	data, err := os.ReadFile(filepath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			slog.Info("fixtures file not found, skipping seed", "filepath", filepath)
-			return nil
-		}
-		return err
-	}
-
-	var fixtures Fixtures
-	if err := json.Unmarshal(data, &fixtures); err != nil {
-		return err
-	}
-
-	for _, a := range fixtures.Agreements {
-		_, err := s.repo.GetAgreementByTypeAndVersion(ctx, a.Type, a.Version)
-		if err == nil {
-			continue
-		}
-
-		publishedAt := time.Now()
-		_, err = s.repo.CreateAgreement(ctx, &Agreement{
-			Type:        a.Type,
-			Version:     a.Version,
-			Content:     a.Content,
-			PublishedAt: publishedAt,
-		})
-		if err != nil {
-			slog.Error("failed to seed agreement", "type", a.Type, "version", a.Version, "err", err)
-			return err
-		}
-		slog.Info("seeded agreement from fixtures", "type", a.Type, "version", a.Version)
-	}
-
-	for _, u := range fixtures.Users {
-		_, err := s.repo.GetUserByEmail(ctx, u.Email)
-		if err == nil {
-			continue
-		}
-
-		hashedPassword, err := password.HashIt(u.Password)
-		if err != nil {
-			return err
-		}
-
-		user := &User{
-			Email:        u.Email,
-			PasswordHash: hashedPassword,
-			Role:         u.Role,
-			Status:       AccountStatusActive,
-			IsVerified:   true,
-		}
-
-		_, err = s.repo.CreateUser(ctx, user)
-		if err != nil {
-			slog.Error("failed to seed user", "email", u.Email, "err", err)
-			return err
-		}
-		slog.Info("seeded user from fixtures", "email", u.Email, "role", string(u.Role))
-	}
-
-	return nil
 }
