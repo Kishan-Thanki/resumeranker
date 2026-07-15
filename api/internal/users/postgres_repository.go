@@ -3,10 +3,10 @@ package users
 import (
 	"context"
 	"errors"
-	"time"
+
+	"github.com/kishan-thanki/resumeranker/api/internal/pgutil"
 
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/kishan-thanki/resumeranker/api/internal/users/db"
 )
@@ -34,10 +34,10 @@ func (r *PostgresRepository) CreateUser(ctx context.Context, user *User) (*User,
 		Status:                 string(user.Status),
 		Metadata:               user.Metadata,
 		IsVerified:             user.IsVerified,
-		VerificationToken:      toPgText(user.VerificationToken),
-		VerificationExpiresAt:  toPgTimestamp(user.VerificationExpiresAt),
-		PasswordResetToken:     toPgText(user.PasswordResetToken),
-		PasswordResetExpiresAt: toPgTimestamp(user.PasswordResetExpiresAt),
+		VerificationToken:      pgutil.ToPgText(user.VerificationToken),
+		VerificationExpiresAt:  pgutil.ToPgTimestamptz(user.VerificationExpiresAt),
+		PasswordResetToken:     pgutil.ToPgText(user.PasswordResetToken),
+		PasswordResetExpiresAt: pgutil.ToPgTimestamptz(user.PasswordResetExpiresAt),
 	})
 	if err != nil {
 		var pgErr *pgconn.PgError
@@ -71,7 +71,7 @@ func (r *PostgresRepository) GetUserByEmail(ctx context.Context, email string) (
 }
 
 func (r *PostgresRepository) GetUserByVerificationToken(ctx context.Context, token string) (*User, error) {
-	pgToken := toPgText(&token)
+	pgToken := pgutil.ToPgText(&token)
 	u, err := r.queries.GetUserByVerificationToken(ctx, pgToken)
 	if err != nil {
 		return nil, err
@@ -80,7 +80,7 @@ func (r *PostgresRepository) GetUserByVerificationToken(ctx context.Context, tok
 }
 
 func (r *PostgresRepository) GetUserByPasswordResetToken(ctx context.Context, token string) (*User, error) {
-	pgToken := toPgText(&token)
+	pgToken := pgutil.ToPgText(&token)
 	u, err := r.queries.GetUserByPasswordResetToken(ctx, pgToken)
 	if err != nil {
 		return nil, err
@@ -116,10 +116,10 @@ func (r *PostgresRepository) UpdateUser(ctx context.Context, user *User) (*User,
 		Status:                 string(user.Status),
 		Metadata:               user.Metadata,
 		IsVerified:             user.IsVerified,
-		VerificationToken:      toPgText(user.VerificationToken),
-		VerificationExpiresAt:  toPgTimestamp(user.VerificationExpiresAt),
-		PasswordResetToken:     toPgText(user.PasswordResetToken),
-		PasswordResetExpiresAt: toPgTimestamp(user.PasswordResetExpiresAt),
+		VerificationToken:      pgutil.ToPgText(user.VerificationToken),
+		VerificationExpiresAt:  pgutil.ToPgTimestamptz(user.VerificationExpiresAt),
+		PasswordResetToken:     pgutil.ToPgText(user.PasswordResetToken),
+		PasswordResetExpiresAt: pgutil.ToPgTimestamptz(user.PasswordResetExpiresAt),
 	})
 	if err != nil {
 		return nil, err
@@ -148,7 +148,7 @@ func (r *PostgresRepository) CreateAgreement(ctx context.Context, agreement *Agr
 		Type:        string(agreement.Type),
 		Version:     agreement.Version,
 		Content:     agreement.Content,
-		PublishedAt: toPgTimestamp(&agreement.PublishedAt),
+		PublishedAt: pgutil.ToPgTimestamptz(&agreement.PublishedAt),
 	})
 	if err != nil {
 		return nil, err
@@ -240,13 +240,13 @@ func userFromRow(u db.User) *User {
 		Status:                 AccountStatus(u.Status),
 		Metadata:               u.Metadata,
 		IsVerified:             u.IsVerified,
-		VerificationToken:      fromPgText(u.VerificationToken),
-		VerificationExpiresAt:  fromPgTimestamptz(u.VerificationExpiresAt),
-		PasswordResetToken:     fromPgText(u.PasswordResetToken),
-		PasswordResetExpiresAt: fromPgTimestamptz(u.PasswordResetExpiresAt),
+		VerificationToken:      pgutil.FromPgText(u.VerificationToken),
+		VerificationExpiresAt:  pgutil.FromPgTimestamptz(u.VerificationExpiresAt),
+		PasswordResetToken:     pgutil.FromPgText(u.PasswordResetToken),
+		PasswordResetExpiresAt: pgutil.FromPgTimestamptz(u.PasswordResetExpiresAt),
 		CreatedAt:              u.CreatedAt.Time,
 		UpdatedAt:              u.UpdatedAt.Time,
-		DeletedAt:              fromPgTimestamptz(u.DeletedAt),
+		DeletedAt:              pgutil.FromPgTimestamptz(u.DeletedAt),
 	}
 }
 
@@ -258,32 +258,4 @@ func agreementFromRow(a db.Agreement) *Agreement {
 		Content:     a.Content,
 		PublishedAt: a.PublishedAt.Time,
 	}
-}
-
-func toPgTimestamp(t *time.Time) pgtype.Timestamptz {
-	if t == nil {
-		return pgtype.Timestamptz{Valid: false}
-	}
-	return pgtype.Timestamptz{Time: *t, Valid: true}
-}
-
-func fromPgTimestamptz(t pgtype.Timestamptz) *time.Time {
-	if !t.Valid {
-		return nil
-	}
-	return &t.Time
-}
-
-func toPgText(s *string) pgtype.Text {
-	if s == nil {
-		return pgtype.Text{Valid: false}
-	}
-	return pgtype.Text{String: *s, Valid: true}
-}
-
-func fromPgText(t pgtype.Text) *string {
-	if !t.Valid {
-		return nil
-	}
-	return &t.String
 }

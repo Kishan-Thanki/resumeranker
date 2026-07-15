@@ -5,11 +5,12 @@ WORKDIR /app
 RUN apk add --no-cache make
 
 COPY go.mod go.sum ./
+
 RUN go mod download
 
 COPY . .
 
-RUN make build
+RUN go build -o bin/api ./cmd/api
 
 FROM alpine:latest
 

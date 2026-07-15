@@ -189,7 +189,7 @@ type MockUserService struct {
 	ForgotPasswordFunc       func(ctx context.Context, email string) error
 	ResetPasswordFunc        func(ctx context.Context, token, newPassword string) error
 	GetMeFunc                func(ctx context.Context, userID uint64) (*users.User, error)
-	ListUsersFunc      func(ctx context.Context, limit int32, offset int32) ([]*users.User, int64, error)
+	ListUsersFunc            func(ctx context.Context, limit int32, offset int32) ([]*users.User, int64, error)
 }
 
 func (m *MockUserService) Register(ctx context.Context, email, password string, role users.Role, agreedToTerms bool) (*users.User, error) {

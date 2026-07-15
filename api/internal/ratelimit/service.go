@@ -2,41 +2,35 @@ package ratelimit
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/redis/go-redis/v9"
 )
 
-var (
-	ErrRateLimitExceeded = errors.New("rate limit exceeded")
-)
+type RateLimitError struct {
+	RetryAfter time.Duration
+	Message    string
+}
+
+func (e *RateLimitError) Error() string {
+	return e.Message
+}
 
 type Service struct {
 	rdb *redis.Client
 }
 
-func NewService(redisURL string) (*Service, error) {
-	if redisURL == "" {
-		return nil, errors.New("redis url is required")
+func NewService(rdb *redis.Client) *Service {
+	return &Service{rdb: rdb}
+}
+
+func (s *Service) Close() error {
+	if s.rdb != nil {
+		return s.rdb.Close()
 	}
-
-	opt, err := redis.ParseURL("redis://" + redisURL)
-	if err != nil {
-		return nil, err
-	}
-
-	rdb := redis.NewClient(opt)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	if err := rdb.Ping(ctx).Err(); err != nil {
-		return nil, fmt.Errorf("failed to connect to redis: %w", err)
-	}
-
-	return &Service{rdb: rdb}, nil
+	return nil
 }
 
 func (s *Service) CheckGlobalLimit(ctx context.Context, rpmLimit, rpdLimit int) error {
@@ -66,15 +60,25 @@ func (s *Service) checkLimits(ctx context.Context, minuteKey, dayKey string, rpm
 
 	_, err := pipe.Exec(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to execute redis rate limit pipeline: %w", err)
 	}
 
 	if rpmLimit > 0 && int(rpmIncr.Val()) > rpmLimit {
-		return ErrRateLimitExceeded
+		now := time.Now()
+		nextMin := now.Truncate(time.Minute).Add(time.Minute)
+		return &RateLimitError{
+			RetryAfter: time.Until(nextMin),
+			Message:    "per-minute rate limit exceeded",
+		}
 	}
 
 	if rpdLimit > 0 && int(rpdIncr.Val()) > rpdLimit {
-		return ErrRateLimitExceeded
+		now := time.Now()
+		nextMidnight := now.Truncate(24 * time.Hour).Add(24 * time.Hour)
+		return &RateLimitError{
+			RetryAfter: time.Until(nextMidnight),
+			Message:    "daily rate limit exceeded",
+		}
 	}
 
 	return nil
@@ -86,16 +90,16 @@ func (s *Service) GetKeyUsage(ctx context.Context, apiKeyID uint64) (rpmUsed, rp
 	dayKey := fmt.Sprintf("key:%d:rpd:%s", apiKeyID, now.Format("2006-01-02"))
 
 	vals, err := s.rdb.MGet(ctx, minuteKey, dayKey).Result()
-	if err != nil && err != redis.Nil {
-		return 0, 0, err
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to get rate limit usage from redis: %w", err)
 	}
 
 	if len(vals) == 2 {
 		if v, ok := vals[0].(string); ok {
-			fmt.Sscanf(v, "%d", &rpmUsed)
+			rpmUsed, _ = strconv.Atoi(v)
 		}
 		if v, ok := vals[1].(string); ok {
-			fmt.Sscanf(v, "%d", &rpdUsed)
+			rpdUsed, _ = strconv.Atoi(v)
 		}
 	}
 
