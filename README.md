@@ -6,7 +6,7 @@
 ---
 
 <div align="center">
-  <video src="./media/demo.mp4" autoplay loop muted playsinline width="100%" style="max-width: 800px; border-radius: 8px;"></video>
+  <video src="media/demo.mp4" autoplay loop muted playsinline width="100%" style="max-width: 800px; border-radius: 8px;"></video>
 </div>
 
 ## Architecture Overview
