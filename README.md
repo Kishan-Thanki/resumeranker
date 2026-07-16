@@ -3,11 +3,11 @@
   <p><b>AI-Powered Resume Parsing and Candidate Ranking Platform</b></p>
 </div>
 
----
-
-<div align="center">
-  <video src="media/demo.mp4" autoplay loop muted playsinline width="100%" style="max-width: 800px; border-radius: 8px;"></video>
-</div>
+<p align="center">
+  <a href="https://resumeranker.kishanthanki.dev" target="_blank" rel="noopener noreferrer">
+    <img src="./media/demo.gif" alt="ResumeRanker Animated Demo" width="800">
+  </a>
+</p>
 
 ## Architecture Overview
 
