@@ -1,0 +1,65 @@
+graph LR
+    %% Class/Style Definitions
+    classDef public fill:#fafafa,stroke:#71717a,stroke-width:2px,color:#18181b;
+    classDef dmz fill:#f8fafc,stroke:#475569,stroke-width:2px,stroke-dasharray: 4 4,color:#0f172a;
+    classDef app fill:#eff6ff,stroke:#2563eb,stroke-width:2px,color:#1e3a8a;
+    classDef worker fill:#faf5ff,stroke:#7c3aed,stroke-width:2px,color:#4c1d95;
+    classDef data fill:#f0fdf4,stroke:#16a34a,stroke-width:2px,color:#14532d;
+    classDef external fill:#fff7ed,stroke:#ea580c,stroke-width:2px,color:#7c2d12;
+
+    %% 1. PUBLIC TIER
+    subgraph Public_Zone ["Public Internet"]
+        UserWeb(["Browser User"])
+        UserAPI(["Developer CLI"])
+    end
+    class Public_Zone public;
+
+    %% 2. PUBLIC DMZ TIER
+    subgraph DMZ_Zone ["Public DMZ (Oracle Instance)"]
+        Caddy["Caddy Reverse Proxy<br>Ports 80 / 443"]
+        StaticFiles[("Static Assets<br>HTML / JS / CSS")]
+        
+        Caddy -.->|Local Read| StaticFiles
+    end
+    class DMZ_Zone dmz;
+
+    %% 3. PRIVATE APP TIER
+    subgraph App_Zone ["Private Subnet / App Tier"]
+        GoAPI["Go Backend API<br>Port 8080"]
+        Redis[("Redis<br>Cache & Queue")]
+        
+        GoAPI <-->|Localhost / IPC| Redis
+    end
+    class App_Zone app;
+
+    %% 4. ISOLATED WORKER TIER (Separate Server)
+    subgraph Worker_Zone ["Analysis Tier (Python Server)"]
+        PyEngine["Python Worker<br>Analysis Engine"]
+    end
+    class Worker_Zone worker;
+
+    %% 5. ISOLATED DATA TIER
+    subgraph Data_Zone ["Data Tier (Secure Cloud)"]
+        Postgres[("PostgreSQL DB<br>State & Analytics")]
+    end
+    class Data_Zone data;
+
+    %% 6. EXTERNAL SERVICES
+    subgraph Third_Party ["External SaaS Ecosystem"]
+        LLM_API[("External LLM API<br>Gemini / OpenAI")]
+    end
+    class Third_Party external;
+
+    %% NETWORK TRAFFIC & DATA FLOWS
+    UserWeb ===>|HTTPS: resumeranker.*| Caddy
+    UserWeb ===>|HTTPS: api.resumeranker.*| Caddy
+    UserAPI ===>|HTTPS: api.resumeranker.*| Caddy
+
+    Caddy ===>|Reverse Proxy HTTP| GoAPI
+    
+    %% Go API talks across to the isolated Python worker via gRPC
+    GoAPI ===>|gRPC RPC: Port 8001| PyEngine
+    GoAPI ===>|Secure TLS: Port 5432| Postgres
+    
+    %% Python worker handles the external AI pipeline
+    PyEngine ===>|HTTPS Outbound: Port 443| LLM_API
