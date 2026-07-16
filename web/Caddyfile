@@ -1,25 +1,9 @@
-{$DOMAIN:localhost:80} {
-    root * /var/www/html
+{$PUBLIC_DOMAIN:localhost} {
+    root * {$WEB_ROOT:/var/www/html}
     try_files {path} {path}.html {path}/index.html
     file_server
+}
 
-    handle /api/* {
-        reverse_proxy {$API_UPSTREAM:resumeranker-api:8080}
-    }
-
-    handle /docs/* {
-        reverse_proxy {$API_UPSTREAM:resumeranker-api:8080}
-    }
-
-    handle_errors {
-        @404 expression `{err.status_code} == 404`
-        handle @404 {
-            rewrite * /404.html
-            file_server
-        }
-        handle {
-            rewrite * /error.html
-            file_server
-        }
-    }
+{$API_DOMAIN:api.localhost} {
+    reverse_proxy {$API_UPSTREAM:localhost:8080}
 }

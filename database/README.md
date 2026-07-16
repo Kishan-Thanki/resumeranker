@@ -1,39 +1,50 @@
-# ResumeRanker - Database Container
+# ResumeRanker - Database & Cache Layer
 
-This directory contains the isolated PostgreSQL database environment for the ResumeRanker application.
+This directory contains the local, containerized infrastructure for the ResumeRanker application.
 
 ## Architecture
 
-We use a dedicated, standalone PostgreSQL container built from the official `postgres:17` image. 
+We utilize `docker-compose` to manage our local backend dependencies, ensuring a consistent development environment.
 
-- **Data Persistence**: Data is persisted using a named Docker volume (`resumeranker-db-data`), ensuring data survives container restarts and removals.
-- **Security**: The base image is the standard Debian-based PostgreSQL image, which provides a highly secure, heavily patched foundation. We avoid passing credentials in the Dockerfile directly; instead, they are securely injected at runtime.
-- **Migrations**: Note that **database schema migrations are NOT executed here.** Migrations are automatically run by the API container (`/api`) upon startup using `golang-migrate`.
+- **PostgreSQL**: Uses the official `postgres:16-alpine` image. Data is persisted using a named Docker volume (`resumeranker-db-data`), ensuring data survives container restarts.
+- **Redis**: Uses the `redis:alpine` image to handle caching and session management.
+- **Networking**: Services are isolated within the `resumeranker-net` network but are exposed to your host machine.
 
 ## Directory Structure
 
 ```text
 database/
-├── Dockerfile           # (Config) The PostgreSQL 17 base image
-├── build.sh             # (Helper) Script to build the database image
-└── run.sh               # (Helper) Script to spin up the database container and volume
+├── docker-compose.db.yml
+└── run.sh
 ```
 
-## Building and Running
+## Running the Infrastructure
 
-### 1. Build the Image
+There is no "build" step required, as we pull the official, production-grade images directly.
 
-Compile the local database Docker image:
-```bash
-./build.sh
-```
+### 1. Launch the Services
 
-### 2. Run the Container
-
-Spin up the database container on your local machine. This will automatically create the `resumeranker-net` Docker network and `resumeranker-db-data` volume if they don't already exist.
+Spin up both the database and the cache container. If the volume or network does not exist, Docker will create them automatically.
 
 ```bash
 ./run.sh
 ```
 
-The database will be exposed on your host machine at `localhost:5432` and internally to other containers at `resumeranker-db:5432`.
+### 2. Connection Details
+
+The services are exposed on your host machine at the following ports:
+
+- **PostgreSQL**: `localhost:5432`
+- **Redis**: `localhost:6379`
+
+### 3. Stopping the Services
+
+To stop the containers while keeping the data volume and network intact:
+
+```bash
+docker-compose -f docker-compose.db.yml down
+```
+
+---
+
+_Note: Database schema migrations are handled by the API container (`/api`) upon startup using `golang-migrate`._

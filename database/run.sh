@@ -1,25 +1,10 @@
 #!/bin/bash
 set -e
 
-echo "Ensuring docker network exists..."
-docker network create resumeranker-net || true
+SCRIPT_DIR="$(dirname "$0")"
 
-echo "Ensuring docker volume exists..."
-docker volume create resumeranker-db-data || true
+echo "Starting database and cache services..."
 
-echo "Stopping and removing existing db container..."
-docker stop resumeranker-db || true
-docker rm resumeranker-db || true
+docker-compose -f "$SCRIPT_DIR/docker-compose.db.yml" up -d
 
-echo "Starting database container..."
-docker run -d \
-  --name resumeranker-db \
-  --network resumeranker-net \
-  -v resumeranker-db-data:/var/lib/postgresql/data \
-  -p 5432:5432 \
-  -e POSTGRES_USER=postgres \
-  -e POSTGRES_PASSWORD=postgres \
-  -e POSTGRES_DB=resumeranker \
-  resumeranker-db-image
-
-echo "Database (resumeranker-db) started successfully on port 5432."
+echo "Database and Redis are running."

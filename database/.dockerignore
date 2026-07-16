@@ -1,21 +1,10 @@
+# Ignore everything not explicitly needed for the database
 .git
 .gitignore
 .dockerignore
-Dockerfile
-README.md
-build.sh
-run.sh
-
-# Ignore secrets
-.env
-*.env
-env/
-
-# Ignore local database volumes (prevent massive image builds)
+*.md
+*.sh
+*.log
 data/
 pgdata/
 postgres-data/
-
-# Ignore logs
-*.log
-.DS_Store

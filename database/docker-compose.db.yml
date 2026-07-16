@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: resumeranker-db
+    volumes:
+      - resumeranker-db-data:/var/lib/postgresql/data
+    ports: ["5432:5432"]
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: resumeranker
+    restart: unless-stopped
+
+  redis:
+    image: redis:alpine
+    container_name: resumeranker-redis
+    ports: ["6379:6379"]
+    restart: unless-stopped
+
+volumes:
+  resumeranker-db-data:
