@@ -1,6 +1,7 @@
 """Tech domain prompts. Hand-tuned for software engineering roles."""
 
-from pydantic import BaseModel, Field, ConfigDict, create_model
+from pydantic import BaseModel, ConfigDict, Field, create_model
+
 from app.schemas import SectionId, SectionScore
 
 PROMPT_VERSION = "tech-v4"
@@ -128,17 +129,18 @@ Hard rules:
 
 from app.domain.base import DomainStrategy
 
+
 class TechDomain(DomainStrategy):
     """
     Implementation of the DomainStrategy for the Technology/IT industry.
     Provides hand-tuned prompts for evaluating software engineering and technical roles,
     placing heavy weight on exact technical skills and relevant engineering experience.
     """
-    
+
     @property
     def name(self) -> str:
         return "tech"
-        
+
     @property
     def prompt_version(self) -> str:
         return PROMPT_VERSION
@@ -166,15 +168,27 @@ class TechDomain(DomainStrategy):
     def get_final_schema(self) -> type[BaseModel]:
         fields = {}
         for sec in self.section_taxonomy():
-            fields[sec] = (str, Field(description=f"Qualitative review of {sec} gap (1-2 sentences max)"))
-            
-        SectionsAnalysis = create_model('SectionsAnalysis', **fields, __config__=ConfigDict(populate_by_name=True))
-        
+            fields[sec] = (
+                str,
+                Field(
+                    description=f"Qualitative review of {sec} gap (1-2 sentences max)"
+                ),
+            )
+
+        SectionsAnalysis = create_model(
+            "SectionsAnalysis", **fields, __config__=ConfigDict(populate_by_name=True)
+        )
+
         class DynamicFinalAnalysisResult(BaseModel):
             model_config = ConfigDict(populate_by_name=True)
 
-            complete_analysis: str = Field(serialization_alias="completeAnalysis", description="Executive summary of the candidate's overall fit (2-3 sentences max)")
-            sections_analysis: SectionsAnalysis = Field(serialization_alias="sectionsAnalysis")
+            complete_analysis: str = Field(
+                serialization_alias="completeAnalysis",
+                description="Executive summary of the candidate's overall fit (2-3 sentences max)",
+            )
+            sections_analysis: SectionsAnalysis = Field(
+                serialization_alias="sectionsAnalysis"
+            )
             sections: list[SectionScore]
-            
+
         return DynamicFinalAnalysisResult
