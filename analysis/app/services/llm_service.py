@@ -6,7 +6,7 @@ import os
 import random
 import time
 from collections.abc import Awaitable, Callable
-from typing import Any, NoReturn, ParamSpec, TypedDict, TypeVar
+from typing import Any, NoReturn, ParamSpec, TypeVar
 
 import instructor
 from instructor.core import InstructorRetryException
@@ -24,6 +24,7 @@ from app.domain.base import DomainStrategy
 from app.domain.tech import TechDomain
 from app.logger import logger
 from app.schemas import ExtractedRequirement, ResumeClaim
+from app.schemas.llm import AggregatedLLMUsage, LLMUsage
 from app.utils.telemetry import track_llm_cost
 
 # ============================================================================
@@ -49,25 +50,6 @@ P = ParamSpec("P")
 T = TypeVar("T")
 R = TypeVar("R", bound=BaseModel)
 S = TypeVar("S", bound=BaseModel)
-
-
-class LLMUsage(TypedDict):
-    """Structured usage statistics for a single LLM call."""
-
-    prompt_tokens: int
-    completion_tokens: int
-    queue_wait_seconds: float
-    retries: int
-
-
-class AggregatedLLMUsage(TypedDict):
-    """Aggregated usage statistics across multiple LLM calls."""
-
-    prompt_tokens: int
-    completion_tokens: int
-    total_tokens: int
-    queue_wait_seconds: float
-    retries: int
 
 
 # ============================================================================
@@ -166,16 +148,20 @@ async def _execute_with_backoff(
                     },
                 )
             await asyncio.sleep(delay)
-    raise RuntimeError("Unreachable") 
+    raise RuntimeError("Unreachable")
 
 
 def _build_usage(raw: Any, queue_wait_seconds: float) -> LLMUsage:
     """Constructs an LLMUsage dict from the raw LiteLLM response."""
     return {
         "prompt_tokens": getattr(raw.usage, "prompt_tokens", DEFAULT_TOKEN_COUNT),
-        "completion_tokens": getattr(raw.usage, "completion_tokens", DEFAULT_TOKEN_COUNT),
+        "completion_tokens": getattr(
+            raw.usage, "completion_tokens", DEFAULT_TOKEN_COUNT
+        ),
         "queue_wait_seconds": queue_wait_seconds,
-        "retries": getattr(raw, "_hidden_params", {}).get("retries", DEFAULT_RETRY_COUNT)
+        "retries": getattr(raw, "_hidden_params", {}).get(
+            "retries", DEFAULT_RETRY_COUNT
+        )
         if hasattr(raw, "_hidden_params")
         else DEFAULT_RETRY_COUNT,
     }
@@ -203,7 +189,7 @@ async def _call_llm(
                 model=model,
                 messages=messages,
                 response_model=response_model,
-                max_retries=0,  
+                max_retries=0,
             )
         except Exception as exc:
             _handle_llm_exception(exc, stage)
