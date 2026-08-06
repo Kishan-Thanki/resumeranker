@@ -1,44 +1,74 @@
 import asyncio
 import os
+
 import grpc
-import sys
+import uvloop
 
-pb_dir = os.path.join(os.path.dirname(__file__), 'pb')
-sys.path.insert(0, pb_dir)
-
-from app.pb import analysis_pb2_grpc
 from app.logger import logger
+from app.pb import analysis_pb2_grpc
 from app.servicer import AnalysisEngineServicer
 
-async def serve():
+PORT = os.environ["PORT"]
+GRPC_MAX_CONCURRENT_STREAMS = int(os.environ["GRPC_MAX_CONCURRENT_STREAMS"])
+GRPC_KEEPALIVE_TIME_MS = int(os.environ["GRPC_KEEPALIVE_TIME_MS"])
+GRPC_KEEPALIVE_TIMEOUT_MS = int(os.environ["GRPC_KEEPALIVE_TIMEOUT_MS"])
+
+
+async def serve() -> None:
     """
-    Initializes and starts the asynchronous gRPC server.
-    
-    Configures critical server options such as max concurrent streams and 
-    keepalive timeouts to ensure high availability and resilience.
-    Binds the AnalysisEngineServicer to the server and listens on the specified PORT.
+    Creates, configures, and runs the asynchronous gRPC server.
+
+    Configuration is loaded from environment variables and validated eagerly at
+    startup. The server remains running until termination and performs a
+    graceful shutdown, allowing in-flight RPCs to complete.
     """
-    port = os.environ.get("PORT", "8001")
     server = grpc.aio.server(
         options=(
-            ('grpc.max_concurrent_streams', 100),
-            ('grpc.keepalive_time_ms', 10000),
-            ('grpc.keepalive_timeout_ms', 5000),
-            ('grpc.default_compression_algorithm', 2),
-            ('grpc.default_compression_level', 2),
+            ("grpc.max_concurrent_streams", GRPC_MAX_CONCURRENT_STREAMS),
+            ("grpc.keepalive_time_ms", GRPC_KEEPALIVE_TIME_MS),
+            ("grpc.keepalive_timeout_ms", GRPC_KEEPALIVE_TIMEOUT_MS),
+            ("grpc.default_compression_algorithm", 2),
+            ("grpc.default_compression_level", 2),
         ),
-        compression=grpc.Compression.Gzip
+        compression=grpc.Compression.Gzip,
     )
-    analysis_pb2_grpc.add_AnalysisEngineServicer_to_server(AnalysisEngineServicer(), server)
-    
-    server.add_insecure_port(f"[::]:{port}")
-    logger.info(f"gRPC Server starting on port {port}")
-    
-    await server.start()
-    await server.wait_for_termination()
+
+    analysis_pb2_grpc.add_AnalysisEngineServicer_to_server(
+        AnalysisEngineServicer(),
+        server,
+    )
+
+    bound_port = server.add_insecure_port(f"[::]:{PORT}")
+    if bound_port == 0:
+        raise RuntimeError(f"Failed to bind gRPC server to port {PORT}")
+
+    logger.info(
+        "Starting gRPC server",
+        extra={
+            "port": bound_port,
+            "compression": "gzip",
+            "max_concurrent_streams": GRPC_MAX_CONCURRENT_STREAMS,
+        },
+    )
+
+    try:
+        await server.start()
+        await server.wait_for_termination()
+    finally:
+        logger.info("Stopping gRPC server...")
+        await server.stop(grace=10)
+
+
+def main() -> None:
+    """Application entry point."""
+    uvloop.install()
+
+    try:
+        asyncio.run(serve())
+    except Exception:
+        logger.exception("Failed to start gRPC server")
+        raise
+
 
 if __name__ == "__main__":
-    import uvloop
-    uvloop.install()
-    
-    asyncio.run(serve())
+    main()
