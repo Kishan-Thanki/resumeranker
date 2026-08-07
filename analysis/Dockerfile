@@ -1,27 +1,25 @@
 FROM python:3.12-slim
 
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PIP_NO_CACHE_DIR=off \
-    PIP_DISABLE_PIP_VERSION_CHECK=on \
-    PIP_DEFAULT_TIMEOUT=100
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH="/app/.venv/bin:$PATH"
 
 RUN pip install uv
 
-RUN useradd --create-home appuser
+RUN groupadd -r appuser && useradd -r -g appuser appuser
 
 WORKDIR /app
 
 COPY pyproject.toml uv.lock ./
 
-RUN uv sync --frozen
+RUN uv sync --frozen --no-dev
 
-ENV PATH="/app/.venv/bin:$PATH"
+COPY . .
 
-COPY . /app
+RUN chown -R appuser:appuser /app
 
 USER appuser
 
-EXPOSE 8001
+EXPOSE 50051
 
 CMD ["python", "-m", "app.main"]

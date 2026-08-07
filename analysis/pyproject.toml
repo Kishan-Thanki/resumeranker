@@ -11,8 +11,6 @@ dependencies = [
     "pypdfium2>=4.30.0",
     "pydantic>=2.7.0",
     "uvloop>=0.22.1",
-    "fastapi>=0.111.0",
-    "orjson>=3.10.0",
 ]
 
 [build-system]
