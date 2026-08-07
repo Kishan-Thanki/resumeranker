@@ -22,13 +22,12 @@ async def serve() -> None:
     startup. The server remains running until termination and performs a
     graceful shutdown, allowing in-flight RPCs to complete.
     """
+
     server = grpc.aio.server(
         options=(
             ("grpc.max_concurrent_streams", GRPC_MAX_CONCURRENT_STREAMS),
             ("grpc.keepalive_time_ms", GRPC_KEEPALIVE_TIME_MS),
             ("grpc.keepalive_timeout_ms", GRPC_KEEPALIVE_TIMEOUT_MS),
-            ("grpc.default_compression_algorithm", 2),
-            ("grpc.default_compression_level", 2),
         ),
         compression=grpc.Compression.Gzip,
     )
@@ -54,17 +53,27 @@ async def serve() -> None:
     try:
         await server.start()
         await server.wait_for_termination()
+
     finally:
         logger.info("Stopping gRPC server...")
+
+    try:
         await server.stop(grace=10)
+    except asyncio.CancelledError:
+        logger.debug("Shutdown interrupted during server.stop()")
 
 
 def main() -> None:
     """Application entry point."""
+
     uvloop.install()
 
     try:
         asyncio.run(serve())
+
+    except KeyboardInterrupt:
+        logger.info("Shutdown requested by user.")
+
     except Exception:
         logger.exception("Failed to start gRPC server")
         raise
