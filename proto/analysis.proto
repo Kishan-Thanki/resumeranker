@@ -1,10 +1,11 @@
 syntax = "proto3";
 
 package analysis;
+
 option go_package = "github.com/kishan-thanki/resumeranker/api/internal/analysis/pb";
 
 service AnalysisEngine {
-  rpc Analyze (AnalyzeRequest) returns (AnalyzeResponse) {}
+  rpc Analyze(AnalyzeRequest) returns (AnalyzeResponse);
 }
 
 message AnalyzeRequest {
