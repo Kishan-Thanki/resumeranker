@@ -1,4 +1,4 @@
-name: Resume Ranker Analysis Service
+name: Resume Ranker API Service
 
 on:
   release:
@@ -6,13 +6,13 @@ on:
   workflow_dispatch:
     inputs:
       version_tag:
-        description: "Version tag to deploy (e.g., analysis-v1.0.0)"
+        description: "Version tag to deploy (e.g., api-v1.0.0)"
         required: true
         type: string
 
 env:
-  SERVICE_NAME: "resumeranker-analysis"          
-  SYSTEMD_SERVICE: "resumeranker-analysis.service"  
+  SERVICE_NAME: "resumeranker-api"         
+  SYSTEMD_SERVICE: "resumeranker-api.service"
 
 jobs:
   deploy:
@@ -33,10 +33,11 @@ jobs:
       - name: Validate Production Safety Guardrail
         run: |
           TAG="${{ steps.context.outputs.VERSION }}"
-          if [[ "$TAG" == *-dev* ]] || [[ "$TAG" == *-test* ]] || [[ "$TAG" == *-stag* ]] || [[ "$TAG" == *-rc* ]]; then
-            echo "ERROR: Attempted to deploy non-production tag ($TAG) to production!"
+          if [[ "$TAG" =~ -(dev|test|stag|rc|alpha|beta|preview) ]]; then
+            echo "ERROR: Blocked alias or pre-release tag ($TAG) from hitting production!"
             exit 1
           fi
+          
           echo "Production guardrail passed successfully. Clean production tag verified."
 
       - name: Download Pre-built Release Asset & Checksum
@@ -65,17 +66,17 @@ jobs:
       - name: Configure SSH Agent
         uses: webfactory/ssh-agent@v0.9.0
         with:
-          ssh-private-key: ${{ secrets.ANALYSIS_SSH_PRIVATE_KEY }}
+          ssh-private-key: ${{ secrets.API_SSH_PRIVATE_KEY }}
 
       - name: Securely Trust Remote Host
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.ANALYSIS_SSH_HOST }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ secrets.API_SSH_HOST }} >> ~/.ssh/known_hosts
 
       - name: Upload Artifact to Target Server
         run: |
           echo "Uploading verified artifact to remote host..."
-          scp artifact.tar.gz deploy@${{ secrets.ANALYSIS_SSH_HOST }}:/home/deploy/artifact.tar.gz
+          scp artifact.tar.gz deploy@${{ secrets.API_SSH_HOST }}:/home/deploy/artifact.tar.gz
 
       - name: Execute Server Deployment Engine
         env:
@@ -84,7 +85,7 @@ jobs:
         run: |
           set -eo pipefail
           echo "Triggering remote deployment script via deploy user..."
-          ssh deploy@${{ secrets.ANALYSIS_SSH_HOST }} << EOF
+          ssh deploy@${{ secrets.API_SSH_HOST }} << EOF
             set -eo pipefail
             /opt/platform/deploy.sh \
               --service "${{ env.SERVICE_NAME }}" \
