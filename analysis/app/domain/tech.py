@@ -1,8 +1,9 @@
 """Tech domain prompts. Hand-tuned for software engineering roles."""
 
-from pydantic import BaseModel, ConfigDict, Field, create_model
+from pydantic import BaseModel, Field, field_validator
 
-from app.schemas import SectionId, SectionScore
+from app.domain.base import DomainStrategy
+from app.schemas import MatchVerdict, SectionId, SectionScore, SectionVerdict
 
 PROMPT_VERSION = "tech-v4"
 
@@ -66,10 +67,12 @@ Hard rules:
 SCORING_PROMPT = """\
 You score how well a resume matches a job description, requirement by
 requirement. You will receive a list of JD requirements and a list of resume
-claims. For each requirement:
+claims. Both carry an `id` field (e.g. "req-3", "claim-7"). Use these ids to
+reference things -- never retype a requirement's text or a claim's evidence
+quote; that data is already known on our side and copying it again is
+wasted effort and a chance to introduce drift.
 
-Decide if the resume matches it: **strong / partial / weak / none**.
-
+Decide if the resume matches each requirement: **strong / partial / weak / none**.
 - `strong` = the resume directly demonstrates the requirement, with concrete
   evidence in the candidate's own claims.
 - `partial` = the resume covers PART of the requirement but not all of it.
@@ -101,33 +104,44 @@ out of three -> `partial`. One out of three -> `weak`. Same rule for
 parenthetical lists: "(FastAPI, gRPC, OpenAPI)" needs all three for
 `strong` unless joined by "or".
 
-For each requirement:
-- If matched, attach the resume claim(s) that prove the match. Include each
-  one's verbatim evidence quote.
-- If unmatched, leave the resume evidence empty and optionally add a one-line
-  factual note about what the resume is missing. Never offer advice or
-  suggest things the candidate should add.
+For each requirement, produce one verdict containing:
+- `id`: the requirement's own id, copied exactly as given. Every
+  requirement id you were given must appear in exactly one verdict --
+  no skipping, no duplicating, no inventing new ids.
+- `match_strength`: strong / partial / weak / none, as defined above.
+- `supporting_claim_ids`: the id(s) of the resume claim(s) that prove the
+  match, copied exactly from the ids you were given. Leave empty if
+  unmatched. Never invent a claim id that wasn't given to you.
+- `note`: if unmatched, optionally a one-line factual note about what the
+  resume is missing. Never offer advice or suggest things the candidate
+  should add.
 
-Then group the requirements into the four sections (skills, experience, education, project) and assign each section a score 0-100 based on
-proportion and strength of matched requirements. A section with all
-`strong` matches -> close to 100. A section with mixed `partial` and `none` ->
-in the 40-70 range. A section where the resume doesn't address any
-requirement -> close to 0.
+Then group the requirements into the four sections (skills, experience,
+education, project), and produce one section verdict per section containing:
+- `id`: the section name (skills / experience / education / project).
+- `score`: 0-100 based on proportion and strength of matched requirements
+  in that section. A section with all `strong` matches -> close to 100.
+  A section with mixed `partial` and `none` -> in the 40-70 range. A
+  section where the resume doesn't address any requirement -> close to 0.
+- `review`: a qualitative review (1-2 sentences) explaining that section's
+  major gaps or strengths.
 
-You must also provide two qualitative reviews:
-1. `sections_analysis`: A qualitative review (1-2 sentences) for EACH of the four sections explaining the major gaps or strengths.
-2. `complete_analysis`: A short executive summary (2-3 sentences) evaluating the candidate's overall fit for the role.
+You must produce a section verdict for ALL FOUR sections (skills,
+experience, education, project), even when a section has no matched
+requirements -- give it a low score and a review explaining the gap. Do
+not omit a section.
+
+You must also provide `complete_analysis`: a short executive summary
+(2-3 sentences) evaluating the candidate's overall fit for the role.
 
 Hard rules:
 - No top-line overall percentage -- section-level only.
-- Evidence quotes must remain verbatim from their source.
+- Requirement ids, claim ids, and section ids must all be copied exactly
+  from what you were given -- never invented.
 - Notes are factual statements about the gap, never advice.
   GOOD: "The JD requires Kubernetes; the resume doesn't mention it."
   BAD:  "Consider learning Kubernetes."
 """
-
-
-from app.domain.base import DomainStrategy
 
 
 class TechDomain(DomainStrategy):
@@ -136,6 +150,10 @@ class TechDomain(DomainStrategy):
     Provides hand-tuned prompts for evaluating software engineering and technical roles,
     placing heavy weight on exact technical skills and relevant engineering experience.
     """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.validate_section_weights()
 
     @property
     def name(self) -> str:
@@ -155,40 +173,89 @@ class TechDomain(DomainStrategy):
         return SCORING_PROMPT
 
     def section_taxonomy(self) -> list[SectionId]:
-        return ["experience", "project", "education", "skills"]
+        return ["skills", "experience", "education", "project"]
 
     def section_weights(self) -> dict[SectionId, float]:
         """
-        Based on modern technical recruiting standards (ATS filters + Hiring Managers)
+        Based on modern technical recruiting standards (ATS filters + Hiring Managers).
         Skills (Keywords/Tech Stack) and Experience are the primary drivers.
         Education is increasingly de-emphasized in favor of Projects/Portfolios.
         """
-        return {"experience": 0.40, "skills": 0.40, "project": 0.15, "education": 0.05}
+        return {
+            "skills": 0.40,
+            "experience": 0.40,
+            "project": 0.15,
+            "education": 0.05,
+        }
 
-    def get_final_schema(self) -> type[BaseModel]:
-        fields = {}
-        for sec in self.section_taxonomy():
-            fields[sec] = (
-                str,
-                Field(
-                    description=f"Qualitative review of {sec} gap (1-2 sentences max)"
-                ),
+    def get_scoring_schema(self) -> type[BaseModel]:
+        valid_sections = set(self.section_taxonomy())
+
+        class TechScoringResult(BaseModel):
+            complete_analysis: str = Field(
+                description="Executive summary of the candidate's overall fit (2-3 sentences max)",
+            )
+            match_verdicts: list[MatchVerdict] = Field(
+                description=(
+                    "One verdict per JD requirement you were given -- must cover "
+                    "every requirement id exactly once, no more, no fewer."
+                )
+            )
+            section_verdicts: list[SectionVerdict] = Field(
+                description=(
+                    "One verdict per section, covering all four sections even if "
+                    "a section has no matched requirements."
+                )
             )
 
-        SectionsAnalysis = create_model(
-            "SectionsAnalysis", **fields, __config__=ConfigDict(populate_by_name=True)
-        )
+            @field_validator("section_verdicts")
+            @classmethod
+            def check_sections_cover_taxonomy(
+                cls, v: list[SectionVerdict]
+            ) -> list[SectionVerdict]:
+                section_ids = [s.id for s in v]
+                if len(section_ids) != len(set(section_ids)):
+                    raise ValueError(
+                        f"duplicate section ids in section_verdicts: {section_ids}"
+                    )
+                if set(section_ids) != valid_sections:
+                    missing = valid_sections - set(section_ids)
+                    extra = set(section_ids) - valid_sections
+                    raise ValueError(
+                        f"section_verdicts must cover exactly {sorted(valid_sections)} "
+                        f"(missing: {missing or None}, unexpected: {extra or None})"
+                    )
+                return v
+
+        return TechScoringResult
+
+    def get_final_schema(self) -> type[BaseModel]:
+        valid_sections = set(self.section_taxonomy())
 
         class DynamicFinalAnalysisResult(BaseModel):
-            model_config = ConfigDict(populate_by_name=True)
-
             complete_analysis: str = Field(
                 serialization_alias="completeAnalysis",
                 description="Executive summary of the candidate's overall fit (2-3 sentences max)",
             )
-            sections_analysis: SectionsAnalysis = Field(
-                serialization_alias="sectionsAnalysis"
-            )
             sections: list[SectionScore]
+
+            @field_validator("sections")
+            @classmethod
+            def check_sections_cover_taxonomy(
+                cls, v: list[SectionScore]
+            ) -> list[SectionScore]:
+                section_ids = [s.id for s in v]
+                if len(section_ids) != len(set(section_ids)):
+                    raise ValueError(
+                        f"duplicate section ids in sections: {section_ids}"
+                    )
+                if set(section_ids) != valid_sections:
+                    missing = valid_sections - set(section_ids)
+                    extra = set(section_ids) - valid_sections
+                    raise ValueError(
+                        f"sections must cover exactly {sorted(valid_sections)} "
+                        f"(missing: {missing or None}, unexpected: {extra or None})"
+                    )
+                return v
 
         return DynamicFinalAnalysisResult
