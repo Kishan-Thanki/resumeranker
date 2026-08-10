@@ -1,9 +1,0 @@
-{$PUBLIC_DOMAIN:localhost} {
-    root * {$WEB_ROOT:/var/www/html}
-    try_files {path} {path}.html {path}/index.html
-    file_server
-}
-
-{$API_DOMAIN:api.localhost} {
-    reverse_proxy {$API_UPSTREAM:localhost:8080}
-}

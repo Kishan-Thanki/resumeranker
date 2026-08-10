@@ -1,74 +1,33 @@
-# ResumeRanker - Unified Gateway & Web Container
+# ResumeRanker - Frontend Layer
 
 This directory contains the entire frontend architecture for ResumeRanker.
 
 ## Architecture Overview
 
-Instead of hosting the reverse proxy (Caddy) and the frontend files separately, we have merged them into an immutable, stateless container:
+The frontend is built as a pure, lightweight static site served directly by a reverse proxy or web server on your server infrastructure.
 
-- **Caddy Edge Server:** Handles automatic SSL (Let's Encrypt), static file serving, and reverse proxy routing to the Go API.
-- **Vanilla Frontend:** Pure ES6 Javascript, HTML, and CSS (no build steps, no bloat).
+- **Vanilla Frontend:** Pure ES6 JavaScript, HTML, and CSS (no heavy build steps, no framework bloat like React or Vite).
 
 ### Directory Structure
 
 ```text
 web/
-├── public/              # (Source Code) Pure Vanilla HTML/CSS/ES6 JS (No build steps)
-├── .agents/             # (Config) Strict AI coding constraints for the frontend
-├── Caddyfile            # (Config) The routing and domain logic for Caddy
-├── Dockerfile           # (Config) Builds the secure Alpine container
-├── entrypoint.sh        # (Config) Drops root privileges and boots Caddy
-└── build.sh             # (Helper) Script to instantly compile the image
+└── public/              # (Source Code) Pure Vanilla HTML/CSS/ES6 JS (No build steps)
 ```
 
 ## Architecture & Frontend Philosophy
 
-1. **Zero-Build Stack**: The frontend utilizes pure ES6 Modules (`import`/`export`), native CSS Variables, and standard HTML5. There is no Webpack, Vite, React, or Tailwind.
+1. **Zero-Build Stack**: The frontend utilizes pure ES6 Modules (`import`/`export`), native CSS Variables, and standard HTML5. There is no Webpack, Vite, or Tailwind.
+
 2. **Strict Monochromatic Design**: The UI strictly enforces a black-and-white aesthetic with native Light/Dark mode toggling. No colors are permitted.
+
 3. **DOM Safety**: To prevent XSS vulnerabilities, the codebase strictly avoids `innerHTML` and dynamically constructs all elements using `document.createElement`.
+
 4. **Secure State Management**: CSRF tokens are securely maintained in JavaScript memory closures (inside `api.js`) to prevent XSS theft, and JWTs are handled entirely via backend `HttpOnly` cookies.
-5. **Semantic Error Mapping**: The frontend (`api.js` and `ui.js`) is natively aware of the Go API's complex HTTP response states (e.g., catching `429 Too Many Requests` or `502 Bad Gateway` from the Python AI Engine) and elegantly displaying them to the user via toast notifications.
 
-## Advanced Security
-
-This container is built with production-grade security:
-
-1. **Root Lockdown:** The `root` user password is permanently locked (`passwd -l`).
-2. **Dedicated User:** A non-root `admin` user is created.
-3. **Privilege Dropping:** The container starts as root, but `entrypoint.sh` instantly drops privileges and runs Caddy entirely as the `admin` user via `su-exec`.
-4. **Port Binding:** Caddy is granted the `cap_net_bind_service` Linux kernel capability, allowing it to bind to ports 80/443 without being root.
-
-## Building and Running
-
-### 1. Build the Image
-
-You can instantly compile the image using the provided helper script:
-
-```bash
-./build.sh
-```
-
-### 2. Run in Production
-
-Because the container is completely dynamic, you pass your environment variables into it at runtime. It requires no hardcoding.
-
-```bash
-docker run -d \
-  -p 80:80 \
-  -p 443:443 \
-  -e DOMAIN="resumeranker.kishanthanki.dev" \
-  -e API_UPSTREAM="api-server:8080" \
-  resumeranker-web:latest
-```
-
-- **`DOMAIN`**: Caddy will listen for this domain and procure an SSL certificate automatically.
-- **`API_UPSTREAM`**: Caddy will automatically route all `/api/*` traffic to this internal destination (e.g., your Go API Docker container).
-
-_Note: The frontend Javascript relies entirely on Caddy's routing. It uses the relative path `/api/v1` and requires no custom injection._
-
----
+5. **Semantic Error Mapping**: The frontend (`api.js` and `ui.js`) is natively aware of the API's complex HTTP response states (e.g., catching `429 Too Many Requests` or `502 Bad Gateway` from the AI Engine) and elegantly displaying them to the user via toast notifications.
 
 ## License
 
-This project is proprietary and confidential. All rights are reserved. 
-Please see the [LICENSE](./LICENSE) file for more details.
+This project is proprietary and confidential. All rights are reserved.
+Please see the [LICENSE](LICENSE) file for more details.
