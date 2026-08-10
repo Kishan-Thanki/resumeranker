@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       version_tag:
-        description: "Web version tag to deploy (e.g., web-v0.0.6)"
+        description: "Web version tag to deploy (e.g., web-v0.0.7)"
         required: true
         type: string
 
@@ -80,7 +80,7 @@ jobs:
             exit 1
           fi
 
-          echo "✓ Web production tag validated:"
+          echo "Web production tag validated:"
           echo "  $TAG"
 
       # ====================================================================
@@ -127,7 +127,7 @@ jobs:
             exit 1
           }
 
-          echo "✓ Deployment configuration validated."
+          echo "Deployment configuration validated."
 
       # ====================================================================
       # 4. Download exact release artifact
@@ -171,7 +171,7 @@ jobs:
             exit 1
           }
 
-          echo "✓ Release files downloaded."
+          echo "Release files downloaded."
 
           ls -lh \
             "$ARTIFACT_NAME" \
@@ -202,7 +202,7 @@ jobs:
 
           echo "SHA256_HASH=$CHECKSUM" >> "$GITHUB_ENV"
 
-          echo "✓ SHA256 checksum format validated."
+          echo "SHA256 checksum format validated."
 
       # ====================================================================
       # 6. Verify artifact checksum
@@ -218,7 +218,7 @@ jobs:
             "$ARTIFACT_NAME" |
             sha256sum -c -
 
-          echo "✓ Web artifact SHA256 verification passed."
+          echo "Web artifact SHA256 verification passed."
 
       # ====================================================================
       # 7. Configure deployment SSH agent
@@ -235,13 +235,13 @@ jobs:
 
       - name: Configure SSH Host Trust
         env:
-          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+          SSH_KNOWN_HOSTS: ${{ secrets.WEB_SSH_KNOWN_HOSTS }}
         shell: bash
         run: |
           set -euo pipefail
 
           [[ -n "$SSH_KNOWN_HOSTS" ]] || {
-            echo "ERROR: SSH_KNOWN_HOSTS is not configured."
+            echo "ERROR: WEB_SSH_KNOWN_HOSTS is not configured."
             exit 1
           }
 
@@ -254,7 +254,7 @@ jobs:
 
           chmod 600 "$HOME/.ssh/known_hosts"
 
-          echo "✓ Pinned SSH host trust configured."
+          echo "Pinned SSH host trust configured."
 
       # ====================================================================
       # 9. Verify deployment SSH access
@@ -278,7 +278,7 @@ jobs:
             "${DEPLOY_USER}@${SSH_HOST}" \
             'printf "Deployment SSH authentication successful.\n"'
 
-          echo "✓ Deployment SSH access verified."
+          echo "Deployment SSH access verified."
 
       # ====================================================================
       # 10. Generate unique remote artifact path
@@ -316,7 +316,7 @@ jobs:
             "$ARTIFACT_NAME" \
             "${DEPLOY_USER}@${SSH_HOST}:${REMOTE_ARTIFACT}"
 
-          echo "✓ Verified artifact uploaded."
+          echo "Verified artifact uploaded."
 
       # ====================================================================
       # 12. Execute server-side deployment engine
@@ -378,7 +378,7 @@ jobs:
 
           REMOTE_SCRIPT
 
-          echo "✓ Server-side deployment completed."
+          echo "Server-side deployment completed."
 
       # ====================================================================
       # 13. Cleanup remote artifact
@@ -405,7 +405,7 @@ jobs:
             "rm -f -- '$REMOTE_ARTIFACT'" \
             || true
 
-          echo "✓ Remote artifact cleanup attempted."
+          echo "Remote artifact cleanup attempted."
 
       # ====================================================================
       # 14. Cleanup GitHub runner
@@ -419,4 +419,4 @@ jobs:
             "$ARTIFACT_NAME" \
             "$CHECKSUM_NAME"
 
-          echo "✓ Runner artifacts cleaned."
+          echo "Runner artifacts cleaned."
