@@ -94,8 +94,8 @@ jobs:
             exit 1
           fi
 
-          mv "$ARTIFACT_NAME" artifact.tar.gz
-          mv "$CHECKSUM_NAME" artifact.tar.gz.sha256
+          echo "Release files downloaded successfully:"
+          ls -lh "$ARTIFACT_NAME" "$CHECKSUM_NAME"
 
       - name: Validate Checksum File
         run: |
@@ -103,7 +103,7 @@ jobs:
 
           echo "Validating checksum file..."
 
-          CHECKSUM="$(awk 'NF >= 1 {print $1; exit}' artifact.tar.gz.sha256)"
+          CHECKSUM="$(awk 'NF >= 1 {print $1; exit}' "$CHECKSUM_NAME")"
 
           if [[ ! "$CHECKSUM" =~ ^[0-9a-fA-F]{64}$ ]]; then
             echo "ERROR: Invalid SHA256 checksum."
@@ -112,13 +112,15 @@ jobs:
 
           echo "SHA256_HASH=$CHECKSUM" >> "$GITHUB_ENV"
 
+          echo "Checksum format validated."
+
       - name: Verify Artifact SHA256
         run: |
           set -euo pipefail
 
           echo "Verifying web artifact checksum..."
 
-          sha256sum -c artifact.tar.gz.sha256
+          sha256sum -c "$CHECKSUM_NAME"
 
           echo "Web artifact SHA256 verification passed."
 
@@ -143,12 +145,12 @@ jobs:
 
           ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
 
-          if [[ ! -s ~/.ssh/known_hosts ]]; then
+          if [[ ! -s "$HOME/.ssh/known_hosts" ]]; then
             echo "ERROR: Failed to establish SSH host trust."
             exit 1
           fi
 
-          chmod 600 ~/.ssh/known_hosts
+          chmod 600 "$HOME/.ssh/known_hosts"
 
       - name: Upload Artifact to Target Server
         env:
@@ -159,8 +161,10 @@ jobs:
           echo "Uploading verified web artifact..."
 
           scp \
-            artifact.tar.gz \
+            "$ARTIFACT_NAME" \
             "deploy@${SSH_HOST}:/home/deploy/artifact.tar.gz"
+
+          echo "Artifact uploaded successfully."
 
       - name: Execute Server Deployment Engine
         env:
@@ -175,7 +179,7 @@ jobs:
 
           echo "Triggering remote deployment engine..."
 
-          ssh "deploy@${SSH_HOST}" << EOF
+          ssh "deploy@${SSH_HOST}" << 'EOF'
             set -euo pipefail
 
             /opt/platform/deploy.sh \
@@ -193,5 +197,5 @@ jobs:
         if: always()
         run: |
           rm -f \
-            artifact.tar.gz \
-            artifact.tar.gz.sha256
+            "$ARTIFACT_NAME" \
+            "$CHECKSUM_NAME"
