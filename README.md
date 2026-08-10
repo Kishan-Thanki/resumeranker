@@ -4,7 +4,7 @@
 </div>
 
 <p align="center">
-  <a href="https://resumeranker.kishanthanki.dev" target="_blank" rel="noopener noreferrer">
+  <a href="https://resumeranker.kishanthanki.space" target="_blank" rel="noopener noreferrer">
     <img src="./media/demo.gif" alt="ResumeRanker Animated Demo" width="800">
   </a>
 </p>
@@ -80,13 +80,9 @@ graph LR
     PyEngine ===>|HTTPS Outbound: Port 443| LLM_API
 ```
 
-- **[Consolidated Edge Architecture Diagram](./architecture/01-architecture-consolidated-edge.mermaid)**
-
-- **[Distributed Gateway Architecture Diagram](./architecture/02-architecture-distributed-gateway.mermaid)**
-
 ### The 4 Core Components:
 
-- **`web/`**: The Frontend interface (Vanilla ES6/HTML/CSS) served blazingly fast via Caddy.
+- **`web/`**: The Frontend interface (Vanilla ES6/HTML/CSS).
 - **`api/`**: The Go (Golang) monolithic backend. It acts as the gateway, translating internal Python errors into semantic HTTP status codes, propagating `RequestID` distributed tracing, and handling auth/PostgreSQL.
 - **`analysis/`**: The pure-Python AI Engine running on `uvloop`. It receives PDFs via gRPC, parses them securely via `Semaphore` thread bouncers, and orchestrates LLM requests.
 - **`database/`**: The isolated PostgreSQL database container.
@@ -94,8 +90,6 @@ graph LR
 ### Shared Contracts:
 
 - **`proto/`**: The absolute source of truth. Contains the `analysis.proto` file that both the Go API (Client) and Python Engine (Server) use to generate their networking code, guaranteeing flawless HTTP/2 communication.
-
----
 
 ## How to Spin Up
 
