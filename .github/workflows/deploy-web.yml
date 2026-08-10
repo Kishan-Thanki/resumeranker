@@ -179,7 +179,7 @@ jobs:
 
           echo "Triggering remote deployment engine..."
 
-          ssh "deploy@${SSH_HOST}" << 'EOF'
+          ssh "deploy@${SSH_HOST}" << EOF
             set -euo pipefail
 
             /opt/platform/deploy.sh \
