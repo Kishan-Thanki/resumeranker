@@ -225,7 +225,7 @@ jobs:
       # ====================================================================
 
       - name: Configure Deployment SSH Agent
-        uses: webfactory/ssh-agent@v0.9.0
+        uses: webfactory/ssh-agent@v0.10.0
         with:
           ssh-private-key: ${{ secrets.WEB_SSH_PRIVATE_KEY }}
 
