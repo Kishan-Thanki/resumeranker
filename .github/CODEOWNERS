@@ -1,0 +1,13 @@
+# Global repository ownership
+* @Kishan-Thanki
+
+# Service ownership
+/api/        @Kishan-Thanki
+/analysis/   @Kishan-Thanki
+/web/        @Kishan-Thanki
+
+# CI, artifact, and deployment workflows
+/.github/workflows/ @Kishan-Thanki
+
+# Repository governance
+/.github/ @Kishan-Thanki

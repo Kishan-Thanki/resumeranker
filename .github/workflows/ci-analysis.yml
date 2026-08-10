@@ -2,7 +2,8 @@ name: CI Analysis Service
 
 on:
   pull_request:
-    branches: [main]
+    branches:
+      - main
     paths:
       - "analysis/**"
       - ".github/workflows/ci-analysis.yml"
@@ -10,9 +11,11 @@ on:
 jobs:
   test-analysis:
     runs-on: ubuntu-24.04
+
     defaults:
       run:
         working-directory: analysis
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -26,6 +29,7 @@ jobs:
         uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
+          cache-dependency-glob: "analysis/uv.lock"
 
       - name: Install Project Dependencies
         run: |

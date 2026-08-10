@@ -1,4 +1,4 @@
-name: Resume Ranker Analysis Service
+name: Resume Ranker Web Service
 
 on:
   release:
@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       version_tag:
-        description: "Analysis version tag to deploy (e.g., analysis-v1.0.0)"
+        description: "Web version tag to deploy (e.g., web-v1.0.0)"
         required: true
         type: string
 
@@ -16,10 +16,11 @@ permissions:
   contents: read
 
 env:
-  SERVICE_NAME: "resumeranker-analysis"
-  SYSTEMD_SERVICE: "resumeranker-analysis.service"
-  ARTIFACT_NAME: "analysis-artifact.tar.gz"
-  CHECKSUM_NAME: "analysis-artifact.tar.gz.sha256"
+  SERVICE_NAME: "resumeranker-web"
+  SYSTEMD_SERVICE: "resumeranker-web.service"
+  HEALTH_URL: "https://resumeranker.kishanthanki.space/"
+  ARTIFACT_NAME: "web-artifact.tar.gz"
+  CHECKSUM_NAME: "web-artifact.tar.gz.sha256"
 
 jobs:
   deploy:
@@ -49,21 +50,21 @@ jobs:
           echo "VERSION=$TAG" >> "$GITHUB_OUTPUT"
           echo "Resolved production deployment version: $TAG"
 
-      - name: Validate Analysis Production Release Tag
+      - name: Validate Web Production Release Tag
         env:
           TAG: ${{ steps.context.outputs.VERSION }}
         run: |
           set -euo pipefail
 
-          if [[ ! "$TAG" =~ ^analysis-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "ERROR: Invalid analysis production tag: $TAG"
-            echo "Expected format: analysis-vX.Y.Z"
+          if [[ ! "$TAG" =~ ^web-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "ERROR: Invalid web production tag: $TAG"
+            echo "Expected format: web-vX.Y.Z"
             exit 1
           fi
 
-          echo "Analysis production tag validated: $TAG"
+          echo "Web production tag validated: $TAG"
 
-      - name: Download Exact Analysis Release Artifact
+      - name: Download Exact Web Release Artifact
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ steps.context.outputs.VERSION }}
@@ -115,25 +116,25 @@ jobs:
         run: |
           set -euo pipefail
 
-          echo "Verifying Analysis artifact checksum..."
+          echo "Verifying web artifact checksum..."
 
           sha256sum -c artifact.tar.gz.sha256
 
-          echo "Analysis artifact SHA256 verification passed."
+          echo "Web artifact SHA256 verification passed."
 
       - name: Configure SSH Agent
         uses: webfactory/ssh-agent@v0.9.0
         with:
-          ssh-private-key: ${{ secrets.ANALYSIS_SSH_PRIVATE_KEY }}
+          ssh-private-key: ${{ secrets.WEB_SSH_PRIVATE_KEY }}
 
       - name: Securely Trust Remote Host
         env:
-          SSH_HOST: ${{ secrets.ANALYSIS_SSH_HOST }}
+          SSH_HOST: ${{ secrets.WEB_SSH_HOST }}
         run: |
           set -euo pipefail
 
           if [[ -z "$SSH_HOST" ]]; then
-            echo "ERROR: ANALYSIS_SSH_HOST secret is not configured."
+            echo "ERROR: WEB_SSH_HOST secret is not configured."
             exit 1
           fi
 
@@ -151,11 +152,11 @@ jobs:
 
       - name: Upload Artifact to Target Server
         env:
-          SSH_HOST: ${{ secrets.ANALYSIS_SSH_HOST }}
+          SSH_HOST: ${{ secrets.WEB_SSH_HOST }}
         run: |
           set -euo pipefail
 
-          echo "Uploading verified Analysis artifact..."
+          echo "Uploading verified web artifact..."
 
           scp \
             artifact.tar.gz \
@@ -165,9 +166,10 @@ jobs:
         env:
           VERSION: ${{ steps.context.outputs.VERSION }}
           CHECKSUM: ${{ env.SHA256_HASH }}
-          SSH_HOST: ${{ secrets.ANALYSIS_SSH_HOST }}
+          SSH_HOST: ${{ secrets.WEB_SSH_HOST }}
           SERVICE_NAME: ${{ env.SERVICE_NAME }}
           SYSTEMD_SERVICE: ${{ env.SYSTEMD_SERVICE }}
+          HEALTH_URL: ${{ env.HEALTH_URL }}
         run: |
           set -euo pipefail
 
@@ -181,7 +183,8 @@ jobs:
               --version "${VERSION}" \
               --artifact "/home/deploy/artifact.tar.gz" \
               --sha256 "${CHECKSUM}" \
-              --systemd "${SYSTEMD_SERVICE}"
+              --systemd "${SYSTEMD_SERVICE}" \
+              --health "${HEALTH_URL}"
 
             rm -f /home/deploy/artifact.tar.gz
           EOF

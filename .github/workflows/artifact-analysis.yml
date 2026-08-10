@@ -1,0 +1,103 @@
+name: Build Analysis Artifact
+
+on:
+  push:
+    tags:
+      - "analysis-v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-analysis:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Validate Analysis Release Tag
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          if [[ ! "$TAG" =~ ^analysis-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "ERROR: Invalid analysis production release tag: $TAG"
+            echo "Expected format: analysis-vX.Y.Z"
+            exit 1
+          fi
+
+          echo "Valid analysis production release tag: $TAG"
+
+      - name: Package Clean Analysis Artifact
+        run: |
+          set -euo pipefail
+
+          rm -rf build_stage
+          rm -f analysis-artifact.tar.gz
+          rm -f analysis-artifact.tar.gz.sha256
+
+          mkdir -p build_stage/analysis
+
+          cp -r analysis/app build_stage/analysis/
+          cp analysis/pyproject.toml build_stage/analysis/
+          cp analysis/uv.lock build_stage/analysis/
+
+          find build_stage/analysis \
+            -type d \
+            -name "__pycache__" \
+            -prune \
+            -exec rm -rf {} +
+
+          find build_stage/analysis \
+            -type f \
+            \( -name "*.pyc" -o -name "*.pyo" \) \
+            -delete
+
+          tar \
+            --sort=name \
+            --mtime='UTC 1970-01-01' \
+            --owner=0 \
+            --group=0 \
+            --numeric-owner \
+            -czf analysis-artifact.tar.gz \
+            -C build_stage \
+            analysis/
+
+          sha256sum analysis-artifact.tar.gz \
+            > analysis-artifact.tar.gz.sha256
+
+      - name: Verify Analysis Artifact
+        run: |
+          set -euo pipefail
+
+          sha256sum -c analysis-artifact.tar.gz.sha256
+
+          tar -tzf analysis-artifact.tar.gz \
+            > /tmp/analysis-artifact-files.txt
+
+          if grep -E '(^|/)(__pycache__|[^/]+\.pyc)($|/)' \
+              /tmp/analysis-artifact-files.txt; then
+            echo "ERROR: Python cache files were included."
+            exit 1
+          fi
+
+          grep -q '^analysis/app/' \
+            /tmp/analysis-artifact-files.txt
+
+          grep -q '^analysis/pyproject.toml$' \
+            /tmp/analysis-artifact-files.txt
+
+          grep -q '^analysis/uv.lock$' \
+            /tmp/analysis-artifact-files.txt
+
+      - name: Create GitHub Release & Upload Asset
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: |
+            analysis-artifact.tar.gz
+            analysis-artifact.tar.gz.sha256
+          body: |
+            Automated production build for analysis service release ${{ github.ref_name }}
