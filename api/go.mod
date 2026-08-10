@@ -12,7 +12,7 @@ require (
 	github.com/hibiken/asynq v0.26.0
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/kishan-thanki/logger/v2 v2.0.0
-	github.com/redis/go-redis/v9 v9.21.0
+	github.com/redis/go-redis/v9 v9.22.0
 	github.com/resend/resend-go/v2 v2.28.0
 	golang.org/x/crypto v0.53.0
 	google.golang.org/grpc v1.82.0
