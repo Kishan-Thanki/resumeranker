@@ -40,7 +40,7 @@ jobs:
             exit 1
           fi
 
-          echo "✓ Valid Web production release tag:"
+          echo "Valid Web production release tag:"
           echo "  $TAG"
 
       # ====================================================================
@@ -52,17 +52,10 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [[ ! -d "web/public" ]]; then
-            echo "ERROR: web/public directory does not exist."
-            exit 1
-          fi
+          test -d web/public
+          test -f web/public/index.html
 
-          if [[ ! -f "web/public/index.html" ]]; then
-            echo "ERROR: web/public/index.html does not exist."
-            exit 1
-          fi
-
-          echo "✓ Web public directory validated."
+          echo "Web public directory validated."
 
       # ====================================================================
       # 4. Build deterministic artifact
@@ -89,15 +82,14 @@ jobs:
             --owner=0 \
             --group=0 \
             --numeric-owner \
-            --no-recursion \
             -czf web-artifact.tar.gz \
             -C build_stage \
-            public
+            public/
 
           sha256sum web-artifact.tar.gz \
             > web-artifact.tar.gz.sha256
 
-          echo "✓ Web artifact created."
+          echo "Web artifact created."
 
           ls -lh \
             web-artifact.tar.gz \
@@ -119,21 +111,13 @@ jobs:
           echo "Validating archive contents..."
 
           tar \
-            --list \
-            --gzip \
-            --file web-artifact.tar.gz \
+            -tzf web-artifact.tar.gz \
             > /tmp/web-artifact-files.txt
 
-          grep -q '^public/$' \
-            /tmp/web-artifact-files.txt
+          test -s /tmp/web-artifact-files.txt
 
           grep -q '^public/index.html$' \
             /tmp/web-artifact-files.txt
-
-          if ! grep -q '^public/assets/' \
-              /tmp/web-artifact-files.txt; then
-            echo "WARNING: No public/assets/ directory found."
-          fi
 
           if grep -qE '(^|/)(__pycache__|[^/]+\.pyc)$' \
               /tmp/web-artifact-files.txt; then
@@ -153,14 +137,15 @@ jobs:
             exit 1
           fi
 
-          echo "✓ Web artifact verified."
+          echo
+          echo "Web artifact verified."
 
           echo
           echo "Artifact contents:"
           cat /tmp/web-artifact-files.txt
 
       # ====================================================================
-      # 6. Create GitHub Release
+      # 6. Create GitHub Release and upload assets
       # ====================================================================
 
       - name: Create GitHub Release and Upload Assets
@@ -188,4 +173,4 @@ jobs:
             web-artifact.tar.gz.sha256 \
             /tmp/web-artifact-files.txt
 
-          echo "✓ Runner artifacts cleaned."
+          echo "Runner artifacts cleaned."
