@@ -24,6 +24,10 @@ def track_llm_cost(step_name: str):
         @wraps(func)
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             start_time = time.perf_counter()
+
+            def get_latency_ms() -> float:
+                return round((time.perf_counter() - start_time) * 1000, 2)
+
             try:
                 result = await func(*args, **kwargs)
                 _, usage = result
@@ -36,10 +40,7 @@ def track_llm_cost(step_name: str):
                         "prompt_tokens": aggregated["prompt_tokens"],
                         "completion_tokens": aggregated["completion_tokens"],
                         "total_tokens": aggregated["total_tokens"],
-                        "latency_ms": round(
-                            (time.perf_counter() - start_time) * 1000,
-                            2,
-                        ),
+                        "latency_ms": get_latency_ms(),
                         "queue_wait_ms": round(
                             aggregated["queue_wait_seconds"] * 1000,
                             2,
@@ -54,10 +55,7 @@ def track_llm_cost(step_name: str):
                     extra={
                         "step": step_name,
                         "status": "cancelled",
-                        "latency_ms": round(
-                            (time.perf_counter() - start_time) * 1000,
-                            2,
-                        ),
+                        "latency_ms": get_latency_ms(),
                     },
                 )
                 raise
@@ -67,10 +65,7 @@ def track_llm_cost(step_name: str):
                     extra={
                         "step": step_name,
                         "status": "failure",
-                        "latency_ms": round(
-                            (time.perf_counter() - start_time) * 1000,
-                            2,
-                        ),
+                        "latency_ms": get_latency_ms(),
                     },
                 )
                 raise

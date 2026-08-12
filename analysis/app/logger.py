@@ -11,8 +11,8 @@ request_id_var: contextvars.ContextVar[str] = contextvars.ContextVar(
     "request_id", default=""
 )
 
-SERVICE_NAME = os.environ["SERVICE_NAME"]
-DEBUG = os.environ["DEBUG"]
+SERVICE_NAME = os.environ.get("SERVICE_NAME", "analysis-service")
+DEBUG = os.environ.get("DEBUG", "false")
 
 TRUE_VALUES = frozenset({"true", "1", "yes", "on"})
 FALSE_VALUES = frozenset({"false", "0", "no", "off"})
@@ -42,9 +42,6 @@ class JSONFormatter(logging.Formatter):
     """
 
     def format(self, record: logging.LogRecord) -> str:
-        """
-        Formats a LogRecord into a JSON string.
-        """
         log_obj: dict[str, object] = {
             "timestamp": datetime.fromtimestamp(record.created, tz=timezone.utc)
             .isoformat()
