@@ -1,65 +1,114 @@
+# Maintainability note:
+# This service intentionally keeps gRPC orchestration, PDF processing,
+# concurrency, and related error handling together for simplicity.
+# If these responsibilities grow significantly as the service evolves,
+# consider extracting concerns such as PDF processing/concurrency,
+# executor lifecycle, error handling, or metrics into dedicated modules.
+
 import asyncio
+import functools
+import multiprocessing as mp
 import os
 import time
 from concurrent.futures import ProcessPoolExecutor
+from typing import Any
 
 from app.logger import logger, request_id_var
 from app.pb import analysis_pb2, analysis_pb2_grpc
-from app.services.llm_service import AnalysisEngineError, analyze_fit
-from app.services.pdf_service import extract_text_from_pdf_bytes
-
-MAX_CONCURRENT_PDF_PARSERS = int(os.environ["MAX_CONCURRENT_PDF_PARSERS"])
-LLM_MODEL = os.environ["LLM_MODEL"]
-LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "gemini")
-
-pdf_bouncer = asyncio.Semaphore(MAX_CONCURRENT_PDF_PARSERS)
-pdf_executor = ProcessPoolExecutor(max_workers=MAX_CONCURRENT_PDF_PARSERS)
+from app.services.llm import AnalysisEngineError, analyze_fit
+from app.services.pdf import extract_text_from_pdf_bytes
 
 
-async def _parse_pdf_safely(pdf_bytes: bytes, doc_name: str) -> tuple[str, dict]:
+def _get_max_pdf_parsers() -> int:
+    return int(os.getenv("MAX_CONCURRENT_PDF_PARSERS", "4"))
+
+
+def _get_llm_config() -> tuple[str, str]:
+    model = os.getenv("LLM_MODEL", "gpt-4o")
+    provider = (
+        model.split("/", 1)[0] if "/" in model else os.getenv("LLM_PROVIDER", "unknown")
+    )
+    return model, provider
+
+
+spawn_context = mp.get_context("spawn")
+pdf_executor = ProcessPoolExecutor(
+    max_workers=_get_max_pdf_parsers(),
+    mp_context=spawn_context,
+)
+
+_pdf_bouncer: asyncio.Semaphore | None = None
+
+
+def _get_pdf_bouncer() -> asyncio.Semaphore:
+    """
+    Lazily creates/returns the semaphore bound to the current running event loop.
+    Prevents loop attachment errors during pytest / async context switching.
+    """
+    global _pdf_bouncer
+    if _pdf_bouncer is None:
+        _pdf_bouncer = asyncio.Semaphore(_get_max_pdf_parsers())
+    return _pdf_bouncer
+
+
+async def shutdown_pdf_executor() -> None:
+    """
+    Shuts down the PDF worker process pool. Call this during application
+    shutdown (see main.py's serve()), after the gRPC server itself has
+    stopped accepting new work.
+    """
+    logger.info("Shutting down PDF worker pool...")
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(
+        None,
+        functools.partial(pdf_executor.shutdown, wait=True, cancel_futures=True),
+    )
+
+
+def _cancel_pending(*tasks: "asyncio.Task[Any]") -> None:
+    """Cancels any of the given tasks that haven't finished yet."""
+    for task in tasks:
+        if not task.done():
+            task.cancel()
+
+
+async def _parse_pdf_safely(
+    pdf_bytes: bytes, doc_name: str
+) -> tuple[str, dict[str, float]]:
     """
     Safely extracts text from PDF bytes within established concurrency limits.
-
-    Uses the global semaphore to bound concurrent CPU-intensive parsing.
-    Parsing itself runs inside a ProcessPoolExecutor to keep the asyncio event
-    loop responsive.
-
-    Returns:
-        (extracted_text, metrics)
+    Uses the loop-aware semaphore to bound concurrent CPU-intensive parsing.
     """
+    bouncer = _get_pdf_bouncer()
     wait_start = time.perf_counter()
 
-    async with pdf_bouncer:
+    async with bouncer:
         queue_wait = time.perf_counter() - wait_start
-
         try:
             parse_start = time.perf_counter()
-
-            text = await asyncio.get_running_loop().run_in_executor(
+            loop = asyncio.get_running_loop()
+            text = await loop.run_in_executor(
                 pdf_executor,
                 extract_text_from_pdf_bytes,
                 pdf_bytes,
             )
-
             duration = time.perf_counter() - parse_start
-
             return text, {
                 "queue_wait": queue_wait,
                 "duration": duration,
             }
-
         except asyncio.CancelledError:
             raise
-
-        except Exception:
+        except Exception as exc:
             logger.exception(
                 "Failed to parse PDF",
                 extra={"document": doc_name},
             )
             raise AnalysisEngineError(
                 "ERR_PDF_PARSE",
-                f"Failed to parse {doc_name}. Please ensure it is a valid text-based PDF.",
-            )
+                f"Failed to parse {doc_name}: {exc}",
+                retryable=False,
+            ) from exc
 
 
 class AnalysisEngineServicer(analysis_pb2_grpc.AnalysisEngineServicer):
@@ -67,32 +116,34 @@ class AnalysisEngineServicer(analysis_pb2_grpc.AnalysisEngineServicer):
     gRPC service implementation for the Analysis Engine.
     """
 
-    async def Analyze(self, request, context):
+    async def Analyze(self, request: Any, context: Any) -> analysis_pb2.AnalyzeResponse:
         """
         Extracts text from the supplied PDFs and performs AI analysis.
         """
-
         request_id_var.set(request.request_id)
-
         start_time = time.perf_counter()
-
+        llm_model, llm_provider = _get_llm_config()
         logger.info("gRPC Analyze request started")
 
+        jd_pdf_task = asyncio.create_task(
+            _parse_pdf_safely(request.job_description_pdf, "Job Description")
+        )
+        resume_pdf_task = asyncio.create_task(
+            _parse_pdf_safely(request.resume_pdf, "Resume")
+        )
+
+        # Stage 1: PDF Parsing
         try:
             (jd_text, jd_metrics), (resume_text, resume_metrics) = await asyncio.gather(
-                _parse_pdf_safely(request.job_description_pdf, "Job Description"),
-                _parse_pdf_safely(request.resume_pdf, "Resume"),
+                jd_pdf_task, resume_pdf_task
             )
-
             pdf_queue_wait_seconds = (
                 jd_metrics["queue_wait"] + resume_metrics["queue_wait"]
             )
-
             pdf_duration_seconds = jd_metrics["duration"] + resume_metrics["duration"]
-
         except AnalysisEngineError as exc:
+            _cancel_pending(jd_pdf_task, resume_pdf_task)
             latency = time.perf_counter() - start_time
-
             logger.warning(
                 "PDF processing failed",
                 extra={
@@ -102,18 +153,15 @@ class AnalysisEngineServicer(analysis_pb2_grpc.AnalysisEngineServicer):
                     "analysis.latency_seconds": latency,
                 },
             )
-
             return analysis_pb2.AnalyzeResponse(
                 success=False,
                 error_message=f"{exc.code}: {exc.message}",
             )
-
         except asyncio.CancelledError:
             raise
-
-        except Exception:
+        except Exception:  # noqa: BLE001
+            _cancel_pending(jd_pdf_task, resume_pdf_task)
             latency = time.perf_counter() - start_time
-
             logger.exception(
                 "Unexpected PDF processing error",
                 extra={
@@ -123,7 +171,6 @@ class AnalysisEngineServicer(analysis_pb2_grpc.AnalysisEngineServicer):
                     "analysis.latency_seconds": latency,
                 },
             )
-
             return analysis_pb2.AnalyzeResponse(
                 success=False,
                 error_message=(
@@ -132,15 +179,14 @@ class AnalysisEngineServicer(analysis_pb2_grpc.AnalysisEngineServicer):
                 ),
             )
 
+        # Stage 2: LLM Analysis
         try:
             final_analysis, usage = await analyze_fit(
                 jd_text,
                 resume_text,
             )
-
         except AnalysisEngineError as exc:
             latency = time.perf_counter() - start_time
-
             logger.warning(
                 "LLM processing failed",
                 extra={
@@ -150,18 +196,14 @@ class AnalysisEngineServicer(analysis_pb2_grpc.AnalysisEngineServicer):
                     "analysis.latency_seconds": latency,
                 },
             )
-
             return analysis_pb2.AnalyzeResponse(
                 success=False,
                 error_message=f"{exc.code}: {exc.message}",
             )
-
         except asyncio.CancelledError:
             raise
-
-        except Exception:
+        except Exception:  # noqa: BLE001
             latency = time.perf_counter() - start_time
-
             logger.exception(
                 "Unexpected LLM processing error",
                 extra={
@@ -171,7 +213,6 @@ class AnalysisEngineServicer(analysis_pb2_grpc.AnalysisEngineServicer):
                     "analysis.latency_seconds": latency,
                 },
             )
-
             return analysis_pb2.AnalyzeResponse(
                 success=False,
                 error_message=(
@@ -179,33 +220,55 @@ class AnalysisEngineServicer(analysis_pb2_grpc.AnalysisEngineServicer):
                 ),
             )
 
-        latency = time.perf_counter() - start_time
+        prompt_tokens = getattr(
+            usage,
+            "prompt_tokens",
+            usage.get("prompt_tokens") if isinstance(usage, dict) else 0,
+        )
+        completion_tokens = getattr(
+            usage,
+            "completion_tokens",
+            usage.get("completion_tokens") if isinstance(usage, dict) else 0,
+        )
+        total_tokens = getattr(
+            usage,
+            "total_tokens",
+            usage.get("total_tokens") if isinstance(usage, dict) else 0,
+        )
+        llm_queue_wait = getattr(
+            usage,
+            "queue_wait_seconds",
+            usage.get("queue_wait_seconds") if isinstance(usage, dict) else 0.0,
+        )
+        llm_retries = getattr(
+            usage, "retries", usage.get("retries") if isinstance(usage, dict) else 0
+        )
 
+        latency = time.perf_counter() - start_time
         logger.info(
             "gRPC Analyze request completed successfully",
             extra={
                 "analysis.success": True,
                 "analysis.latency_seconds": latency,
-                "analysis.provider": LLM_PROVIDER,
-                "analysis.model": LLM_MODEL,
-                "analysis.prompt_tokens": usage["prompt_tokens"],
-                "analysis.completion_tokens": usage["completion_tokens"],
-                "analysis.total_tokens": usage["total_tokens"],
+                "analysis.provider": llm_provider,
+                "analysis.model": llm_model,
+                "analysis.prompt_tokens": prompt_tokens,
+                "analysis.completion_tokens": completion_tokens,
+                "analysis.total_tokens": total_tokens,
                 "analysis.pdf_queue_wait_seconds": pdf_queue_wait_seconds,
                 "analysis.pdf_duration_seconds": pdf_duration_seconds,
-                "analysis.llm_queue_wait_seconds": usage["queue_wait_seconds"],
-                "analysis.llm_retries": usage["retries"],
+                "analysis.llm_queue_wait_seconds": llm_queue_wait,
+                "analysis.llm_retries": llm_retries,
             },
         )
-
         return analysis_pb2.AnalyzeResponse(
             success=True,
             result_json=final_analysis.model_dump_json(
                 by_alias=True,
                 exclude_none=True,
             ),
-            model=LLM_MODEL,
-            prompt_tokens=usage["prompt_tokens"],
-            completion_tokens=usage["completion_tokens"],
-            total_tokens=usage["total_tokens"],
+            model=llm_model,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            total_tokens=total_tokens,
         )
