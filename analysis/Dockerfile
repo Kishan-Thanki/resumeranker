@@ -4,7 +4,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PATH="/app/.venv/bin:$PATH"
 
-RUN pip install uv
+RUN pip install --no-cache-dir uv
 
 RUN groupadd -r appuser && useradd -r -g appuser appuser
 
@@ -14,7 +14,7 @@ COPY pyproject.toml uv.lock ./
 
 RUN uv sync --frozen --no-dev
 
-COPY . .
+COPY app ./app
 
 RUN chown -R appuser:appuser /app
 

@@ -22,17 +22,20 @@ class AnalyzeRequest(_message.Message):
 
     RESUME_PDF_FIELD_NUMBER: _builtins.int
     JOB_DESCRIPTION_PDF_FIELD_NUMBER: _builtins.int
+    REQUEST_ID_FIELD_NUMBER: _builtins.int
     resume_pdf: _builtins.bytes
     job_description_pdf: _builtins.bytes
+    request_id: _builtins.str
     def __init__(
         self,
         *,
         resume_pdf: _builtins.bytes = ...,
         job_description_pdf: _builtins.bytes = ...,
+        request_id: _builtins.str = ...,
     ) -> None: ...
     _HasFieldArgType: _TypeAlias = _Never  # noqa: Y015
     def HasField(self, field_name: _HasFieldArgType) -> _builtins.bool: ...
-    _ClearFieldArgType: _TypeAlias = _typing.Literal["job_description_pdf", b"job_description_pdf", "resume_pdf", b"resume_pdf"]  # noqa: Y015
+    _ClearFieldArgType: _TypeAlias = _typing.Literal["job_description_pdf", b"job_description_pdf", "request_id", b"request_id", "resume_pdf", b"resume_pdf"]  # noqa: Y015
     def ClearField(self, field_name: _ClearFieldArgType) -> None: ...
     def WhichOneof(self, oneof_group: _Never) -> None: ...
 

@@ -12,7 +12,7 @@ You extract structured requirements from a software-engineering job description.
 
 For each distinct requirement, produce:
 - A short imperative phrase capturing what's required (e.g. "5+ years Python").
-- The section it belongs to: experience, project, education, or skills.
+- The section it belongs to: skills, experience, education, or project.
 - The exact verbatim quote from the JD that the requirement is drawn from.
   Include nothing beyond the JD's own words. Maximum 240 characters.
 - An optional location label that reflects the JD's own grouping. Use
