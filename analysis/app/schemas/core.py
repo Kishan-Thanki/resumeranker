@@ -1,20 +1,33 @@
+import unicodedata
 from typing import Literal
 
-from pydantic import BaseModel, Field, ValidationInfo, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, model_validator
 
-# Valid section IDs are NOT fixed globally — they're defined per domain via
-# DomainStrategy.section_taxonomy() (see base.py). Kept as a plain str
-# here rather than a Literal, since the actual valid set is only known at
-# runtime once a domain strategy is selected. Enforcement happens in the
-# model_validators in extraction.py / analysis.py, when a domain's
-# taxonomy is passed in via validation context.
 SectionId = str
-
 MatchStrength = Literal["strong", "partial", "weak", "none"]
 EvidenceSource = Literal["jd", "resume"]
 
 
+def normalize_text(text: str) -> str:
+    """
+    Normalizes unicode punctuation (smart quotes, em-dashes) and collapses
+    all whitespace sequences into a single space for reliable substring matching.
+    """
+    text = unicodedata.normalize("NFKC", text)
+    text = (
+        text.replace("“", '"')
+        .replace("”", '"')
+        .replace("’", "'")
+        .replace("‘", "'")
+        .replace("–", "-")
+        .replace("—", "-")
+    )
+    return " ".join(text.split())
+
+
 class Evidence(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
     text: str = Field(
         min_length=1,
         max_length=400,
@@ -31,24 +44,30 @@ class Evidence(BaseModel):
     @model_validator(mode="after")
     def verify_verbatim(self, info: ValidationInfo) -> "Evidence":
         """
-        Optional verbatim check. Pass validation context like:
+        Verifies evidence text exists verbatim in source text if provided in context.
 
-            Evidence.model_validate(
-                data,
-                context={"source_texts": {"jd": jd_text, "resume": resume_text}},
-            )
-
-        No-op if no context (or no entry for this source) is supplied, so
-        existing call sites without context still work.
+        Expected context format:
+            context={
+                "source_texts": {"jd": jd_text, "resume": resume_text},
+                "normalized_source_texts": {"jd": norm_jd, "resume": norm_resume} # Optional pre-computed cache
+            }
         """
         context = info.context or {}
-        source_texts: dict[str, str] = context.get("source_texts", {})
-        source_doc = source_texts.get(self.source)
-        if source_doc is not None:
-            normalized_quote = " ".join(self.text.split())
-            normalized_doc = " ".join(source_doc.split())
+
+        normalized_sources: dict[str, str] = context.get("normalized_source_texts", {})
+        normalized_doc = normalized_sources.get(self.source)
+
+        if normalized_doc is None:
+            source_texts: dict[str, str] = context.get("source_texts", {})
+            raw_doc = source_texts.get(self.source)
+            if raw_doc is not None:
+                normalized_doc = normalize_text(raw_doc)
+
+        if normalized_doc is not None:
+            normalized_quote = normalize_text(self.text)
             if normalized_quote not in normalized_doc:
                 raise ValueError(
                     f"Evidence text not found verbatim in {self.source} source: {self.text!r}"
                 )
+
         return self

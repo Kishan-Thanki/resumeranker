@@ -1,4 +1,11 @@
-from pydantic import BaseModel, Field, ValidationInfo, computed_field, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationInfo,
+    computed_field,
+    field_validator,
+)
 
 from .core import Evidence, MatchStrength, SectionId
 from .extraction import ExtractedRequirement, ResumeClaim
@@ -14,15 +21,9 @@ class MatchVerdict(BaseModel):
     received them -- a dropped, duplicated, or reordered item in the
     middle of a list is a real failure mode, and position-based
     matching would silently misassign everything after it.
-
-    `requirement` and `jd_evidence` are already known -- and jd_evidence
-    already verbatim-checked -- from ExtractedRequirement.
-    supporting_claim_ids point back to already-extracted, already-
-    verified ResumeClaim objects rather than asking the model to retype
-    the evidence quote a second time. Don't ask the model to reproduce
-    data it already produced correctly once: every re-typed field is a
-    chance for drift, and it costs completion tokens for no benefit.
     """
+
+    model_config = ConfigDict(str_strip_whitespace=True)
 
     id: str = Field(
         description=(
@@ -54,9 +55,10 @@ class SectionVerdict(BaseModel):
     and requirement membership are already known once RequirementMatch
     objects are grouped by section -- this only carries the holistic
     score and review that section_taxonomy()/section_weights() can't
-    derive mechanically (score weighs match *strength*, not just
-    proportion, so it stays an LLM judgment, not a computed field).
+    derive mechanically.
     """
+
+    model_config = ConfigDict(str_strip_whitespace=True)
 
     id: SectionId = Field(description="The section id this verdict is for.")
     score: int = Field(
@@ -76,8 +78,7 @@ class SectionVerdict(BaseModel):
     @classmethod
     def check_section_taxonomy(cls, v: SectionId, info: ValidationInfo) -> SectionId:
         """
-        Optional section-taxonomy check, same pattern as elsewhere in
-        this package. Pass context={"valid_sections": strategy.section_taxonomy()}
+        Optional section-taxonomy check. Pass context={"valid_sections": strategy.section_taxonomy()}
         to enforce it; no-op otherwise.
         """
         context = info.context or {}
@@ -90,6 +91,8 @@ class SectionVerdict(BaseModel):
 
 
 class RequirementMatch(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
     id: str
     requirement: str
     jd_evidence: Evidence = Field(
@@ -141,13 +144,6 @@ class RequirementMatch(BaseModel):
         verdict: MatchVerdict,
         claims_by_id: dict[str, ResumeClaim],
     ) -> "RequirementMatch":
-        """
-        Merge the already-known, already-verified requirement data with
-        the model's verdict, resolving supporting_claim_ids against the
-        actual extracted resume claims. Raises if the ids don't line up
-        -- a mismatched or hallucinated id surfaces as a clear error
-        here, not a silently wrong or empty match.
-        """
         if requirement.id is None:
             raise ValueError(
                 "requirement.id must be assigned before matching — "
@@ -177,6 +173,8 @@ class RequirementMatch(BaseModel):
 
 
 class SectionScore(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
     id: SectionId
     label: str = Field(
         description="The human-readable label for this section (e.g., 'Experience')"
@@ -198,11 +196,6 @@ class SectionScore(BaseModel):
     @field_validator("id")
     @classmethod
     def check_section_taxonomy(cls, v: SectionId, info: ValidationInfo) -> SectionId:
-        """
-        Optional section-taxonomy check, same pattern as extraction.py.
-        Pass context={"valid_sections": strategy.section_taxonomy()} to
-        enforce it; no-op otherwise.
-        """
         context = info.context or {}
         valid_sections = context.get("valid_sections")
         if valid_sections is not None and v not in valid_sections:

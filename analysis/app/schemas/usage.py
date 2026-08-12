@@ -38,11 +38,13 @@ def aggregate_llm_usage(usages: list[LLMUsage]) -> AggregatedLLMUsage:
     """
     prompt_tokens = sum(u["prompt_tokens"] for u in usages)
     completion_tokens = sum(u["completion_tokens"] for u in usages)
+    queue_wait = round(sum(u["queue_wait_seconds"] for u in usages), 4)
+
     return AggregatedLLMUsage(
         prompt_tokens=prompt_tokens,
         completion_tokens=completion_tokens,
         total_tokens=prompt_tokens + completion_tokens,
-        queue_wait_seconds=sum(u["queue_wait_seconds"] for u in usages),
+        queue_wait_seconds=queue_wait,
         retries=sum(u["retries"] for u in usages),
         call_count=len(usages),
     )

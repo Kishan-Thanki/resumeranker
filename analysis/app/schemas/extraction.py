@@ -1,9 +1,11 @@
-from pydantic import BaseModel, Field, ValidationInfo, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, model_validator
 
 from .core import Evidence, SectionId
 
 
 class ExtractedRequirement(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
     id: str | None = Field(
         default=None,
         description="Leave unset. Assign this after extraction (e.g. via enumerate() over the parsed list) rather than trusting the model to keep a consistent counter.",
@@ -50,6 +52,8 @@ class ExtractedRequirement(BaseModel):
 
 
 class ResumeClaim(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
     id: str | None = Field(
         default=None,
         description="Leave unset. Assign this after extraction (e.g. via enumerate() over the parsed list) rather than trusting the model to keep a consistent counter.",
