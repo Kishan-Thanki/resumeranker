@@ -1,6 +1,6 @@
 """Tech domain prompts. Hand-tuned for software engineering roles."""
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.domain.base import DomainStrategy
 from app.schemas import MatchVerdict, SectionId, SectionScore, SectionVerdict
@@ -143,6 +143,72 @@ Hard rules:
   BAD:  "Consider learning Kubernetes."
 """
 
+VALID_SECTIONS: set[SectionId] = {"skills", "experience", "education", "project"}
+
+
+class TechScoringResult(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    complete_analysis: str = Field(
+        description="Executive summary of the candidate's overall fit (2-3 sentences max)",
+    )
+    match_verdicts: list[MatchVerdict] = Field(
+        description=(
+            "One verdict per JD requirement you were given -- must cover "
+            "every requirement id exactly once, no more, no fewer."
+        )
+    )
+    section_verdicts: list[SectionVerdict] = Field(
+        description=(
+            "One verdict per section, covering all four sections even if "
+            "a section has no matched requirements."
+        )
+    )
+
+    @field_validator("section_verdicts")
+    @classmethod
+    def check_sections_cover_taxonomy(
+        cls, v: list[SectionVerdict]
+    ) -> list[SectionVerdict]:
+        section_ids = [s.id for s in v]
+        if len(section_ids) != len(set(section_ids)):
+            raise ValueError(
+                f"duplicate section ids in section_verdicts: {section_ids}"
+            )
+        if set(section_ids) != VALID_SECTIONS:
+            missing = VALID_SECTIONS - set(section_ids)
+            extra = set(section_ids) - VALID_SECTIONS
+            raise ValueError(
+                f"section_verdicts must cover exactly {sorted(VALID_SECTIONS)} "
+                f"(missing: {missing or None}, unexpected: {extra or None})"
+            )
+        return v
+
+
+class DynamicFinalAnalysisResult(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    complete_analysis: str = Field(
+        serialization_alias="completeAnalysis",
+        description="Executive summary of the candidate's overall fit (2-3 sentences max)",
+    )
+    sections: list[SectionScore]
+
+    @field_validator("sections")
+    @classmethod
+    def check_sections_cover_taxonomy(cls, v: list[SectionScore]) -> list[SectionScore]:
+        section_ids = [s.id for s in v]
+        if len(section_ids) != len(set(section_ids)):
+            raise ValueError(f"duplicate section ids in sections: {section_ids}")
+        if set(section_ids) != VALID_SECTIONS:
+            missing = VALID_SECTIONS - set(section_ids)
+            extra = set(section_ids) - VALID_SECTIONS
+            raise ValueError(
+                f"sections must cover exactly {sorted(VALID_SECTIONS)} "
+                f"(missing: {missing or None}, unexpected: {extra or None})"
+            )
+        return v
+
 
 class TechDomain(DomainStrategy):
     """
@@ -189,73 +255,7 @@ class TechDomain(DomainStrategy):
         }
 
     def get_scoring_schema(self) -> type[BaseModel]:
-        valid_sections = set(self.section_taxonomy())
-
-        class TechScoringResult(BaseModel):
-            complete_analysis: str = Field(
-                description="Executive summary of the candidate's overall fit (2-3 sentences max)",
-            )
-            match_verdicts: list[MatchVerdict] = Field(
-                description=(
-                    "One verdict per JD requirement you were given -- must cover "
-                    "every requirement id exactly once, no more, no fewer."
-                )
-            )
-            section_verdicts: list[SectionVerdict] = Field(
-                description=(
-                    "One verdict per section, covering all four sections even if "
-                    "a section has no matched requirements."
-                )
-            )
-
-            @field_validator("section_verdicts")
-            @classmethod
-            def check_sections_cover_taxonomy(
-                cls, v: list[SectionVerdict]
-            ) -> list[SectionVerdict]:
-                section_ids = [s.id for s in v]
-                if len(section_ids) != len(set(section_ids)):
-                    raise ValueError(
-                        f"duplicate section ids in section_verdicts: {section_ids}"
-                    )
-                if set(section_ids) != valid_sections:
-                    missing = valid_sections - set(section_ids)
-                    extra = set(section_ids) - valid_sections
-                    raise ValueError(
-                        f"section_verdicts must cover exactly {sorted(valid_sections)} "
-                        f"(missing: {missing or None}, unexpected: {extra or None})"
-                    )
-                return v
-
         return TechScoringResult
 
     def get_final_schema(self) -> type[BaseModel]:
-        valid_sections = set(self.section_taxonomy())
-
-        class DynamicFinalAnalysisResult(BaseModel):
-            complete_analysis: str = Field(
-                serialization_alias="completeAnalysis",
-                description="Executive summary of the candidate's overall fit (2-3 sentences max)",
-            )
-            sections: list[SectionScore]
-
-            @field_validator("sections")
-            @classmethod
-            def check_sections_cover_taxonomy(
-                cls, v: list[SectionScore]
-            ) -> list[SectionScore]:
-                section_ids = [s.id for s in v]
-                if len(section_ids) != len(set(section_ids)):
-                    raise ValueError(
-                        f"duplicate section ids in sections: {section_ids}"
-                    )
-                if set(section_ids) != valid_sections:
-                    missing = valid_sections - set(section_ids)
-                    extra = set(section_ids) - valid_sections
-                    raise ValueError(
-                        f"sections must cover exactly {sorted(valid_sections)} "
-                        f"(missing: {missing or None}, unexpected: {extra or None})"
-                    )
-                return v
-
         return DynamicFinalAnalysisResult
