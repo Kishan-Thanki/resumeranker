@@ -13,11 +13,7 @@ class LLMUsage(TypedDict):
 class AggregatedLLMUsage(TypedDict):
     """
     Usage statistics summed across multiple LLM calls.
-
-    queue_wait_seconds and retries are TOTALS across all calls here —
-    same field names as LLMUsage, different scope (per-call there,
-    summed here). Build this with aggregate_llm_usage(), not by hand,
-    so total_tokens can't drift from prompt_tokens + completion_tokens.
+    Built via aggregate_llm_usage().
     """
 
     prompt_tokens: int
@@ -29,13 +25,7 @@ class AggregatedLLMUsage(TypedDict):
 
 
 def aggregate_llm_usage(usages: list[LLMUsage]) -> AggregatedLLMUsage:
-    """
-    Sum per-call usage into a single aggregate.
-
-    total_tokens is derived here, never set independently, so it can't
-    disagree with prompt_tokens + completion_tokens. call_count is included
-    since it's needed to turn any of these sums into a per-call average later.
-    """
+    """Sum per-call usage into a single aggregate."""
     prompt_tokens = sum(u["prompt_tokens"] for u in usages)
     completion_tokens = sum(u["completion_tokens"] for u in usages)
     queue_wait = round(sum(u["queue_wait_seconds"] for u in usages), 4)

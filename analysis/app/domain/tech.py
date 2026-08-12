@@ -164,6 +164,14 @@ class TechScoringResult(BaseModel):
             "a section has no matched requirements."
         )
     )
+    matched_skills: list[str] = Field(
+        default_factory=list,
+        description="Optional list of key skills the model identified as matched.",
+    )
+    missing_critical_skills: list[str] = Field(
+        default_factory=list,
+        description="Optional list of critical skills the model determined the resume lacks.",
+    )
 
     @field_validator("section_verdicts")
     @classmethod

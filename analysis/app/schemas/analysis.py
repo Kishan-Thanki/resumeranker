@@ -12,23 +12,14 @@ from .extraction import ExtractedRequirement, ResumeClaim
 
 
 class MatchVerdict(BaseModel):
-    """
-    The part of a requirement match that actually needs an LLM judgment.
-
-    `id` echoes back the ExtractedRequirement.id this verdict answers
-    for, so the caller can correlate verdicts to requirements explicitly
-    rather than trusting the LLM returned them in the same order it
-    received them -- a dropped, duplicated, or reordered item in the
-    middle of a list is a real failure mode, and position-based
-    matching would silently misassign everything after it.
-    """
+    """The LLM judgment on requirement matching."""
 
     model_config = ConfigDict(str_strip_whitespace=True)
 
     id: str = Field(
         description=(
             "The id of the ExtractedRequirement this verdict answers for. "
-            "Must exactly match one of the requirement ids you were given -- never invented."
+            "Must exactly match one of the requirement ids provided."
         )
     )
     match_strength: MatchStrength = Field(
@@ -37,26 +28,18 @@ class MatchVerdict(BaseModel):
     supporting_claim_ids: list[str] = Field(
         default_factory=list,
         description=(
-            "The id(s) of the resume claim(s) that prove the candidate meets this "
-            "requirement (leave empty if unmatched). Must exactly match ids from "
-            "the resume claims you were given -- never invented."
+            "The id(s) of the resume claim(s) proving the requirement is met."
         ),
     )
     note: str | None = Field(
         default=None,
         max_length=300,
-        description="A strictly factual statement about what is missing. Never give advice.",
+        description="Factual summary of missing aspects.",
     )
 
 
 class SectionVerdict(BaseModel):
-    """
-    The part of a section's assessment that needs an LLM judgment. Label
-    and requirement membership are already known once RequirementMatch
-    objects are grouped by section -- this only carries the holistic
-    score and review that section_taxonomy()/section_weights() can't
-    derive mechanically.
-    """
+    """The LLM judgment on a section's score and review."""
 
     model_config = ConfigDict(str_strip_whitespace=True)
 
@@ -64,23 +47,16 @@ class SectionVerdict(BaseModel):
     score: int = Field(
         ge=0,
         le=100,
-        description=(
-            "The LLM-assessed score for this section (0-100), "
-            "based on the proportion and strength of matched requirements."
-        ),
+        description="Assessed score for this section (0-100).",
     )
     review: str = Field(
         max_length=400,
-        description="A qualitative review (1-2 sentences) of this section's major gaps or strengths.",
+        description="Qualitative review (1-2 sentences) of section gaps or strengths.",
     )
 
     @field_validator("id")
     @classmethod
     def check_section_taxonomy(cls, v: SectionId, info: ValidationInfo) -> SectionId:
-        """
-        Optional section-taxonomy check. Pass context={"valid_sections": strategy.section_taxonomy()}
-        to enforce it; no-op otherwise.
-        """
         context = info.context or {}
         valid_sections = context.get("valid_sections")
         if valid_sections is not None and v not in valid_sections:
@@ -97,27 +73,26 @@ class RequirementMatch(BaseModel):
     requirement: str
     jd_evidence: Evidence = Field(
         serialization_alias="jdEvidence",
-        description="The exact evidence proving this requirement exists in the Job Description",
+        description="Exact evidence proving requirement exists in JD",
     )
     match_strength: MatchStrength = Field(
         serialization_alias="matchStrength",
-        description="How strongly the candidate's resume meets this requirement",
+        description="How strongly requirement is met",
     )
     resume_evidence: list[Evidence] = Field(
         default_factory=list,
         serialization_alias="resumeEvidence",
-        description="The resume claims that prove the candidate meets this requirement (leave empty if unmatched)",
+        description="Resume claims proving requirement is met",
     )
     note: str | None = Field(
         default=None,
         max_length=300,
-        description="A strictly factual statement about what is missing. Never give advice.",
+        description="Factual statement of what is missing.",
     )
 
     @computed_field
     @property
     def matched(self) -> bool:
-        """Derived from match_strength so the two fields can never disagree."""
         return self.match_strength in ("strong", "partial")
 
     @field_validator("jd_evidence")
@@ -145,10 +120,7 @@ class RequirementMatch(BaseModel):
         claims_by_id: dict[str, ResumeClaim],
     ) -> "RequirementMatch":
         if requirement.id is None:
-            raise ValueError(
-                "requirement.id must be assigned before matching — "
-                "see ExtractedRequirement in extraction.py"
-            )
+            raise ValueError("requirement.id must be assigned before matching.")
         if verdict.id != requirement.id:
             raise ValueError(
                 f"verdict.id {verdict.id!r} does not match requirement.id {requirement.id!r}"
@@ -176,21 +148,12 @@ class SectionScore(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     id: SectionId
-    label: str = Field(
-        description="The human-readable label for this section (e.g., 'Experience')"
-    )
-    score: int = Field(
-        ge=0,
-        le=100,
-        description="The final calculated percentage score for this section (0-100)",
-    )
-    review: str = Field(
-        max_length=400,
-        description="A qualitative review (1-2 sentences) of this section's major gaps or strengths.",
-    )
+    label: str = Field(description="Human-readable label for section")
+    score: int = Field(ge=0, le=100, description="Section percentage score (0-100)")
+    review: str = Field(max_length=400, description="Qualitative review of section")
     requirements: list[RequirementMatch] = Field(
         default_factory=list,
-        description="May legitimately be empty if the JD didn't address this section — do not require at least one.",
+        description="Matched requirements for section",
     )
 
     @field_validator("id")
