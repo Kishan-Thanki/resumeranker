@@ -220,28 +220,30 @@ class AnalysisEngineServicer(analysis_pb2_grpc.AnalysisEngineServicer):
                 ),
             )
 
-        prompt_tokens = getattr(
-            usage,
-            "prompt_tokens",
-            usage.get("prompt_tokens") if isinstance(usage, dict) else 0,
+        input_tokens = (
+            usage["input_tokens"]
+            if isinstance(usage, dict)
+            else getattr(usage, "input_tokens", None)
         )
-        completion_tokens = getattr(
-            usage,
-            "completion_tokens",
-            usage.get("completion_tokens") if isinstance(usage, dict) else 0,
+        output_tokens = (
+            usage["output_tokens"]
+            if isinstance(usage, dict)
+            else getattr(usage, "output_tokens", None)
         )
-        total_tokens = getattr(
-            usage,
-            "total_tokens",
-            usage.get("total_tokens") if isinstance(usage, dict) else 0,
+        total_tokens = (
+            usage["total_tokens"]
+            if isinstance(usage, dict)
+            else getattr(usage, "total_tokens", None)
         )
-        llm_queue_wait = getattr(
-            usage,
-            "queue_wait_seconds",
-            usage.get("queue_wait_seconds") if isinstance(usage, dict) else 0.0,
+        llm_queue_wait = (
+            usage["queue_wait_seconds"]
+            if isinstance(usage, dict)
+            else getattr(usage, "queue_wait_seconds", 0.0)
         )
-        llm_retries = getattr(
-            usage, "retries", usage.get("retries") if isinstance(usage, dict) else 0
+        llm_retries = (
+            usage["retries"]
+            if isinstance(usage, dict)
+            else getattr(usage, "retries", 0)
         )
 
         latency = time.perf_counter() - start_time
@@ -252,8 +254,8 @@ class AnalysisEngineServicer(analysis_pb2_grpc.AnalysisEngineServicer):
                 "analysis.latency_seconds": latency,
                 "analysis.provider": llm_provider,
                 "analysis.model": llm_model,
-                "analysis.prompt_tokens": prompt_tokens,
-                "analysis.completion_tokens": completion_tokens,
+                "analysis.input_tokens": input_tokens,
+                "analysis.output_tokens": output_tokens,
                 "analysis.total_tokens": total_tokens,
                 "analysis.pdf_queue_wait_seconds": pdf_queue_wait_seconds,
                 "analysis.pdf_duration_seconds": pdf_duration_seconds,
@@ -268,7 +270,7 @@ class AnalysisEngineServicer(analysis_pb2_grpc.AnalysisEngineServicer):
                 exclude_none=True,
             ),
             model=llm_model,
-            prompt_tokens=prompt_tokens,
-            completion_tokens=completion_tokens,
-            total_tokens=total_tokens,
+            input_tokens=input_tokens or 0,
+            output_tokens=output_tokens or 0,
+            total_tokens=total_tokens or 0,
         )

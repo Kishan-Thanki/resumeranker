@@ -5,6 +5,7 @@ from pathlib import Path
 import grpc
 import pytest
 from app.pb import analysis_pb2, analysis_pb2_grpc
+from dotenv import load_dotenv
 
 pytestmark = pytest.mark.e2e
 
@@ -13,10 +14,11 @@ FIXTURES_DIR = Path(__file__).parent / "fixtures"
 JD_PDF = FIXTURES_DIR / "sample_jd.pdf"
 RESUME_PDF = FIXTURES_DIR / "sample_resume.pdf"
 
+load_dotenv(Path(__file__).parents[2] / ".env")
+
 HOST = os.getenv("E2E_GRPC_HOST", "127.0.0.1")
 PORT = os.getenv("E2E_GRPC_PORT", os.getenv("PORT", "50051"))
 TARGET = f"{HOST}:{PORT}"
-
 
 def _require_e2e_configuration() -> None:
     required = ("LLM_API_KEY", "LLM_MODEL")
@@ -64,10 +66,10 @@ async def test_real_analysis_end_to_end() -> None:
     assert response.error_message == ""
 
     assert response.model
-    assert response.prompt_tokens > 0
-    assert response.completion_tokens > 0
+    assert response.input_tokens > 0
+    assert response.output_tokens > 0
     assert response.total_tokens == (
-        response.prompt_tokens + response.completion_tokens
+        response.input_tokens + response.output_tokens
     )
 
     assert response.result_json

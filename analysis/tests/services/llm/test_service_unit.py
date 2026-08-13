@@ -10,6 +10,7 @@ class FakeTransientError(Exception):
 
     response: object | None = None
 
+
 class FakeConnectionError(Exception):
     """Synthetic connection failure for exception-mapping tests."""
 
@@ -95,8 +96,13 @@ class TestBuildUsage:
         )
 
         assert usage == {
-            "prompt_tokens": 123,
-            "completion_tokens": 45,
+            "input_tokens": 123,
+            "output_tokens": 45,
+            "total_tokens": None,
+            "reasoning_tokens": None,
+            "cached_input_tokens": None,
+            "cache_creation_input_tokens": None,
+            "cache_read_input_tokens": None,
             "queue_wait_seconds": 1.25,
             "retries": 2,
         }
@@ -118,13 +124,18 @@ class TestBuildUsage:
         )
 
         assert usage == {
-            "prompt_tokens": 200,
-            "completion_tokens": 80,
+            "input_tokens": 200,
+            "output_tokens": 80,
+            "total_tokens": None,
+            "reasoning_tokens": None,
+            "cached_input_tokens": None,
+            "cache_creation_input_tokens": None,
+            "cache_read_input_tokens": None,
             "queue_wait_seconds": 0.5,
             "retries": 1,
         }
 
-    def test_defaults_missing_usage_values_to_zero(self) -> None:
+    def test_defaults_missing_usage_values_to_none(self) -> None:
         raw = SimpleNamespace(
             usage=None,
             _hidden_params={},
@@ -136,17 +147,23 @@ class TestBuildUsage:
         )
 
         assert usage == {
-            "prompt_tokens": 0,
-            "completion_tokens": 0,
+            "input_tokens": None,
+            "output_tokens": None,
+            "total_tokens": None,
+            "reasoning_tokens": None,
+            "cached_input_tokens": None,
+            "cache_creation_input_tokens": None,
+            "cache_read_input_tokens": None,
             "queue_wait_seconds": 0.0,
             "retries": 0,
         }
 
-    def test_defaults_none_usage_values_to_zero(self) -> None:
+    def test_preserves_none_usage_values(self) -> None:
         raw = SimpleNamespace(
             usage=SimpleNamespace(
                 prompt_tokens=None,
                 completion_tokens=None,
+                total_tokens=None,
             ),
             _hidden_params={
                 "retries": None,
@@ -159,8 +176,13 @@ class TestBuildUsage:
         )
 
         assert usage == {
-            "prompt_tokens": 0,
-            "completion_tokens": 0,
+            "input_tokens": None,
+            "output_tokens": None,
+            "total_tokens": None,
+            "reasoning_tokens": None,
+            "cached_input_tokens": None,
+            "cache_creation_input_tokens": None,
+            "cache_read_input_tokens": None,
             "queue_wait_seconds": 0.25,
             "retries": 0,
         }

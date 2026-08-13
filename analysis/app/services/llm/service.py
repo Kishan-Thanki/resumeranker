@@ -209,9 +209,7 @@ MAX_RATE_LIMIT_RETRIES = max(
     int(os.getenv("MAX_RATE_LIMIT_RETRIES", "3")),
 )
 
-BACKOFF_BASE_SECONDS = float(
-    os.getenv("BACKOFF_BASE_SECONDS", "1.0")
-)
+BACKOFF_BASE_SECONDS = float(os.getenv("BACKOFF_BASE_SECONDS", "1.0"))
 
 TRANSIENT_ERRORS = (
     RateLimitError,
@@ -272,9 +270,7 @@ async def execute_with_backoff(
                     },
                 )
             else:
-                delay = (
-                    BACKOFF_BASE_SECONDS * (2**attempt)
-                ) + random.uniform(0, 1)
+                delay = (BACKOFF_BASE_SECONDS * (2**attempt)) + random.uniform(0, 1)
 
                 logger.warning(
                     "Transient LLM failure. Retrying with exponential backoff.",
@@ -332,9 +328,7 @@ def require_id(entity_id: str | None, kind: str) -> str:
     downstream KeyError.
     """
     if entity_id is None:
-        raise ValueError(
-            f"{kind} id was never assigned — assign_ids() must run first"
-        )
+        raise ValueError(f"{kind} id was never assigned — assign_ids() must run first")
 
     return entity_id
 
@@ -365,17 +359,11 @@ def assign_ids(
 
 R = TypeVar("R", bound=BaseModel)
 
-MAX_CONCURRENT_LLM_REQUESTS = int(
-    os.getenv("MAX_CONCURRENT_LLM_REQUESTS", "5")
-)
+MAX_CONCURRENT_LLM_REQUESTS = int(os.getenv("MAX_CONCURRENT_LLM_REQUESTS", "5"))
 
-LLM_MAX_REQUESTS_PER_MINUTE = int(
-    os.getenv("LLM_MAX_REQUESTS_PER_MINUTE", "4")
-)
+LLM_MAX_REQUESTS_PER_MINUTE = int(os.getenv("LLM_MAX_REQUESTS_PER_MINUTE", "4"))
 
-MAX_VALIDATION_RETRIES = int(
-    os.getenv("MAX_VALIDATION_RETRIES", "2")
-)
+MAX_VALIDATION_RETRIES = int(os.getenv("MAX_VALIDATION_RETRIES", "2"))
 
 DEFAULT_TOKEN_COUNT = 0
 DEFAULT_RETRY_COUNT = 0
@@ -394,14 +382,10 @@ class LLMRateLimiter:
         window_seconds: float = RATE_LIMIT_WINDOW_SECONDS,
     ) -> None:
         if max_requests <= 0:
-            raise ValueError(
-                "LLM_MAX_REQUESTS_PER_MINUTE must be greater than 0"
-            )
+            raise ValueError("LLM_MAX_REQUESTS_PER_MINUTE must be greater than 0")
 
         if window_seconds <= 0:
-            raise ValueError(
-                "Rate-limit window must be greater than 0"
-            )
+            raise ValueError("Rate-limit window must be greater than 0")
 
         self._max_requests = max_requests
         self._window_seconds = window_seconds
@@ -418,10 +402,7 @@ class LLMRateLimiter:
                 while self._request_times:
                     oldest_request = self._request_times[0]
 
-                    if (
-                        now - oldest_request
-                        >= self._window_seconds
-                    ):
+                    if now - oldest_request >= self._window_seconds:
                         self._request_times.popleft()
                     else:
                         break
@@ -432,64 +413,114 @@ class LLMRateLimiter:
 
                 oldest_request = self._request_times[0]
 
-                wait_seconds = (
-                    self._window_seconds
-                    - (now - oldest_request)
-                )
+                wait_seconds = self._window_seconds - (now - oldest_request)
 
             await asyncio.sleep(max(wait_seconds, 0.0))
 
 
-llm_semaphore = asyncio.Semaphore(
-    MAX_CONCURRENT_LLM_REQUESTS
-)
+llm_semaphore = asyncio.Semaphore(MAX_CONCURRENT_LLM_REQUESTS)
 
-llm_rate_limiter = LLMRateLimiter(
-    max_requests=LLM_MAX_REQUESTS_PER_MINUTE
-)
+llm_rate_limiter = LLMRateLimiter(max_requests=LLM_MAX_REQUESTS_PER_MINUTE)
 
 
 def build_usage(
     raw: Any,
     queue_wait_seconds: float,
 ) -> LLMUsage:
-    """Construct per-call LLM usage statistics safely from raw response."""
-    usage = getattr(raw, "usage", None)
-    hidden_params = getattr(raw, "_hidden_params", {}) or {}
+    """Normalize provider usage from a LiteLLM response."""
 
-    def _extract_val(
+    usage = getattr(raw, "usage", None)
+
+    def _extract_value(
         obj: Any,
         key: str,
-        default: Any,
+        default: Any = None,
     ) -> Any:
+        if obj is None:
+            return default
+
         if isinstance(obj, dict):
             return obj.get(key, default)
 
         return getattr(obj, key, default)
 
-    prompt_tokens = _extract_val(
+    prompt_tokens = _extract_value(
         usage,
         "prompt_tokens",
-        DEFAULT_TOKEN_COUNT,
     )
 
-    completion_tokens = _extract_val(
+    completion_tokens = _extract_value(
         usage,
         "completion_tokens",
-        DEFAULT_TOKEN_COUNT,
     )
 
-    retries = _extract_val(
+    total_tokens = _extract_value(
+        usage,
+        "total_tokens",
+    )
+
+    completion_details = _extract_value(
+        usage,
+        "completion_tokens_details",
+    )
+
+    prompt_details = _extract_value(
+        usage,
+        "prompt_tokens_details",
+    )
+
+    reasoning_tokens = _extract_value(
+        completion_details,
+        "reasoning_tokens",
+    )
+
+    cached_input_tokens = _extract_value(
+        prompt_details,
+        "cached_tokens",
+    )
+
+    cache_creation_input_tokens = _extract_value(
+        prompt_details,
+        "cache_write_tokens",
+    )
+
+    cache_read_input_tokens = _extract_value(
+        usage,
+        "cache_read_input_tokens",
+    )
+
+    hidden_params = getattr(raw, "_hidden_params", {}) or {}
+
+    retries = _extract_value(
         hidden_params,
         "retries",
         DEFAULT_RETRY_COUNT,
     )
 
     return {
-        "prompt_tokens": int(prompt_tokens or 0),
-        "completion_tokens": int(completion_tokens or 0),
+        "input_tokens": (int(prompt_tokens) if prompt_tokens is not None else None),
+        "output_tokens": (
+            int(completion_tokens) if completion_tokens is not None else None
+        ),
+        "total_tokens": (int(total_tokens) if total_tokens is not None else None),
+        "reasoning_tokens": (
+            int(reasoning_tokens) if reasoning_tokens is not None else None
+        ),
+        "cached_input_tokens": (
+            int(cached_input_tokens) if cached_input_tokens is not None else None
+        ),
+        "cache_creation_input_tokens": (
+            int(cache_creation_input_tokens)
+            if cache_creation_input_tokens is not None
+            else None
+        ),
+        "cache_read_input_tokens": (
+            int(cache_read_input_tokens)
+            if cache_read_input_tokens is not None
+            else None
+        ),
         "queue_wait_seconds": float(queue_wait_seconds),
-        "retries": int(retries or 0),
+        "retries": int(retries) if retries is not None else 0,
     }
 
 
@@ -520,9 +551,7 @@ async def call_llm(
         semaphore_wait_start = time.perf_counter()
 
         async with llm_semaphore:
-            total_queue_wait_seconds += (
-                time.perf_counter() - semaphore_wait_start
-            )
+            total_queue_wait_seconds += time.perf_counter() - semaphore_wait_start
 
             logger.info(
                 "LLM provider attempt started",
@@ -534,15 +563,13 @@ async def call_llm(
             )
 
             try:
-                result = (
-                    await client.chat.completions.create_with_completion(
-                        api_key=api_key,
-                        model=model,
-                        messages=messages,
-                        response_model=response_model,
-                        max_retries=MAX_VALIDATION_RETRIES,
-                        context=context,
-                    )
+                result = await client.chat.completions.create_with_completion(
+                    api_key=api_key,
+                    model=model,
+                    messages=messages,
+                    response_model=response_model,
+                    max_retries=MAX_VALIDATION_RETRIES,
+                    context=context,
                 )
 
                 logger.info(
@@ -779,14 +806,10 @@ def assemble_final_result(
     )
 
     requirements_by_id = {
-        require_id(req.id, "requirement"): req
-        for req in jd_reqs.requirements
+        require_id(req.id, "requirement"): req for req in jd_reqs.requirements
     }
 
-    claims_by_id = {
-        require_id(claim.id, "claim"): claim
-        for claim in res_claims.claims
-    }
+    claims_by_id = {require_id(claim.id, "claim"): claim for claim in res_claims.claims}
 
     match_verdicts = result.match_verdicts
     verdict_ids = [v.id for v in match_verdicts]
@@ -794,8 +817,7 @@ def assemble_final_result(
     if len(verdict_ids) != len(set(verdict_ids)):
         raise AnalysisEngineError(
             "ERR_ASSEMBLY_MISMATCH",
-            "Duplicate requirement IDs found in match verdicts: "
-            f"{verdict_ids}",
+            f"Duplicate requirement IDs found in match verdicts: {verdict_ids}",
             retryable=False,
         )
 
@@ -857,9 +879,7 @@ def assemble_final_result(
                     id=section_id,
                     label=section_id.replace("_", " ").title(),
                     score=0,
-                    review=(
-                        "Section evaluation was omitted by scoring model."
-                    ),
+                    review=("Section evaluation was omitted by scoring model."),
                     requirements=matches,
                 )
             )
@@ -926,13 +946,14 @@ async def analyze_fit(
 
     llm_model, llm_api_key = _get_llm_config()
 
-    logger.debug(
-        "Starting parallel extraction for JD and Resume..."
-    )
+    logger.debug("Starting parallel extraction for JD and Resume...")
 
-    (jd_reqs, jd_usage), (
-        res_claims,
-        res_usage,
+    (
+        (jd_reqs, jd_usage),
+        (
+            res_claims,
+            res_usage,
+        ),
     ) = await asyncio.gather(
         extract_jd_requirements(
             client,

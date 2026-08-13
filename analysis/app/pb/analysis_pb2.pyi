@@ -49,15 +49,15 @@ class AnalyzeResponse(_message.Message):
     ERROR_MESSAGE_FIELD_NUMBER: _builtins.int
     RESULT_JSON_FIELD_NUMBER: _builtins.int
     MODEL_FIELD_NUMBER: _builtins.int
-    PROMPT_TOKENS_FIELD_NUMBER: _builtins.int
-    COMPLETION_TOKENS_FIELD_NUMBER: _builtins.int
+    INPUT_TOKENS_FIELD_NUMBER: _builtins.int
+    OUTPUT_TOKENS_FIELD_NUMBER: _builtins.int
     TOTAL_TOKENS_FIELD_NUMBER: _builtins.int
     success: _builtins.bool
     error_message: _builtins.str
     result_json: _builtins.str
     model: _builtins.str
-    prompt_tokens: _builtins.int
-    completion_tokens: _builtins.int
+    input_tokens: _builtins.int
+    output_tokens: _builtins.int
     total_tokens: _builtins.int
     def __init__(
         self,
@@ -66,13 +66,13 @@ class AnalyzeResponse(_message.Message):
         error_message: _builtins.str = ...,
         result_json: _builtins.str = ...,
         model: _builtins.str = ...,
-        prompt_tokens: _builtins.int = ...,
-        completion_tokens: _builtins.int = ...,
+        input_tokens: _builtins.int = ...,
+        output_tokens: _builtins.int = ...,
         total_tokens: _builtins.int = ...,
     ) -> None: ...
     _HasFieldArgType: _TypeAlias = _Never  # noqa: Y015
     def HasField(self, field_name: _HasFieldArgType) -> _builtins.bool: ...
-    _ClearFieldArgType: _TypeAlias = _typing.Literal["completion_tokens", b"completion_tokens", "error_message", b"error_message", "model", b"model", "prompt_tokens", b"prompt_tokens", "result_json", b"result_json", "success", b"success", "total_tokens", b"total_tokens"]  # noqa: Y015
+    _ClearFieldArgType: _TypeAlias = _typing.Literal["error_message", b"error_message", "input_tokens", b"input_tokens", "model", b"model", "output_tokens", b"output_tokens", "result_json", b"result_json", "success", b"success", "total_tokens", b"total_tokens"]  # noqa: Y015
     def ClearField(self, field_name: _ClearFieldArgType) -> None: ...
     def WhichOneof(self, oneof_group: _Never) -> None: ...
 

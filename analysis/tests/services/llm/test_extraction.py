@@ -17,8 +17,13 @@ class TestExtractJdRequirements:
             requirements=sample_requirements,
         )
         usage = {
-            "prompt_tokens": 100,
-            "completion_tokens": 50,
+            "input_tokens": 100,
+            "output_tokens": 50,
+            "total_tokens": 150,
+            "reasoning_tokens": None,
+            "cached_input_tokens": None,
+            "cache_creation_input_tokens": None,
+            "cache_read_input_tokens": None,
             "queue_wait_seconds": 0.25,
             "retries": 1,
         }
@@ -86,10 +91,15 @@ class TestExtractJdRequirements:
             requirements=sample_requirements,
         )
         usage = {
-            "prompt_tokens": 10,
-            "completion_tokens": 20,
-            "queue_wait_seconds": 0.0,
-            "retries": 0,
+            "input_tokens": 100,
+            "output_tokens": 50,
+            "total_tokens": 150,
+            "reasoning_tokens": None,
+            "cached_input_tokens": None,
+            "cache_creation_input_tokens": None,
+            "cache_read_input_tokens": None,
+            "queue_wait_seconds": 0.25,
+            "retries": 1,
         }
 
         mock_call_llm = AsyncMock(
@@ -162,10 +172,15 @@ class TestExtractResumeClaims:
             claims=sample_claims,
         )
         usage = {
-            "prompt_tokens": 120,
-            "completion_tokens": 60,
-            "queue_wait_seconds": 0.5,
-            "retries": 2,
+            "input_tokens": 100,
+            "output_tokens": 50,
+            "total_tokens": 150,
+            "reasoning_tokens": None,
+            "cached_input_tokens": None,
+            "cache_creation_input_tokens": None,
+            "cache_read_input_tokens": None,
+            "queue_wait_seconds": 0.25,
+            "retries": 1,
         }
 
         mock_call_llm = AsyncMock(
@@ -231,10 +246,15 @@ class TestExtractResumeClaims:
             claims=sample_claims,
         )
         usage = {
-            "prompt_tokens": 10,
-            "completion_tokens": 20,
-            "queue_wait_seconds": 0.0,
-            "retries": 0,
+            "input_tokens": 100,
+            "output_tokens": 50,
+            "total_tokens": 150,
+            "reasoning_tokens": None,
+            "cached_input_tokens": None,
+            "cache_creation_input_tokens": None,
+            "cache_read_input_tokens": None,
+            "queue_wait_seconds": 0.25,
+            "retries": 1,
         }
 
         mock_call_llm = AsyncMock(

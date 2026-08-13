@@ -71,8 +71,13 @@ class TestScoreClaims:
         scoring_result = make_scoring_result()
 
         usage = {
-            "prompt_tokens": 500,
-            "completion_tokens": 150,
+            "input_tokens": 500,
+            "output_tokens": 150,
+            "total_tokens": 650,
+            "reasoning_tokens": None,
+            "cached_input_tokens": None,
+            "cache_creation_input_tokens": None,
+            "cache_read_input_tokens": None,
             "queue_wait_seconds": 0.75,
             "retries": 1,
         }
@@ -156,10 +161,15 @@ class TestScoreClaims:
 
         scoring_result = make_scoring_result()
         usage = {
-            "prompt_tokens": 100,
-            "completion_tokens": 50,
-            "queue_wait_seconds": 0.0,
-            "retries": 0,
+            "input_tokens": 500,
+            "output_tokens": 150,
+            "total_tokens": 650,
+            "reasoning_tokens": None,
+            "cached_input_tokens": None,
+            "cache_creation_input_tokens": None,
+            "cache_read_input_tokens": None,
+            "queue_wait_seconds": 0.75,
+            "retries": 1,
         }
 
         captured: dict[str, Any] = {}
@@ -214,10 +224,15 @@ class TestScoreClaims:
 
         scoring_result = make_scoring_result()
         usage = {
-            "prompt_tokens": 100,
-            "completion_tokens": 50,
-            "queue_wait_seconds": 0.0,
-            "retries": 0,
+            "input_tokens": 500,
+            "output_tokens": 150,
+            "total_tokens": 650,
+            "reasoning_tokens": None,
+            "cached_input_tokens": None,
+            "cache_creation_input_tokens": None,
+            "cache_read_input_tokens": None,
+            "queue_wait_seconds": 0.75,
+            "retries": 1,
         }
 
         captured: dict[str, Any] = {}
@@ -261,10 +276,15 @@ class TestScoreClaims:
 
         scoring_result = make_scoring_result()
         usage = {
-            "prompt_tokens": 100,
-            "completion_tokens": 50,
-            "queue_wait_seconds": 0.0,
-            "retries": 0,
+            "input_tokens": 500,
+            "output_tokens": 150,
+            "total_tokens": 650,
+            "reasoning_tokens": None,
+            "cached_input_tokens": None,
+            "cache_creation_input_tokens": None,
+            "cache_read_input_tokens": None,
+            "queue_wait_seconds": 0.75,
+            "retries": 1,
         }
 
         captured: dict[str, Any] = {}
@@ -316,10 +336,15 @@ class TestScoreClaims:
         scoring_result = make_scoring_result()
 
         usage = {
-            "prompt_tokens": 777,
-            "completion_tokens": 222,
-            "queue_wait_seconds": 3.125,
-            "retries": 2,
+            "input_tokens": 500,
+            "output_tokens": 150,
+            "total_tokens": 650,
+            "reasoning_tokens": None,
+            "cached_input_tokens": None,
+            "cache_creation_input_tokens": None,
+            "cache_read_input_tokens": None,
+            "queue_wait_seconds": 0.75,
+            "retries": 1,
         }
 
         async def fake_call_llm(*args: Any, **kwargs: Any):
