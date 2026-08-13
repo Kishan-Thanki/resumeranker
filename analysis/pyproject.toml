@@ -12,7 +12,7 @@ dependencies = [
     "pydantic>=2.7.0",
     "uvloop>=0.22.1",
     "phonenumbers>=9.0.36",
-    "protobuf>=7.35.1",
+    "protobuf>=5.29.0",
 ]
 
 [build-system]
@@ -21,6 +21,14 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["app"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+markers = [
+    "e2e: tests that require a running service and real LLM provider access",
+]
 
 [dependency-groups]
 dev = [
