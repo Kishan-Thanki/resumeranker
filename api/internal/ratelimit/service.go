@@ -3,12 +3,15 @@ package ratelimit
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"time"
 
-	"github.com/redis/go-redis/v9"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/kishan-thanki/resumeranker/api/internal/ratelimit/db"
 )
 
+// RateLimitError is returned when a rate limit is exceeded.
+// RetryAfter tells the caller how long to wait before retrying.
 type RateLimitError struct {
 	RetryAfter time.Duration
 	Message    string
@@ -18,65 +21,99 @@ func (e *RateLimitError) Error() string {
 	return e.Message
 }
 
+// Service implements rate limiting using Postgres INSERT ON CONFLICT DO UPDATE.
+// This replaces the former Redis INCR/EXPIRE implementation with zero new
+// infrastructure — the existing Postgres pool is reused.
 type Service struct {
-	rdb *redis.Client
+	queries rateLimitStore
 }
 
-func NewService(rdb *redis.Client) *Service {
-	return &Service{rdb: rdb}
+func NewService(pool *pgxpool.Pool) *Service {
+	return &Service{queries: db.New(pool)}
 }
 
-func (s *Service) Close() error {
-	if s.rdb != nil {
-		return s.rdb.Close()
-	}
-	return nil
-}
-
+// CheckGlobalLimit checks the global (system-wide) RPM and RPD limits.
 func (s *Service) CheckGlobalLimit(ctx context.Context, rpmLimit, rpdLimit int) error {
 	now := time.Now()
 	minuteKey := fmt.Sprintf("global:rpm:%d", now.Unix()/60)
 	dayKey := fmt.Sprintf("global:rpd:%s", now.Format("2006-01-02"))
 
-	return s.checkLimits(ctx, minuteKey, dayKey, rpmLimit, rpdLimit)
+	return s.checkLimits(ctx, minuteKey, dayKey, rpmLimit, rpdLimit, now)
 }
 
+// CheckKeyLimit checks RPM and RPD limits for a specific API key.
 func (s *Service) CheckKeyLimit(ctx context.Context, apiKeyID uint64, rpmLimit, rpdLimit int) error {
 	now := time.Now()
 	minuteKey := fmt.Sprintf("key:%d:rpm:%d", apiKeyID, now.Unix()/60)
 	dayKey := fmt.Sprintf("key:%d:rpd:%s", apiKeyID, now.Format("2006-01-02"))
 
-	return s.checkLimits(ctx, minuteKey, dayKey, rpmLimit, rpdLimit)
+	return s.checkLimits(ctx, minuteKey, dayKey, rpmLimit, rpdLimit, now)
 }
 
-func (s *Service) checkLimits(ctx context.Context, minuteKey, dayKey string, rpmLimit, rpdLimit int) error {
-	pipe := s.rdb.TxPipeline()
-
-	rpmIncr := pipe.Incr(ctx, minuteKey)
-	pipe.Expire(ctx, minuteKey, time.Minute*2)
-
-	rpdIncr := pipe.Incr(ctx, dayKey)
-	pipe.Expire(ctx, dayKey, time.Hour*48)
-
-	_, err := pipe.Exec(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to execute redis rate limit pipeline: %w", err)
+// checkLimits increments both counters independently and checks their
+// thresholds. Each individual counter update is atomic at the PostgreSQL
+// row level via INSERT ... ON CONFLICT DO UPDATE.
+func (s *Service) checkLimits(
+	ctx context.Context,
+	minuteKey,
+	dayKey string,
+	rpmLimit,
+	rpdLimit int,
+	now time.Time,
+) error {
+	minuteExpiry := pgtype.Timestamptz{
+		Time:  now.Truncate(time.Minute).Add(2 * time.Minute),
+		Valid: true,
 	}
 
-	if rpmLimit > 0 && int(rpmIncr.Val()) > rpmLimit {
-		now := time.Now()
-		nextMin := now.Truncate(time.Minute).Add(time.Minute)
+	today := time.Date(
+		now.Year(),
+		now.Month(),
+		now.Day(),
+		0, 0, 0, 0,
+		now.Location(),
+	)
+	tomorrow := today.AddDate(0, 0, 1)
+
+	dayExpiry := pgtype.Timestamptz{
+		Time:  tomorrow,
+		Valid: true,
+	}
+
+	rpmCount, err := s.queries.UpsertRateLimitCounter(
+		ctx,
+		db.UpsertRateLimitCounterParams{
+			Key:       minuteKey,
+			ExpiresAt: minuteExpiry,
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("ratelimit: failed to upsert rpm counter: %w", err)
+	}
+
+	rpdCount, err := s.queries.UpsertRateLimitCounter(
+		ctx,
+		db.UpsertRateLimitCounterParams{
+			Key:       dayKey,
+			ExpiresAt: dayExpiry,
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("ratelimit: failed to upsert rpd counter: %w", err)
+	}
+
+	if rpmLimit > 0 && int(rpmCount) > rpmLimit {
+		nextMinute := now.Truncate(time.Minute).Add(time.Minute)
+
 		return &RateLimitError{
-			RetryAfter: time.Until(nextMin),
+			RetryAfter: time.Until(nextMinute),
 			Message:    "per-minute rate limit exceeded",
 		}
 	}
 
-	if rpdLimit > 0 && int(rpdIncr.Val()) > rpdLimit {
-		now := time.Now()
-		nextMidnight := now.Truncate(24 * time.Hour).Add(24 * time.Hour)
+	if rpdLimit > 0 && int(rpdCount) > rpdLimit {
 		return &RateLimitError{
-			RetryAfter: time.Until(nextMidnight),
+			RetryAfter: time.Until(tomorrow),
 			Message:    "daily rate limit exceeded",
 		}
 	}
@@ -84,24 +121,52 @@ func (s *Service) checkLimits(ctx context.Context, minuteKey, dayKey string, rpm
 	return nil
 }
 
-func (s *Service) GetKeyUsage(ctx context.Context, apiKeyID uint64) (rpmUsed, rpdUsed int, err error) {
+// GetKeyUsage returns the current rpm and rpd usage for a given API key.
+// Used by the API key stats endpoint. Returns 0,0 if counters don't exist yet.
+func (s *Service) GetKeyUsage(
+	ctx context.Context,
+	apiKeyID uint64,
+) (rpmUsed, rpdUsed int, err error) {
 	now := time.Now()
 	minuteKey := fmt.Sprintf("key:%d:rpm:%d", apiKeyID, now.Unix()/60)
 	dayKey := fmt.Sprintf("key:%d:rpd:%s", apiKeyID, now.Format("2006-01-02"))
 
-	vals, err := s.rdb.MGet(ctx, minuteKey, dayKey).Result()
+	rows, err := s.queries.GetRateLimitCounters(
+		ctx,
+		[]string{minuteKey, dayKey},
+	)
 	if err != nil {
-		return 0, 0, fmt.Errorf("failed to get rate limit usage from redis: %w", err)
+		return 0, 0, fmt.Errorf("ratelimit: failed to get key usage: %w", err)
 	}
 
-	if len(vals) == 2 {
-		if v, ok := vals[0].(string); ok {
-			rpmUsed, _ = strconv.Atoi(v)
-		}
-		if v, ok := vals[1].(string); ok {
-			rpdUsed, _ = strconv.Atoi(v)
+	for _, row := range rows {
+		switch row.Key {
+		case minuteKey:
+			rpmUsed = int(row.Count)
+		case dayKey:
+			rpdUsed = int(row.Count)
 		}
 	}
 
 	return rpmUsed, rpdUsed, nil
+}
+
+// CleanupExpired removes expired counter rows. Call this periodically
+// (e.g. once per minute from a goroutine) to keep the table small.
+func (s *Service) CleanupExpired(ctx context.Context) error {
+	return s.queries.DeleteExpiredRateLimitCounters(ctx)
+}
+
+type rateLimitStore interface {
+	UpsertRateLimitCounter(
+		ctx context.Context,
+		arg db.UpsertRateLimitCounterParams,
+	) (int32, error)
+
+	GetRateLimitCounters(
+		ctx context.Context,
+		keys []string,
+	) ([]db.GetRateLimitCountersRow, error)
+
+	DeleteExpiredRateLimitCounters(ctx context.Context) error
 }

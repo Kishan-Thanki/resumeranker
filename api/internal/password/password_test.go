@@ -64,12 +64,46 @@ func TestHashItAndVerifyHash(t *testing.T) {
 		}
 	})
 
+	t.Run("empty password hashes and verifies", func(t *testing.T) {
+		hash, err := password.HashIt("")
+		if err != nil {
+			t.Fatalf("unexpected error hashing empty password: %v", err)
+		}
+		if hash == "" {
+			t.Fatal("expected a hash, got empty string")
+		}
+
+		match, err := password.VerifyHash("", hash)
+		if err != nil {
+			t.Fatalf("unexpected error verifying empty password: %v", err)
+		}
+		if !match {
+			t.Fatal("expected match to be true for empty password")
+		}
+
+		match, err = password.VerifyHash("notempty", hash)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if match {
+			t.Fatal("expected match to be false for non-empty password against empty hash")
+		}
+	})
+
 	t.Run("malformed hash returns safe error", func(t *testing.T) {
 		plain := "password"
 		malformedHashes := []string{
 			"invalid-format",
 			"$argon2id$v=19$m=65536,t=1,p=4$invalidbase64salt$invalidbase64hash",
-			"$argon2id$v=19$m=65536,t=1,p=4$validbase64c2FsdA==$too-few-parts",
+			"$argon2id$v=19$m=0,t=1,p=4$c2FsdA$aGFzaA",
+			"$argon2id$v=19$m=abc,t=1,p=4$c2FsdA$aGFzaA",
+			"$argon2i$v=19$m=65536,t=1,p=4$c2FsdA$aGFzaA",
+			"$argon2id$v=16$m=65536,t=1,p=4$c2FsdA$aGFzaA",
+			"$argon2id$v=19$m=65536,t=1,p=4$c2FsdA$",
+			"$argon2id$v=19$m=65536,t=1,p=4$$aGFzaA",
+			"$argon2id$v=19$m=65536,t=1,p=256$c2FsdA$aGFzaA",
+			"$argon2id$v=19$m=16,t=1,p=4$c2FsdA$aGFzaA",
+			"$argon2id$v=19$m=65536,t=1,p=4,m=65536$c2FsdA$aGFzaA",
 		}
 
 		for _, malformed := range malformedHashes {
@@ -100,4 +134,20 @@ func TestHashSHA256(t *testing.T) {
 			t.Error("expected lowercase hex string")
 		}
 	})
+}
+
+func BenchmarkHashIt(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_, _ = password.HashIt("benchmarkpassword")
+	}
+}
+
+func BenchmarkVerifyHash(b *testing.B) {
+	b.ReportAllocs()
+	hash, _ := password.HashIt("benchmarkpassword")
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = password.VerifyHash("benchmarkpassword", hash)
+	}
 }

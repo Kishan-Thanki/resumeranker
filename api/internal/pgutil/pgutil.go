@@ -1,6 +1,7 @@
 package pgutil
 
 import (
+	"math"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -25,15 +26,18 @@ func FromPgText(t pgtype.Text) *string {
 
 // ToPgInt8 converts a *uint64 to pgtype.Int8
 func ToPgInt8(id *uint64) pgtype.Int8 {
-	if id == nil {
+	if id == nil || *id > math.MaxInt64 {
 		return pgtype.Int8{Valid: false}
 	}
-	return pgtype.Int8{Int64: int64(*id), Valid: true}
+	return pgtype.Int8{
+		Int64: int64(*id),
+		Valid: true,
+	}
 }
 
 // FromPgInt8 converts a pgtype.Int8 to *uint64
 func FromPgInt8(i pgtype.Int8) *uint64 {
-	if !i.Valid {
+	if !i.Valid || i.Int64 < 0 {
 		return nil
 	}
 	val := uint64(i.Int64)
