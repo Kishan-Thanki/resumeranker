@@ -2,63 +2,111 @@ package audit
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log/slog"
+	"math"
 	"net/netip"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/kishan-thanki/resumeranker/api/internal/audit/db"
+	"github.com/kishan-thanki/resumeranker/api/internal/pgutil"
 )
 
 type PostgresRepository struct {
-	pool    *pgxpool.Pool
 	queries *db.Queries
 }
 
 func NewPostgresRepository(pool *pgxpool.Pool) *PostgresRepository {
 	return &PostgresRepository{
-		pool:    pool,
 		queries: db.New(pool),
 	}
 }
 
 func (r *PostgresRepository) Create(ctx context.Context, event *AuditEvent) (*AuditEvent, error) {
+	if event == nil {
+		return nil, errors.New("audit event cannot be nil")
+	}
+
+	if !event.Type.IsValid() {
+		return nil, fmt.Errorf("invalid audit event type: %q", event.Type)
+	}
+
+	if err := validateID("user_id", event.UserID); err != nil {
+		return nil, err
+	}
+
+	if err := validateID("api_key_id", event.APIKeyID); err != nil {
+		return nil, err
+	}
+
+	if err := validateID("analysis_request_id", event.AnalysisRequestID); err != nil {
+		return nil, err
+	}
+
 	var ipAddr *netip.Addr
 	if event.IPAddress != nil && *event.IPAddress != "" {
 		addr, err := netip.ParseAddr(*event.IPAddress)
-		if err == nil {
-			ipAddr = &addr
+		if err != nil {
+			return nil, fmt.Errorf("invalid audit event IP address: %w", err)
 		}
+		ipAddr = &addr
 	}
 
 	e, err := r.queries.CreateAuditEvent(ctx, db.CreateAuditEventParams{
-		UserID:            toPgInt8(event.UserID),
-		ApiKeyID:          toPgInt8(event.APIKeyID),
-		AnalysisRequestID: toPgInt8(event.AnalysisRequestID),
+		UserID:            pgutil.ToPgInt8(event.UserID),
+		ApiKeyID:          pgutil.ToPgInt8(event.APIKeyID),
+		AnalysisRequestID: pgutil.ToPgInt8(event.AnalysisRequestID),
 		Type:              string(event.Type),
 		Description:       event.Description,
 		IpAddress:         ipAddr,
-		UserAgent:         toPgText(event.UserAgent),
+		UserAgent:         pgutil.ToPgText(event.UserAgent),
 	})
 	if err != nil {
-		slog.ErrorContext(ctx, "failed to record audit event to database", slog.Any("error", err), slog.String("event_type", string(event.Type)))
+		slog.ErrorContext(
+			ctx,
+			"failed to record audit event to database",
+			slog.Any("error", err),
+			slog.String("event_type", string(event.Type)),
+		)
 		return nil, err
 	}
 
 	event.ID = uint64(e.ID)
 	event.CreatedAt = e.CreatedAt.Time
 
-	slog.InfoContext(ctx, "audit event recorded",
+	slog.InfoContext(
+		ctx,
+		"audit event recorded",
+		slog.Any("event", event),
+		slog.Any("analysis_request_id", event.AnalysisRequestID),
 		slog.String("event_type", string(event.Type)),
 		slog.String("description", event.Description),
+		slog.Any("ip_address", event.IPAddress),
+		slog.Any("user_agent", event.UserAgent),
+	)
+
+	slog.DebugContext(
+		ctx,
+		"audit event recorded",
+		slog.Any("event_id", event.ID),
 		slog.Any("user_id", event.UserID),
 		slog.Any("api_key_id", event.APIKeyID),
+		slog.Any("analysis_request_id", event.AnalysisRequestID),
+		slog.String("event_type", string(event.Type)),
+		slog.String("description", event.Description),
+		slog.Any("ip_address", event.IPAddress),
+		slog.Any("user_agent", event.UserAgent),
 	)
 
 	return event, nil
 }
 
 func (r *PostgresRepository) List(ctx context.Context, limit, offset int) ([]*AuditEvent, error) {
+	if offset < 0 {
+		offset = 0
+	}
+
 	dbEvents, err := r.queries.ListAuditEvents(ctx, db.ListAuditEventsParams{
 		Limit:  int32(limit),
 		Offset: int32(offset),
@@ -69,52 +117,40 @@ func (r *PostgresRepository) List(ctx context.Context, limit, offset int) ([]*Au
 
 	events := make([]*AuditEvent, len(dbEvents))
 	for i, e := range dbEvents {
-		var ipStr *string
-		if e.IpAddress != nil {
-			s := e.IpAddress.String()
-			ipStr = &s
-		}
-
-		events[i] = &AuditEvent{
-			ID:                uint64(e.ID),
-			UserID:            fromPgInt8(e.UserID),
-			APIKeyID:          fromPgInt8(e.ApiKeyID),
-			AnalysisRequestID: fromPgInt8(e.AnalysisRequestID),
-			Type:              AuditEventType(e.Type),
-			Description:       e.Description,
-			IPAddress:         ipStr,
-			UserAgent:         fromPgText(e.UserAgent),
-			CreatedAt:         e.CreatedAt.Time,
-		}
+		events[i] = eventFromRow(e)
 	}
+
 	return events, nil
 }
 
-func toPgInt8(id *uint64) pgtype.Int8 {
+func eventFromRow(e db.AuditEvent) *AuditEvent {
+	var ipStr *string
+	if e.IpAddress != nil {
+		s := e.IpAddress.String()
+		ipStr = &s
+	}
+
+	return &AuditEvent{
+		ID:                uint64(e.ID),
+		UserID:            pgutil.FromPgInt8(e.UserID),
+		APIKeyID:          pgutil.FromPgInt8(e.ApiKeyID),
+		AnalysisRequestID: pgutil.FromPgInt8(e.AnalysisRequestID),
+		Type:              AuditEventType(e.Type),
+		Description:       e.Description,
+		IPAddress:         ipStr,
+		UserAgent:         pgutil.FromPgText(e.UserAgent),
+		CreatedAt:         e.CreatedAt.Time,
+	}
+}
+
+func validateID(name string, id *uint64) error {
 	if id == nil {
-		return pgtype.Int8{Valid: false}
-	}
-	return pgtype.Int8{Int64: int64(*id), Valid: true}
-}
-
-func fromPgInt8(i pgtype.Int8) *uint64 {
-	if !i.Valid {
 		return nil
 	}
-	val := uint64(i.Int64)
-	return &val
-}
 
-func toPgText(s *string) pgtype.Text {
-	if s == nil {
-		return pgtype.Text{Valid: false}
+	if *id > math.MaxInt64 {
+		return fmt.Errorf("%s exceeds PostgreSQL BIGINT range", name)
 	}
-	return pgtype.Text{String: *s, Valid: true}
-}
 
-func fromPgText(t pgtype.Text) *string {
-	if !t.Valid {
-		return nil
-	}
-	return &t.String
+	return nil
 }
