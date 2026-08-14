@@ -6,6 +6,7 @@ INSERT INTO audit_events (
 ) RETURNING *;
 
 -- name: ListAuditEvents :many
-SELECT * FROM audit_events
-ORDER BY created_at DESC
+SELECT *
+FROM audit_events
+ORDER BY created_at DESC, id DESC
 LIMIT $1 OFFSET $2;

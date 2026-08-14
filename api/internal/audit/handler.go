@@ -24,21 +24,52 @@ func NewAuditHandler(auditService auditService, defaultLimit int) *AuditHandler 
 }
 
 func (h *AuditHandler) ListLogs(w http.ResponseWriter, r *http.Request) {
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
+	query := r.URL.Query()
 
 	limit := h.defaultLimit
-	if l, err := strconv.Atoi(limitStr); err == nil {
-		limit = l
+	if limitStr := query.Get("limit"); limitStr != "" {
+		parsedLimit, err := strconv.Atoi(limitStr)
+		if err != nil {
+			http.Error(w, "invalid limit", http.StatusBadRequest)
+			return
+		}
+		limit = parsedLimit
 	}
-	offset, _ := strconv.Atoi(offsetStr)
+
+	offset := 0
+	if offsetStr := query.Get("offset"); offsetStr != "" {
+		parsedOffset, err := strconv.Atoi(offsetStr)
+		if err != nil {
+			http.Error(w, "invalid offset", http.StatusBadRequest)
+			return
+		}
+		offset = parsedOffset
+	}
 
 	logs, err := h.auditService.ListLogs(r.Context(), limit, offset)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(
+			w,
+			"an internal server error occurred",
+			http.StatusInternalServerError,
+		)
+		return
+	}
+
+	body, err := json.Marshal(logs)
+	if err != nil {
+		http.Error(
+			w,
+			"an internal server error occurred",
+			http.StatusInternalServerError,
+		)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(logs)
+	w.WriteHeader(http.StatusOK)
+
+	if _, err := w.Write(body); err != nil {
+		return
+	}
 }
