@@ -20,11 +20,24 @@ type Agreement struct {
 	Content     string             `json:"content"`
 }
 
+type AnalysisJob struct {
+	ID          int64              `json:"id"`
+	RequestID   int64              `json:"request_id"`
+	Payload     []byte             `json:"payload"`
+	Status      string             `json:"status"`
+	Attempts    int32              `json:"attempts"`
+	MaxAttempts int32              `json:"max_attempts"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	ScheduledAt pgtype.Timestamptz `json:"scheduled_at"`
+	ClaimedAt   pgtype.Timestamptz `json:"claimed_at"`
+	DoneAt      pgtype.Timestamptz `json:"done_at"`
+}
+
 type AnalysisRequest struct {
 	ID          int64              `json:"id"`
 	RequestID   string             `json:"request_id"`
 	UserID      int64              `json:"user_id"`
-	ApiKeyID    int64              `json:"api_key_id"`
+	ApiKeyID    pgtype.Int8        `json:"api_key_id"`
 	Status      string             `json:"status"`
 	Error       pgtype.Text        `json:"error"`
 	Metadata    []byte             `json:"metadata"`
@@ -40,8 +53,8 @@ type AnalysisResult struct {
 	AnalysisRequestID int64              `json:"analysis_request_id"`
 	Model             string             `json:"model"`
 	Result            string             `json:"result"`
-	PromptTokens      int32              `json:"prompt_tokens"`
-	CompletionTokens  int32              `json:"completion_tokens"`
+	InputTokens       int32              `json:"input_tokens"`
+	OutputTokens      int32              `json:"output_tokens"`
 	TotalTokens       int32              `json:"total_tokens"`
 	CreatedAt         pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
@@ -77,6 +90,12 @@ type AuditEvent struct {
 	IpAddress         *netip.Addr        `json:"ip_address"`
 	UserAgent         pgtype.Text        `json:"user_agent"`
 	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+}
+
+type RateLimitCounter struct {
+	Key       string             `json:"key"`
+	Count     int32              `json:"count"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
 }
 
 type User struct {

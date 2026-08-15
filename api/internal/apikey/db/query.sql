@@ -1,34 +1,69 @@
 -- name: CreateAPIKey :one
 INSERT INTO api_keys (
-    user_id, name, key_prefix, key_selector, key_hash, status, requests_per_minute, requests_per_day, token_quota, tokens_used, expires_at
+    user_id,
+    name,
+    key_prefix,
+    key_selector,
+    key_hash,
+    status,
+    requests_per_minute,
+    requests_per_day,
+    token_quota,
+    tokens_used,
+    expires_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7,
+    $8,
+    $9,
+    $10,
+    $11
 ) RETURNING *;
 
 -- name: GetAPIKeyByID :one
-SELECT * FROM api_keys
+SELECT *
+FROM api_keys
 WHERE id = $1 AND deleted_at IS NULL;
 
 -- name: GetAPIKeyBySelector :one
-SELECT * FROM api_keys
+SELECT *
+FROM api_keys
 WHERE key_selector = $1 AND deleted_at IS NULL;
 
 -- name: ListAPIKeysByUserID :many
-SELECT * FROM api_keys
+SELECT *
+FROM api_keys
 WHERE user_id = $1 AND deleted_at IS NULL
-ORDER BY created_at DESC;
+ORDER BY created_at DESC, id DESC;
 
 -- name: UpdateAPIKey :one
 UPDATE api_keys
-SET status = $2, token_quota = $3, tokens_used = $4, expires_at = $5, last_used_at = $6, updated_at = NOW()
+SET
+    status = $2,
+    token_quota = $3,
+    tokens_used = $4,
+    expires_at = $5,
+    last_used_at = $6,
+    updated_at = NOW()
 WHERE id = $1 AND deleted_at IS NULL
 RETURNING *;
 
 -- name: DeleteAPIKey :exec
 UPDATE api_keys
 SET deleted_at = NOW()
-WHERE id = $1;
+WHERE id = $1 AND deleted_at IS NULL;
 
 -- name: GetUserEmailByID :one
-SELECT email FROM users
+SELECT email
+FROM users
+WHERE id = $1 AND deleted_at IS NULL;
+
+-- name: IsUserActive :one
+SELECT status
+FROM users
 WHERE id = $1 AND deleted_at IS NULL;

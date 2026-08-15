@@ -13,9 +13,29 @@ import (
 
 const createAPIKey = `-- name: CreateAPIKey :one
 INSERT INTO api_keys (
-    user_id, name, key_prefix, key_selector, key_hash, status, requests_per_minute, requests_per_day, token_quota, tokens_used, expires_at
+    user_id,
+    name,
+    key_prefix,
+    key_selector,
+    key_hash,
+    status,
+    requests_per_minute,
+    requests_per_day,
+    token_quota,
+    tokens_used,
+    expires_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7,
+    $8,
+    $9,
+    $10,
+    $11
 ) RETURNING id, user_id, name, key_selector, key_hash, status, token_quota, tokens_used, expires_at, last_used_at, created_at, updated_at, deleted_at, key_prefix, requests_per_minute, requests_per_day
 `
 
@@ -72,7 +92,7 @@ func (q *Queries) CreateAPIKey(ctx context.Context, arg CreateAPIKeyParams) (Api
 const deleteAPIKey = `-- name: DeleteAPIKey :exec
 UPDATE api_keys
 SET deleted_at = NOW()
-WHERE id = $1
+WHERE id = $1 AND deleted_at IS NULL
 `
 
 func (q *Queries) DeleteAPIKey(ctx context.Context, id int64) error {
@@ -81,7 +101,8 @@ func (q *Queries) DeleteAPIKey(ctx context.Context, id int64) error {
 }
 
 const getAPIKeyByID = `-- name: GetAPIKeyByID :one
-SELECT id, user_id, name, key_selector, key_hash, status, token_quota, tokens_used, expires_at, last_used_at, created_at, updated_at, deleted_at, key_prefix, requests_per_minute, requests_per_day FROM api_keys
+SELECT id, user_id, name, key_selector, key_hash, status, token_quota, tokens_used, expires_at, last_used_at, created_at, updated_at, deleted_at, key_prefix, requests_per_minute, requests_per_day
+FROM api_keys
 WHERE id = $1 AND deleted_at IS NULL
 `
 
@@ -110,7 +131,8 @@ func (q *Queries) GetAPIKeyByID(ctx context.Context, id int64) (ApiKey, error) {
 }
 
 const getAPIKeyBySelector = `-- name: GetAPIKeyBySelector :one
-SELECT id, user_id, name, key_selector, key_hash, status, token_quota, tokens_used, expires_at, last_used_at, created_at, updated_at, deleted_at, key_prefix, requests_per_minute, requests_per_day FROM api_keys
+SELECT id, user_id, name, key_selector, key_hash, status, token_quota, tokens_used, expires_at, last_used_at, created_at, updated_at, deleted_at, key_prefix, requests_per_minute, requests_per_day
+FROM api_keys
 WHERE key_selector = $1 AND deleted_at IS NULL
 `
 
@@ -139,7 +161,8 @@ func (q *Queries) GetAPIKeyBySelector(ctx context.Context, keySelector string) (
 }
 
 const getUserEmailByID = `-- name: GetUserEmailByID :one
-SELECT email FROM users
+SELECT email
+FROM users
 WHERE id = $1 AND deleted_at IS NULL
 `
 
@@ -150,10 +173,24 @@ func (q *Queries) GetUserEmailByID(ctx context.Context, id int64) (string, error
 	return email, err
 }
 
+const isUserActive = `-- name: IsUserActive :one
+SELECT status
+FROM users
+WHERE id = $1 AND deleted_at IS NULL
+`
+
+func (q *Queries) IsUserActive(ctx context.Context, id int64) (string, error) {
+	row := q.db.QueryRow(ctx, isUserActive, id)
+	var status string
+	err := row.Scan(&status)
+	return status, err
+}
+
 const listAPIKeysByUserID = `-- name: ListAPIKeysByUserID :many
-SELECT id, user_id, name, key_selector, key_hash, status, token_quota, tokens_used, expires_at, last_used_at, created_at, updated_at, deleted_at, key_prefix, requests_per_minute, requests_per_day FROM api_keys
+SELECT id, user_id, name, key_selector, key_hash, status, token_quota, tokens_used, expires_at, last_used_at, created_at, updated_at, deleted_at, key_prefix, requests_per_minute, requests_per_day
+FROM api_keys
 WHERE user_id = $1 AND deleted_at IS NULL
-ORDER BY created_at DESC
+ORDER BY created_at DESC, id DESC
 `
 
 func (q *Queries) ListAPIKeysByUserID(ctx context.Context, userID int64) ([]ApiKey, error) {
@@ -195,7 +232,13 @@ func (q *Queries) ListAPIKeysByUserID(ctx context.Context, userID int64) ([]ApiK
 
 const updateAPIKey = `-- name: UpdateAPIKey :one
 UPDATE api_keys
-SET status = $2, token_quota = $3, tokens_used = $4, expires_at = $5, last_used_at = $6, updated_at = NOW()
+SET
+    status = $2,
+    token_quota = $3,
+    tokens_used = $4,
+    expires_at = $5,
+    last_used_at = $6,
+    updated_at = NOW()
 WHERE id = $1 AND deleted_at IS NULL
 RETURNING id, user_id, name, key_selector, key_hash, status, token_quota, tokens_used, expires_at, last_used_at, created_at, updated_at, deleted_at, key_prefix, requests_per_minute, requests_per_day
 `
