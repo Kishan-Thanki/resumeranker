@@ -98,12 +98,12 @@ func (m *MockEmailService) SendEmail(ctx context.Context, req *email.SendEmailRe
 }
 
 type MockAPIKeyService struct {
-	GenerateKeyFunc  func(ctx context.Context, userID uint64, name string, quota uint64) (string, *apikey.APIKey, error)
-	ValidateKeyFunc  func(ctx context.Context, plainTextKey string) (*apikey.APIKey, error)
-	DeductTokensFunc func(ctx context.Context, key *apikey.APIKey, tokensUsed uint64) error
-	ListKeysFunc     func(ctx context.Context, userID uint64) ([]*apikey.APIKey, error)
-	ToggleStatusFunc func(ctx context.Context, userID, keyID uint64, status apikey.APIKeyStatus) error
-	RevokeKeyFunc    func(ctx context.Context, userID, keyID uint64) error
+	GenerateKeyFunc    func(ctx context.Context, userID uint64, name string, quota uint64) (string, *apikey.APIKey, error)
+	ValidateKeyFunc    func(ctx context.Context, plainTextKey string) (*apikey.APIKey, error)
+	DeductTokensFunc   func(ctx context.Context, key *apikey.APIKey, tokensUsed uint64) error
+	ListKeysFunc       func(ctx context.Context, userID uint64) ([]*apikey.APIKey, error)
+	ToggleStatusFunc   func(ctx context.Context, userID, keyID uint64, status apikey.APIKeyStatus) error
+	RevokeKeyFunc      func(ctx context.Context, userID, keyID uint64) error
 	GetAPIKeyStatsFunc func(ctx context.Context, userID, keyID uint64) (*apikey.APIKeyUsageResponse, error)
 }
 

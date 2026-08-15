@@ -6,7 +6,10 @@ import (
 	"crypto/subtle"
 	"encoding/base32"
 	"errors"
+	"fmt"
+	"math"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/kishan-thanki/resumeranker/api/internal/audit"
@@ -15,9 +18,12 @@ import (
 )
 
 var (
-	ErrInvalidAPIKey   = errors.New("invalid api key")
-	ErrAPIKeyInactive  = errors.New("api key is inactive")
-	ErrAPIKeySuspended = errors.New("api key is suspended")
+	ErrInvalidAPIKey       = errors.New("invalid api key")
+	ErrAPIKeyInactive      = errors.New("api key is inactive")
+	ErrAPIKeySuspended     = errors.New("api key is suspended")
+	ErrTokenQuotaExceeded  = errors.New("token quota exceeded")
+	ErrAPIKeyAlreadyExists = errors.New("user already has an API key")
+	ErrUnauthorizedAPIKey  = errors.New("unauthorized: key does not belong to user")
 )
 
 type auditService interface {
@@ -39,9 +45,22 @@ type APIKeyService struct {
 	rateLimiter  RateLimiter
 	domain       string
 	emailContact string
+	wg           *sync.WaitGroup
 }
 
-func NewAPIKeyService(repo Repository, auditService auditService, emailService emailService, rateLimiter RateLimiter, domain string, emailContact string) *APIKeyService {
+func NewAPIKeyService(
+	repo Repository,
+	auditService auditService,
+	emailService emailService,
+	rateLimiter RateLimiter,
+	domain string,
+	emailContact string,
+	wg *sync.WaitGroup,
+) *APIKeyService {
+	if wg == nil {
+		wg = &sync.WaitGroup{}
+	}
+
 	return &APIKeyService{
 		repo:         repo,
 		auditService: auditService,
@@ -49,16 +68,27 @@ func NewAPIKeyService(repo Repository, auditService auditService, emailService e
 		rateLimiter:  rateLimiter,
 		domain:       domain,
 		emailContact: emailContact,
+		wg:           wg,
 	}
 }
 
-func (s *APIKeyService) GenerateKey(ctx context.Context, userID uint64, name string, quota uint64) (string, *APIKey, error) {
+func (s *APIKeyService) GetByID(ctx context.Context, id uint64) (*APIKey, error) {
+	return s.repo.GetByID(ctx, id)
+}
+
+func (s *APIKeyService) GenerateKey(
+	ctx context.Context,
+	userID uint64,
+	name string,
+	quota uint64,
+) (string, *APIKey, error) {
 	existingKeys, err := s.repo.ListByUserID(ctx, userID)
 	if err != nil {
 		return "", nil, err
 	}
+
 	if len(existingKeys) > 0 {
-		return "", nil, errors.New("user already has an API key; please revoke the existing key before generating a new one")
+		return "", nil, ErrAPIKeyAlreadyExists
 	}
 
 	selectorBytes := make([]byte, 15)
@@ -97,6 +127,10 @@ func (s *APIKeyService) GenerateKey(ctx context.Context, userID uint64, name str
 		return "", nil, err
 	}
 
+	if createdKey == nil {
+		return "", nil, errors.New("repository returned nil API key")
+	}
+
 	plainTextKey := "rr_" + strings.ToLower(selector) + "_" + strings.ToLower(verifier)
 
 	_ = s.auditService.LogEvent(ctx, &audit.AuditEvent{
@@ -108,7 +142,11 @@ func (s *APIKeyService) GenerateKey(ctx context.Context, userID uint64, name str
 
 	userEmail, err := s.repo.GetUserEmailByID(ctx, userID)
 	if err == nil && userEmail != "" {
+		s.wg.Add(1)
+
 		go func() {
+			defer s.wg.Done()
+
 			htmlBody := email.BuildHTMLTemplate(email.HTMLTemplateParams{
 				Title:        "New API Key Generated",
 				Message:      "<p>A new API key was just generated for your account. If you did not authorize this, please log in and revoke it immediately.</p>",
@@ -118,6 +156,7 @@ func (s *APIKeyService) GenerateKey(ctx context.Context, userID uint64, name str
 				Domain:       s.domain,
 				FooterNote:   "Keep your API keys secure. Never share them publicly.",
 			})
+
 			_ = s.emailService.SendEmail(context.Background(), &email.SendEmailRequest{
 				To:      []string{userEmail},
 				Subject: "New API Key Generated",
@@ -130,7 +169,10 @@ func (s *APIKeyService) GenerateKey(ctx context.Context, userID uint64, name str
 	return plainTextKey, createdKey, nil
 }
 
-func (s *APIKeyService) ValidateKey(ctx context.Context, plainTextKey string) (*APIKey, error) {
+func (s *APIKeyService) ValidateKey(
+	ctx context.Context,
+	plainTextKey string,
+) (*APIKey, error) {
 	parts := strings.Split(plainTextKey, "_")
 	if len(parts) != 3 || parts[0] != "rr" {
 		return nil, ErrInvalidAPIKey
@@ -139,8 +181,12 @@ func (s *APIKeyService) ValidateKey(ctx context.Context, plainTextKey string) (*
 	selector := strings.ToUpper(parts[1])
 	verifier := strings.ToUpper(parts[2])
 
+	if !isValidKeyPart(selector, 24) || !isValidKeyPart(verifier, 48) {
+		return nil, ErrInvalidAPIKey
+	}
+
 	apiKey, err := s.repo.GetBySelector(ctx, selector)
-	if err != nil {
+	if err != nil || apiKey == nil {
 		return nil, ErrInvalidAPIKey
 	}
 
@@ -150,12 +196,17 @@ func (s *APIKeyService) ValidateKey(ctx context.Context, plainTextKey string) (*
 	}
 
 	if apiKey.Status != APIKeyStatusActive {
-		if apiKey.Status == APIKeyStatusInactive {
+		switch apiKey.Status {
+		case APIKeyStatusInactive:
 			return nil, ErrAPIKeyInactive
-		}
-		if apiKey.Status == APIKeyStatusSuspended {
+		case APIKeyStatusSuspended:
 			return nil, ErrAPIKeySuspended
+		default:
+			return nil, ErrInvalidAPIKey
 		}
+	}
+
+	if apiKey.ExpiresAt != nil && !apiKey.ExpiresAt.After(time.Now()) {
 		return nil, ErrInvalidAPIKey
 	}
 
@@ -164,41 +215,86 @@ func (s *APIKeyService) ValidateKey(ctx context.Context, plainTextKey string) (*
 		return nil, ErrInvalidAPIKey
 	}
 
-	apiKey.LastUsedAt = func(t time.Time) *time.Time { return &t }(time.Now())
-	_, _ = s.repo.Update(ctx, apiKey)
+	now := time.Now()
+	apiKey.LastUsedAt = &now
+
+	if _, err := s.repo.Update(ctx, apiKey); err != nil {
+		return nil, err
+	}
 
 	return apiKey, nil
 }
 
-func (s *APIKeyService) DeductTokens(ctx context.Context, apiKey *APIKey, tokensUsed uint64) error {
+func (s *APIKeyService) DeductTokens(
+	ctx context.Context,
+	apiKey *APIKey,
+	tokensUsed uint64,
+) error {
+	if apiKey == nil {
+		return ErrInvalidAPIKey
+	}
+
+	if apiKey.TokensUsed > apiKey.TokenQuota {
+		return ErrTokenQuotaExceeded
+	}
+
+	remaining := apiKey.TokenQuota - apiKey.TokensUsed
+	if tokensUsed > remaining {
+		return ErrTokenQuotaExceeded
+	}
+
+	if tokensUsed > math.MaxUint64-apiKey.TokensUsed {
+		return ErrTokenQuotaExceeded
+	}
+
 	apiKey.TokensUsed += tokensUsed
+
 	_, err := s.repo.Update(ctx, apiKey)
 	return err
 }
 
-func (s *APIKeyService) ListKeys(ctx context.Context, userID uint64) ([]*APIKey, error) {
+func (s *APIKeyService) ListKeys(
+	ctx context.Context,
+	userID uint64,
+) ([]*APIKey, error) {
 	return s.repo.ListByUserID(ctx, userID)
 }
 
-func (s *APIKeyService) ToggleStatus(ctx context.Context, userID, keyID uint64, status APIKeyStatus) error {
+func (s *APIKeyService) ToggleStatus(
+	ctx context.Context,
+	userID, keyID uint64,
+	status APIKeyStatus,
+) error {
+	if !status.IsValid() {
+		return fmt.Errorf("invalid API key status: %q", status)
+	}
+
 	apiKey, err := s.repo.GetByID(ctx, keyID)
 	if err != nil {
 		return err
 	}
 
+	if apiKey == nil {
+		return ErrInvalidAPIKey
+	}
+
 	if apiKey.UserID != userID {
-		return errors.New("unauthorized: key does not belong to user")
+		return ErrUnauthorizedAPIKey
 	}
 
 	apiKey.Status = status
-	_, err = s.repo.Update(ctx, apiKey)
-	if err != nil {
+
+	if _, err := s.repo.Update(ctx, apiKey); err != nil {
 		return err
 	}
 
 	userEmail, err := s.repo.GetUserEmailByID(ctx, userID)
 	if err == nil && userEmail != "" {
+		s.wg.Add(1)
+
 		go func() {
+			defer s.wg.Done()
+
 			htmlBody := email.BuildHTMLTemplate(email.HTMLTemplateParams{
 				Title:        "API Key Status Updated",
 				Message:      "<p>The status of your API key has been updated to: <strong>" + string(status) + "</strong>.</p>",
@@ -208,6 +304,7 @@ func (s *APIKeyService) ToggleStatus(ctx context.Context, userID, keyID uint64, 
 				Domain:       s.domain,
 				FooterNote:   "You can manage your API keys anytime from your dashboard.",
 			})
+
 			_ = s.emailService.SendEmail(context.Background(), &email.SendEmailRequest{
 				To:      []string{userEmail},
 				Subject: "API Key Status Updated",
@@ -220,18 +317,24 @@ func (s *APIKeyService) ToggleStatus(ctx context.Context, userID, keyID uint64, 
 	return nil
 }
 
-func (s *APIKeyService) RevokeKey(ctx context.Context, userID, keyID uint64) error {
+func (s *APIKeyService) RevokeKey(
+	ctx context.Context,
+	userID, keyID uint64,
+) error {
 	apiKey, err := s.repo.GetByID(ctx, keyID)
 	if err != nil {
 		return err
 	}
 
-	if apiKey.UserID != userID {
-		return errors.New("unauthorized: key does not belong to user")
+	if apiKey == nil {
+		return ErrInvalidAPIKey
 	}
 
-	err = s.repo.Delete(ctx, keyID)
-	if err != nil {
+	if apiKey.UserID != userID {
+		return ErrUnauthorizedAPIKey
+	}
+
+	if err := s.repo.Delete(ctx, keyID); err != nil {
 		return err
 	}
 
@@ -244,7 +347,11 @@ func (s *APIKeyService) RevokeKey(ctx context.Context, userID, keyID uint64) err
 
 	userEmail, err := s.repo.GetUserEmailByID(ctx, userID)
 	if err == nil && userEmail != "" {
+		s.wg.Add(1)
+
 		go func() {
+			defer s.wg.Done()
+
 			htmlBody := email.BuildHTMLTemplate(email.HTMLTemplateParams{
 				Title:        "API Key Revoked",
 				Message:      "<p>An API key associated with your account was successfully revoked and deleted.</p><p>Any applications using this key will no longer be able to authenticate.</p>",
@@ -254,6 +361,7 @@ func (s *APIKeyService) RevokeKey(ctx context.Context, userID, keyID uint64) err
 				Domain:       s.domain,
 				FooterNote:   "If you did not perform this action, please contact support immediately.",
 			})
+
 			_ = s.emailService.SendEmail(context.Background(), &email.SendEmailRequest{
 				To:      []string{userEmail},
 				Subject: "API Key Revoked",
@@ -266,14 +374,21 @@ func (s *APIKeyService) RevokeKey(ctx context.Context, userID, keyID uint64) err
 	return nil
 }
 
-func (s *APIKeyService) GetAPIKeyStats(ctx context.Context, userID, keyID uint64) (*APIKeyUsageResponse, error) {
+func (s *APIKeyService) GetAPIKeyStats(
+	ctx context.Context,
+	userID, keyID uint64,
+) (*APIKeyUsageResponse, error) {
 	apiKey, err := s.repo.GetByID(ctx, keyID)
 	if err != nil {
 		return nil, err
 	}
 
+	if apiKey == nil {
+		return nil, ErrInvalidAPIKey
+	}
+
 	if apiKey.UserID != userID {
-		return nil, errors.New("unauthorized: key does not belong to user")
+		return nil, ErrUnauthorizedAPIKey
 	}
 
 	rpmUsed, rpdUsed, err := s.rateLimiter.GetKeyUsage(ctx, keyID)
@@ -289,4 +404,17 @@ func (s *APIKeyService) GetAPIKeyStats(ctx context.Context, userID, keyID uint64
 		TokensUsed: apiKey.TokensUsed,
 		TokenQuota: apiKey.TokenQuota,
 	}, nil
+}
+
+func isValidKeyPart(value string, expectedLength int) bool {
+	if len(value) != expectedLength {
+		return false
+	}
+
+	decoded, err := base32.StdEncoding.WithPadding(base32.NoPadding).DecodeString(value)
+	if err != nil {
+		return false
+	}
+
+	return len(decoded) > 0
 }
