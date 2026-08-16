@@ -523,12 +523,18 @@ class TestAssembleFinalResult:
         assert "resumeEvidence" in first_requirement
         assert first_requirement["matched"] is True
 
-    def test_missing_section_verdict_gets_zero_score_fallback(
+    def test_missing_section_verdict_raises_assembly_mismatch(
         self,
         tech_domain,
         sample_requirements,
         sample_claims,
     ) -> None:
+        """
+        If the scoring model produces a requirement for a section but omits
+        that section from section_verdicts, assemble_final_result must raise
+        ERR_ASSEMBLY_MISMATCH rather than silently injecting a score=0 fallback.
+        The old phantom fallback was removed in favour of a loud failure.
+        """
         from app.schemas import Evidence, ExtractedRequirement
 
         project_requirement = ExtractedRequirement(
@@ -605,23 +611,17 @@ class TestAssembleFinalResult:
             section_verdicts=section_verdicts,
         )
 
-        result = assemble_tech_result(
-            tech_domain,
-            jd_response,
-            resume_response,
-            scoring_result,
-        )
+        from app.services.llm.service import AnalysisEngineError
 
-        project_section = next(
-            section
-            for section in result.sections
-            if section.id == "project"
-        )
+        with pytest.raises(AnalysisEngineError) as exc_info:
+            assemble_tech_result(
+                tech_domain,
+                jd_response,
+                resume_response,
+                scoring_result,
+            )
 
-        assert isinstance(project_section, SectionScore)
-        assert project_section.score == 0
-        assert (
-            project_section.review
-            == "Section evaluation was omitted by scoring model."
-        )
-        assert [match.id for match in project_section.requirements] == ["req-4"]
+        assert exc_info.value.code == "ERR_ASSEMBLY_MISMATCH"
+        assert "project" in exc_info.value.message
+        assert exc_info.value.retryable is False
+

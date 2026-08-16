@@ -872,17 +872,14 @@ def assemble_final_result(
             )
         )
 
-    for section_id, matches in matches_by_section.items():
-        if section_id not in seen_sections:
-            section_scores.append(
-                SectionScore(
-                    id=section_id,
-                    label=section_id.replace("_", " ").title(),
-                    score=0,
-                    review=("Section evaluation was omitted by scoring model."),
-                    requirements=matches,
-                )
-            )
+    unmatched_sections = set(matches_by_section) - seen_sections
+    if unmatched_sections:
+        raise AnalysisEngineError(
+            "ERR_ASSEMBLY_MISMATCH",
+            f"Requirements exist for sections not covered by any section verdict: "
+            f"{sorted(unmatched_sections)}",
+            retryable=False,
+        )
 
     final_schema = domain.get_final_schema()
 

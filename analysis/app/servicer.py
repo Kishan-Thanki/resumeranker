@@ -10,6 +10,7 @@ import functools
 import multiprocessing as mp
 import os
 import time
+import weakref
 from concurrent.futures import ProcessPoolExecutor
 from typing import Any
 
@@ -31,24 +32,34 @@ def _get_llm_config() -> tuple[str, str]:
     return model, provider
 
 
+ANALYZE_TIMEOUT_SECONDS = float(os.getenv("ANALYZE_TIMEOUT_SECONDS", "120"))
+
+
 spawn_context = mp.get_context("spawn")
 pdf_executor = ProcessPoolExecutor(
     max_workers=_get_max_pdf_parsers(),
     mp_context=spawn_context,
 )
 
-_pdf_bouncer: asyncio.Semaphore | None = None
+_pdf_bouncers: weakref.WeakValueDictionary[int, asyncio.Semaphore] = (
+    weakref.WeakValueDictionary()
+)
 
 
 def _get_pdf_bouncer() -> asyncio.Semaphore:
     """
-    Lazily creates/returns the semaphore bound to the current running event loop.
-    Prevents loop attachment errors during pytest / async context switching.
+    Returns the semaphore for the current running event loop, creating one if
+    it doesn't exist yet. Keyed by loop id in a WeakValueDictionary so the
+    semaphore is automatically dropped when the loop is garbage collected.
+    This prevents stale references across event loops (e.g., in pytest teardown
+    where each test gets a fresh loop).
     """
-    global _pdf_bouncer
-    if _pdf_bouncer is None:
-        _pdf_bouncer = asyncio.Semaphore(_get_max_pdf_parsers())
-    return _pdf_bouncer
+    loop = asyncio.get_running_loop()
+    bouncer = _pdf_bouncers.get(id(loop))
+    if bouncer is None:
+        bouncer = asyncio.Semaphore(_get_max_pdf_parsers())
+        _pdf_bouncers[id(loop)] = bouncer
+    return bouncer
 
 
 async def shutdown_pdf_executor() -> None:
@@ -181,9 +192,28 @@ class AnalysisEngineServicer(analysis_pb2_grpc.AnalysisEngineServicer):
 
         # Stage 2: LLM Analysis
         try:
-            final_analysis, usage = await analyze_fit(
-                jd_text,
-                resume_text,
+            final_analysis, usage = await asyncio.wait_for(
+                analyze_fit(jd_text, resume_text),
+                timeout=ANALYZE_TIMEOUT_SECONDS,
+            )
+        except asyncio.TimeoutError:
+            latency = time.perf_counter() - start_time
+            logger.warning(
+                "LLM analysis timed out",
+                extra={
+                    "analysis.success": False,
+                    "analysis.stage": "llm",
+                    "analysis.error_code": "ERR_PIPELINE_TIMEOUT",
+                    "analysis.latency_seconds": latency,
+                    "analysis.timeout_seconds": ANALYZE_TIMEOUT_SECONDS,
+                },
+            )
+            return analysis_pb2.AnalyzeResponse(
+                success=False,
+                error_message=(
+                    f"ERR_PIPELINE_TIMEOUT: Analysis exceeded the "
+                    f"{ANALYZE_TIMEOUT_SECONDS}s time limit."
+                ),
             )
         except AnalysisEngineError as exc:
             latency = time.perf_counter() - start_time
@@ -220,31 +250,11 @@ class AnalysisEngineServicer(analysis_pb2_grpc.AnalysisEngineServicer):
                 ),
             )
 
-        input_tokens = (
-            usage["input_tokens"]
-            if isinstance(usage, dict)
-            else getattr(usage, "input_tokens", None)
-        )
-        output_tokens = (
-            usage["output_tokens"]
-            if isinstance(usage, dict)
-            else getattr(usage, "output_tokens", None)
-        )
-        total_tokens = (
-            usage["total_tokens"]
-            if isinstance(usage, dict)
-            else getattr(usage, "total_tokens", None)
-        )
-        llm_queue_wait = (
-            usage["queue_wait_seconds"]
-            if isinstance(usage, dict)
-            else getattr(usage, "queue_wait_seconds", 0.0)
-        )
-        llm_retries = (
-            usage["retries"]
-            if isinstance(usage, dict)
-            else getattr(usage, "retries", 0)
-        )
+        input_tokens = usage["input_tokens"]
+        output_tokens = usage["output_tokens"]
+        total_tokens = usage["total_tokens"]
+        llm_queue_wait = usage["queue_wait_seconds"]
+        llm_retries = usage["retries"]
 
         latency = time.perf_counter() - start_time
         logger.info(
