@@ -1,0 +1,23 @@
+{$SCHEME:http}://{$DOMAIN:localhost} {
+	handle {
+		root * {$WEB_ROOT:/usr/share/caddy/public}
+		file_server
+		try_files {path} {path}/index.html {path}.html /index.html
+	}
+
+    handle /api/* {
+		reverse_proxy {$API_UPSTREAM:api:8080}
+	}
+    
+	handle /docs/* {
+		reverse_proxy {$API_UPSTREAM:api:8080}
+	}
+}
+
+{$SCHEME:http}://api.{$DOMAIN:localhost} {
+	reverse_proxy {$API_UPSTREAM:api:8080}
+}
+
+{$SCHEME:http}://analysis.{$DOMAIN:localhost} {
+	reverse_proxy h2c://{$ANALYSIS_UPSTREAM:analysis:50051}
+}

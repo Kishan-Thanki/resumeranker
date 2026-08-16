@@ -8,9 +8,8 @@
 *.dylib
 *.test
 *.out
-.api
+api
 resumeranker
-
 
 # =========================
 # Build directories
@@ -30,7 +29,7 @@ go.work.sum
 # =========================
 # Environment
 # =========================
-env/
+env/*
 !env/example.env
 !env/test.env
 .env
@@ -66,7 +65,6 @@ Thumbs.db
 # Test & Coverage
 # =========================
 *.coverprofile
-coverage.out
 profiles/
 
 # =========================
