@@ -23,8 +23,6 @@ func NewPostgresRepository(pool *pgxpool.Pool) *PostgresRepository {
 	}
 }
 
-// CreateUser creates a new user in the database.
-// Note: This method mutates the input *User struct by setting the ID, CreatedAt, and UpdatedAt fields.
 func (r *PostgresRepository) CreateUser(ctx context.Context, user *User) (*User, error) {
 
 	u, err := r.queries.CreateUser(ctx, db.CreateUserParams{

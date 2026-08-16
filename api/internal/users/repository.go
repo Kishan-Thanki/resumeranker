@@ -4,15 +4,18 @@ import "context"
 
 type UserRepository interface {
 	CreateUser(ctx context.Context, user *User) (*User, error)
-	GetUserByID(ctx context.Context, id uint64) (*User, error)
-	GetUserByEmail(ctx context.Context, email string) (*User, error)
-	GetUserByVerificationToken(ctx context.Context, token string) (*User, error)
-	GetUserByPasswordResetToken(ctx context.Context, token string) (*User, error)
-	ListUsers(ctx context.Context, limit, offset int32) ([]*User, error)
-	CountUsers(ctx context.Context) (int64, error)
 	UpdateUser(ctx context.Context, user *User) (*User, error)
 	DeleteUser(ctx context.Context, id uint64) error
+
+	GetUserByID(ctx context.Context, id uint64) (*User, error)
+	GetUserByEmail(ctx context.Context, email string) (*User, error)
+
+	GetUserByVerificationToken(ctx context.Context, token string) (*User, error)
+	GetUserByPasswordResetToken(ctx context.Context, token string) (*User, error)
 	VerifyUserEmail(ctx context.Context, id uint64) (*User, error)
+
+	ListUsers(ctx context.Context, limit, offset int32) ([]*User, error)
+	CountUsers(ctx context.Context) (int64, error)
 }
 
 type AgreementRepository interface {

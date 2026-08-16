@@ -12,7 +12,8 @@ import (
 )
 
 const countUsers = `-- name: CountUsers :one
-SELECT COUNT(*) FROM users
+SELECT COUNT(*)
+FROM users
 WHERE deleted_at IS NULL
 `
 
@@ -25,10 +26,17 @@ func (q *Queries) CountUsers(ctx context.Context) (int64, error) {
 
 const createAgreement = `-- name: CreateAgreement :one
 INSERT INTO agreements (
-    type, version, content, published_at
+	type,
+	version,
+	content,
+	published_at
 ) VALUES (
-    $1, $2, $3, $4
-) RETURNING id, type, version, published_at, created_at, updated_at, content
+	$1,
+	$2,
+	$3,
+	$4
+)
+RETURNING id, type, version, published_at, created_at, updated_at, content
 `
 
 type CreateAgreementParams struct {
@@ -60,10 +68,29 @@ func (q *Queries) CreateAgreement(ctx context.Context, arg CreateAgreementParams
 
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (
-    email, password_hash, role, status, metadata, is_verified, verification_token, verification_expires_at, password_reset_token, password_reset_expires_at
+	email,
+	password_hash,
+	role,
+	status,
+	metadata,
+	is_verified,
+	verification_token,
+	verification_expires_at,
+	password_reset_token,
+	password_reset_expires_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
-) RETURNING id, email, password_hash, role, status, metadata, created_at, updated_at, deleted_at, is_verified, verification_token, verification_expires_at, password_reset_token, password_reset_expires_at
+	$1,
+	$2,
+	$3,
+	$4,
+	$5,
+	$6,
+	$7,
+	$8,
+	$9,
+	$10
+)
+RETURNING id, email, password_hash, role, status, metadata, created_at, updated_at, deleted_at, is_verified, verification_token, verification_expires_at, password_reset_token, password_reset_expires_at
 `
 
 type CreateUserParams struct {
@@ -114,10 +141,13 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 
 const createUserAgreement = `-- name: CreateUserAgreement :one
 INSERT INTO user_agreements (
-    user_id, agreement_id
+	user_id,
+	agreement_id
 ) VALUES (
-    $1, $2
-) RETURNING id, user_id, agreement_id, accepted_at, created_at, updated_at
+	$1,
+	$2
+)
+RETURNING id, user_id, agreement_id, accepted_at, created_at, updated_at
 `
 
 type CreateUserAgreementParams struct {
@@ -140,8 +170,12 @@ func (q *Queries) CreateUserAgreement(ctx context.Context, arg CreateUserAgreeme
 }
 
 const deleteUser = `-- name: DeleteUser :exec
-UPDATE users SET deleted_at = NOW(), updated_at = NOW()
-WHERE id = $1 AND deleted_at IS NULL
+UPDATE users
+SET
+	deleted_at = NOW(),
+	updated_at = NOW()
+WHERE id = $1
+  AND deleted_at IS NULL
 `
 
 func (q *Queries) DeleteUser(ctx context.Context, id int64) error {
@@ -150,7 +184,8 @@ func (q *Queries) DeleteUser(ctx context.Context, id int64) error {
 }
 
 const getAgreementByID = `-- name: GetAgreementByID :one
-SELECT id, type, version, published_at, created_at, updated_at, content FROM agreements
+SELECT id, type, version, published_at, created_at, updated_at, content
+FROM agreements
 WHERE id = $1
 `
 
@@ -170,8 +205,10 @@ func (q *Queries) GetAgreementByID(ctx context.Context, id int64) (Agreement, er
 }
 
 const getAgreementByTypeAndVersion = `-- name: GetAgreementByTypeAndVersion :one
-SELECT id, type, version, published_at, created_at, updated_at, content FROM agreements
-WHERE type = $1 AND version = $2
+SELECT id, type, version, published_at, created_at, updated_at, content
+FROM agreements
+WHERE type = $1
+  AND version = $2
 `
 
 type GetAgreementByTypeAndVersionParams struct {
@@ -195,8 +232,12 @@ func (q *Queries) GetAgreementByTypeAndVersion(ctx context.Context, arg GetAgree
 }
 
 const getLatestAgreements = `-- name: GetLatestAgreements :many
-SELECT DISTINCT ON (type) id, type, version, published_at, created_at, updated_at, content FROM agreements
-ORDER BY type, published_at DESC
+SELECT DISTINCT ON (type) id, type, version, published_at, created_at, updated_at, content
+FROM agreements
+ORDER BY
+	type,
+	published_at DESC,
+	id DESC
 `
 
 func (q *Queries) GetLatestAgreements(ctx context.Context) ([]Agreement, error) {
@@ -228,14 +269,27 @@ func (q *Queries) GetLatestAgreements(ctx context.Context) ([]Agreement, error) 
 }
 
 const getPendingAgreementsForUser = `-- name: GetPendingAgreementsForUser :many
-SELECT a.id, a.type, a.version, a.published_at, a.created_at, a.updated_at, a.content FROM agreements a
-INNER JOIN (
-    SELECT type, MAX(published_at) as max_published_at
-    FROM agreements
-    GROUP BY type
-) latest_a ON a.type = latest_a.type AND a.published_at = latest_a.max_published_at
-LEFT JOIN user_agreements ua ON a.id = ua.agreement_id AND ua.user_id = $1
+SELECT latest.id, latest.type, latest.version, latest.published_at, latest.created_at, latest.updated_at, latest.content
+FROM (
+	SELECT DISTINCT ON (type)
+		id,
+		type,
+		version,
+		published_at,
+		created_at,
+		updated_at,
+		content
+	FROM agreements
+	ORDER BY
+		type,
+		published_at DESC,
+		id DESC
+) AS latest
+LEFT JOIN user_agreements AS ua
+  ON ua.agreement_id = latest.id
+ AND ua.user_id = $1
 WHERE ua.id IS NULL
+ORDER BY latest.type, latest.id DESC
 `
 
 func (q *Queries) GetPendingAgreementsForUser(ctx context.Context, userID int64) ([]Agreement, error) {
@@ -267,8 +321,10 @@ func (q *Queries) GetPendingAgreementsForUser(ctx context.Context, userID int64)
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, password_hash, role, status, metadata, created_at, updated_at, deleted_at, is_verified, verification_token, verification_expires_at, password_reset_token, password_reset_expires_at FROM users
-WHERE email = $1 AND deleted_at IS NULL
+SELECT id, email, password_hash, role, status, metadata, created_at, updated_at, deleted_at, is_verified, verification_token, verification_expires_at, password_reset_token, password_reset_expires_at
+FROM users
+WHERE email = $1
+  AND deleted_at IS NULL
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
@@ -294,8 +350,10 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, password_hash, role, status, metadata, created_at, updated_at, deleted_at, is_verified, verification_token, verification_expires_at, password_reset_token, password_reset_expires_at FROM users
-WHERE id = $1 AND deleted_at IS NULL
+SELECT id, email, password_hash, role, status, metadata, created_at, updated_at, deleted_at, is_verified, verification_token, verification_expires_at, password_reset_token, password_reset_expires_at
+FROM users
+WHERE id = $1
+  AND deleted_at IS NULL
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id int64) (User, error) {
@@ -321,8 +379,11 @@ func (q *Queries) GetUserByID(ctx context.Context, id int64) (User, error) {
 }
 
 const getUserByPasswordResetToken = `-- name: GetUserByPasswordResetToken :one
-SELECT id, email, password_hash, role, status, metadata, created_at, updated_at, deleted_at, is_verified, verification_token, verification_expires_at, password_reset_token, password_reset_expires_at FROM users
-WHERE password_reset_token = $1 AND deleted_at IS NULL
+SELECT id, email, password_hash, role, status, metadata, created_at, updated_at, deleted_at, is_verified, verification_token, verification_expires_at, password_reset_token, password_reset_expires_at
+FROM users
+WHERE password_reset_token = $1
+  AND password_reset_expires_at > NOW()
+  AND deleted_at IS NULL
 `
 
 func (q *Queries) GetUserByPasswordResetToken(ctx context.Context, passwordResetToken pgtype.Text) (User, error) {
@@ -348,8 +409,11 @@ func (q *Queries) GetUserByPasswordResetToken(ctx context.Context, passwordReset
 }
 
 const getUserByVerificationToken = `-- name: GetUserByVerificationToken :one
-SELECT id, email, password_hash, role, status, metadata, created_at, updated_at, deleted_at, is_verified, verification_token, verification_expires_at, password_reset_token, password_reset_expires_at FROM users
-WHERE verification_token = $1 AND deleted_at IS NULL
+SELECT id, email, password_hash, role, status, metadata, created_at, updated_at, deleted_at, is_verified, verification_token, verification_expires_at, password_reset_token, password_reset_expires_at
+FROM users
+WHERE verification_token = $1
+  AND verification_expires_at > NOW()
+  AND deleted_at IS NULL
 `
 
 func (q *Queries) GetUserByVerificationToken(ctx context.Context, verificationToken pgtype.Text) (User, error) {
@@ -376,8 +440,10 @@ func (q *Queries) GetUserByVerificationToken(ctx context.Context, verificationTo
 
 const hasUserAcceptedAgreement = `-- name: HasUserAcceptedAgreement :one
 SELECT EXISTS (
-    SELECT 1 FROM user_agreements
-    WHERE user_id = $1 AND agreement_id = $2
+	SELECT 1
+	FROM user_agreements
+	WHERE user_id = $1
+	  AND agreement_id = $2
 )
 `
 
@@ -394,10 +460,12 @@ func (q *Queries) HasUserAcceptedAgreement(ctx context.Context, arg HasUserAccep
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT id, email, password_hash, role, status, metadata, created_at, updated_at, deleted_at, is_verified, verification_token, verification_expires_at, password_reset_token, password_reset_expires_at FROM users
+SELECT id, email, password_hash, role, status, metadata, created_at, updated_at, deleted_at, is_verified, verification_token, verification_expires_at, password_reset_token, password_reset_expires_at
+FROM users
 WHERE deleted_at IS NULL
-ORDER BY created_at DESC
-LIMIT $1 OFFSET $2
+ORDER BY created_at DESC, id DESC
+LIMIT $1
+OFFSET $2
 `
 
 type ListUsersParams struct {
@@ -440,10 +508,100 @@ func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]User, e
 	return items, nil
 }
 
+const setPasswordResetToken = `-- name: SetPasswordResetToken :one
+UPDATE users
+SET
+	password_reset_token = $2,
+	password_reset_expires_at = $3,
+	updated_at = NOW()
+WHERE id = $1
+  AND deleted_at IS NULL
+RETURNING id, email, password_hash, role, status, metadata, created_at, updated_at, deleted_at, is_verified, verification_token, verification_expires_at, password_reset_token, password_reset_expires_at
+`
+
+type SetPasswordResetTokenParams struct {
+	ID                     int64              `json:"id"`
+	PasswordResetToken     pgtype.Text        `json:"password_reset_token"`
+	PasswordResetExpiresAt pgtype.Timestamptz `json:"password_reset_expires_at"`
+}
+
+func (q *Queries) SetPasswordResetToken(ctx context.Context, arg SetPasswordResetTokenParams) (User, error) {
+	row := q.db.QueryRow(ctx, setPasswordResetToken, arg.ID, arg.PasswordResetToken, arg.PasswordResetExpiresAt)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Role,
+		&i.Status,
+		&i.Metadata,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.IsVerified,
+		&i.VerificationToken,
+		&i.VerificationExpiresAt,
+		&i.PasswordResetToken,
+		&i.PasswordResetExpiresAt,
+	)
+	return i, err
+}
+
+const setVerificationToken = `-- name: SetVerificationToken :one
+UPDATE users
+SET
+	verification_token = $2,
+	verification_expires_at = $3,
+	updated_at = NOW()
+WHERE id = $1
+  AND deleted_at IS NULL
+RETURNING id, email, password_hash, role, status, metadata, created_at, updated_at, deleted_at, is_verified, verification_token, verification_expires_at, password_reset_token, password_reset_expires_at
+`
+
+type SetVerificationTokenParams struct {
+	ID                    int64              `json:"id"`
+	VerificationToken     pgtype.Text        `json:"verification_token"`
+	VerificationExpiresAt pgtype.Timestamptz `json:"verification_expires_at"`
+}
+
+func (q *Queries) SetVerificationToken(ctx context.Context, arg SetVerificationTokenParams) (User, error) {
+	row := q.db.QueryRow(ctx, setVerificationToken, arg.ID, arg.VerificationToken, arg.VerificationExpiresAt)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Role,
+		&i.Status,
+		&i.Metadata,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.IsVerified,
+		&i.VerificationToken,
+		&i.VerificationExpiresAt,
+		&i.PasswordResetToken,
+		&i.PasswordResetExpiresAt,
+	)
+	return i, err
+}
+
 const updateUser = `-- name: UpdateUser :one
 UPDATE users
-SET email = $2, password_hash = $3, role = $4, status = $5, metadata = $6, is_verified = $7, verification_token = $8, verification_expires_at = $9, password_reset_token = $10, password_reset_expires_at = $11, updated_at = NOW()
-WHERE id = $1 AND deleted_at IS NULL
+SET
+	email = $2,
+	password_hash = $3,
+	role = $4,
+	status = $5,
+	metadata = $6,
+	is_verified = $7,
+	verification_token = $8,
+	verification_expires_at = $9,
+	password_reset_token = $10,
+	password_reset_expires_at = $11,
+	updated_at = NOW()
+WHERE id = $1
+  AND deleted_at IS NULL
 RETURNING id, email, password_hash, role, status, metadata, created_at, updated_at, deleted_at, is_verified, verification_token, verification_expires_at, password_reset_token, password_reset_expires_at
 `
 
@@ -495,10 +653,167 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 	return i, err
 }
 
+const updateUserPassword = `-- name: UpdateUserPassword :one
+UPDATE users
+SET
+	password_hash = $2,
+	password_reset_token = NULL,
+	password_reset_expires_at = NULL,
+	updated_at = NOW()
+WHERE id = $1
+  AND deleted_at IS NULL
+RETURNING id, email, password_hash, role, status, metadata, created_at, updated_at, deleted_at, is_verified, verification_token, verification_expires_at, password_reset_token, password_reset_expires_at
+`
+
+type UpdateUserPasswordParams struct {
+	ID           int64  `json:"id"`
+	PasswordHash string `json:"password_hash"`
+}
+
+func (q *Queries) UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) (User, error) {
+	row := q.db.QueryRow(ctx, updateUserPassword, arg.ID, arg.PasswordHash)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Role,
+		&i.Status,
+		&i.Metadata,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.IsVerified,
+		&i.VerificationToken,
+		&i.VerificationExpiresAt,
+		&i.PasswordResetToken,
+		&i.PasswordResetExpiresAt,
+	)
+	return i, err
+}
+
+const updateUserProfile = `-- name: UpdateUserProfile :one
+UPDATE users
+SET
+	email = $2,
+	metadata = $3,
+	updated_at = NOW()
+WHERE id = $1
+  AND deleted_at IS NULL
+RETURNING id, email, password_hash, role, status, metadata, created_at, updated_at, deleted_at, is_verified, verification_token, verification_expires_at, password_reset_token, password_reset_expires_at
+`
+
+type UpdateUserProfileParams struct {
+	ID       int64  `json:"id"`
+	Email    string `json:"email"`
+	Metadata []byte `json:"metadata"`
+}
+
+func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (User, error) {
+	row := q.db.QueryRow(ctx, updateUserProfile, arg.ID, arg.Email, arg.Metadata)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Role,
+		&i.Status,
+		&i.Metadata,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.IsVerified,
+		&i.VerificationToken,
+		&i.VerificationExpiresAt,
+		&i.PasswordResetToken,
+		&i.PasswordResetExpiresAt,
+	)
+	return i, err
+}
+
+const updateUserRole = `-- name: UpdateUserRole :one
+UPDATE users
+SET
+	role = $2,
+	updated_at = NOW()
+WHERE id = $1
+  AND deleted_at IS NULL
+RETURNING id, email, password_hash, role, status, metadata, created_at, updated_at, deleted_at, is_verified, verification_token, verification_expires_at, password_reset_token, password_reset_expires_at
+`
+
+type UpdateUserRoleParams struct {
+	ID   int64  `json:"id"`
+	Role string `json:"role"`
+}
+
+func (q *Queries) UpdateUserRole(ctx context.Context, arg UpdateUserRoleParams) (User, error) {
+	row := q.db.QueryRow(ctx, updateUserRole, arg.ID, arg.Role)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Role,
+		&i.Status,
+		&i.Metadata,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.IsVerified,
+		&i.VerificationToken,
+		&i.VerificationExpiresAt,
+		&i.PasswordResetToken,
+		&i.PasswordResetExpiresAt,
+	)
+	return i, err
+}
+
+const updateUserStatus = `-- name: UpdateUserStatus :one
+UPDATE users
+SET
+	status = $2,
+	updated_at = NOW()
+WHERE id = $1
+  AND deleted_at IS NULL
+RETURNING id, email, password_hash, role, status, metadata, created_at, updated_at, deleted_at, is_verified, verification_token, verification_expires_at, password_reset_token, password_reset_expires_at
+`
+
+type UpdateUserStatusParams struct {
+	ID     int64  `json:"id"`
+	Status string `json:"status"`
+}
+
+func (q *Queries) UpdateUserStatus(ctx context.Context, arg UpdateUserStatusParams) (User, error) {
+	row := q.db.QueryRow(ctx, updateUserStatus, arg.ID, arg.Status)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Role,
+		&i.Status,
+		&i.Metadata,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.IsVerified,
+		&i.VerificationToken,
+		&i.VerificationExpiresAt,
+		&i.PasswordResetToken,
+		&i.PasswordResetExpiresAt,
+	)
+	return i, err
+}
+
 const verifyUserEmail = `-- name: VerifyUserEmail :one
 UPDATE users
-SET is_verified = true, verification_token = NULL, verification_expires_at = NULL, updated_at = NOW()
-WHERE id = $1 AND deleted_at IS NULL
+SET
+	is_verified = TRUE,
+	verification_token = NULL,
+	verification_expires_at = NULL,
+	updated_at = NOW()
+WHERE id = $1
+  AND deleted_at IS NULL
 RETURNING id, email, password_hash, role, status, metadata, created_at, updated_at, deleted_at, is_verified, verification_token, verification_expires_at, password_reset_token, password_reset_expires_at
 `
 

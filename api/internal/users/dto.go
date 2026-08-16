@@ -13,6 +13,15 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
+type ForgotPasswordRequest struct {
+	Email string `json:"email"`
+}
+
+type ResetPasswordRequest struct {
+	Token       string `json:"token"`
+	NewPassword string `json:"new_password"`
+}
+
 type VerifyEmailRequest struct {
 	Token string `json:"token"`
 }
@@ -36,15 +45,6 @@ type AgreementResponse struct {
 
 type AcceptAgreementsRequest struct {
 	AgreementIDs []uint64 `json:"agreement_ids"`
-}
-
-type ForgotPasswordRequest struct {
-	Email string `json:"email"`
-}
-
-type ResetPasswordRequest struct {
-	Token       string `json:"token"`
-	NewPassword string `json:"new_password"`
 }
 
 type PublishAgreementRequest struct {

@@ -2,6 +2,7 @@ package users
 
 import (
 	"context"
+	"errors"
 
 	"github.com/kishan-thanki/resumeranker/api/internal/config"
 )
@@ -27,7 +28,7 @@ type Fixtures struct {
 func SeedFromFixtures(ctx context.Context, userSvc *UserService, agreementSvc *AgreementService, cfg *config.Config, fixtures *Fixtures) error {
 	for _, user := range fixtures.Users {
 		_, err := userSvc.Register(ctx, user.Email, user.Password, Role(user.Role), user.AgreedToTerms)
-		if err != nil {
+		if err != nil && !errors.Is(err, ErrUserAlreadyExists) {
 			return err
 		}
 	}

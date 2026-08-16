@@ -3,6 +3,8 @@ package users
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -28,10 +30,16 @@ func NewAgreementHandler(agreementService agreementService, userRepo UserReposit
 	}
 }
 
-func (h *AgreementHandler) RegisterRoutes(r chi.Router, authMiddleware func(http.Handler) http.Handler, requireRole func(string) func(http.Handler) http.Handler) {
+func (h *AgreementHandler) RegisterRoutes(
+	r chi.Router,
+	authMiddleware func(http.Handler) http.Handler,
+	requireRole func(string) func(http.Handler) http.Handler,
+) {
 	r.Get("/agreements/latest", h.GetLatestAgreements)
+
 	r.Group(func(r chi.Router) {
 		r.Use(authMiddleware)
+
 		r.Get("/agreements/pending", h.GetPendingAgreements)
 		r.Post("/agreements/accept", h.AcceptAgreements)
 
@@ -44,14 +52,43 @@ func (h *AgreementHandler) RegisterRoutes(r chi.Router, authMiddleware func(http
 
 func (h *AgreementHandler) PublishAgreement(w http.ResponseWriter, r *http.Request) {
 	var req PublishAgreementRequest
+
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		writeJSON(w, http.StatusBadRequest, map[string]string{
+			"error": "invalid request body",
+		})
 		return
 	}
 
-	agreement, err := h.agreementService.PublishAgreement(r.Context(), req.Type, req.Version, req.Content, true, h.userRepo)
+	agreement, err := h.agreementService.PublishAgreement(
+		r.Context(),
+		req.Type,
+		req.Version,
+		req.Content,
+		true,
+		h.userRepo,
+	)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		switch {
+		case errors.Is(err, ErrInvalidAgreementType),
+			errors.Is(err, ErrInvalidAgreementVersion),
+			errors.Is(err, ErrInvalidAgreementContent):
+			writeJSON(w, http.StatusBadRequest, map[string]string{
+				"error": err.Error(),
+			})
+		default:
+			slog.Error("failed to publish agreement", "error", err)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{
+				"error": "failed to publish agreement",
+			})
+		}
+		return
+	}
+
+	if agreement == nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{
+			"error": "failed to publish agreement",
+		})
 		return
 	}
 
@@ -61,13 +98,19 @@ func (h *AgreementHandler) PublishAgreement(w http.ResponseWriter, r *http.Reque
 func (h *AgreementHandler) GetLatestAgreements(w http.ResponseWriter, r *http.Request) {
 	agreements, err := h.agreementService.GetLatestAgreements(r.Context())
 	if err != nil {
-		http.Error(w, "failed to get agreements", http.StatusInternalServerError)
+		slog.Error("failed to get latest agreements", "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{
+			"error": "failed to get agreements",
+		})
 		return
 	}
 
-	responses := make([]AgreementResponse, len(agreements))
-	for i, a := range agreements {
-		responses[i] = toAgreementResponse(a)
+	responses := make([]AgreementResponse, 0, len(agreements))
+	for _, agreement := range agreements {
+		if agreement == nil {
+			continue
+		}
+		responses = append(responses, toAgreementResponse(agreement))
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
@@ -78,19 +121,34 @@ func (h *AgreementHandler) GetLatestAgreements(w http.ResponseWriter, r *http.Re
 func (h *AgreementHandler) GetPendingAgreements(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value(ctxkey.UserID).(uint64)
 	if !ok {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		writeJSON(w, http.StatusUnauthorized, map[string]string{
+			"error": "unauthorized",
+		})
 		return
 	}
 
-	agreements, err := h.agreementService.GetPendingAgreements(r.Context(), userID)
+	agreements, err := h.agreementService.GetPendingAgreements(
+		r.Context(),
+		userID,
+	)
 	if err != nil {
-		http.Error(w, "failed to get pending agreements", http.StatusInternalServerError)
+		slog.Error(
+			"failed to get pending agreements",
+			"user_id", userID,
+			"error", err,
+		)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{
+			"error": "failed to get pending agreements",
+		})
 		return
 	}
 
-	responses := make([]AgreementResponse, len(agreements))
-	for i, a := range agreements {
-		responses[i] = toAgreementResponse(a)
+	responses := make([]AgreementResponse, 0, len(agreements))
+	for _, agreement := range agreements {
+		if agreement == nil {
+			continue
+		}
+		responses = append(responses, toAgreementResponse(agreement))
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
@@ -101,22 +159,46 @@ func (h *AgreementHandler) GetPendingAgreements(w http.ResponseWriter, r *http.R
 func (h *AgreementHandler) AcceptAgreements(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value(ctxkey.UserID).(uint64)
 	if !ok {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		writeJSON(w, http.StatusUnauthorized, map[string]string{
+			"error": "unauthorized",
+		})
 		return
 	}
 
-	var req struct {
-		AgreementIDs []uint64 `json:"agreement_ids"`
-	}
+	var req AcceptAgreementsRequest
+
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		writeJSON(w, http.StatusBadRequest, map[string]string{
+			"error": "invalid request body",
+		})
 		return
 	}
 
-	if err := h.agreementService.AcceptAgreements(r.Context(), userID, req.AgreementIDs); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	if err := h.agreementService.AcceptAgreements(
+		r.Context(),
+		userID,
+		req.AgreementIDs,
+	); err != nil {
+		if errors.Is(err, ErrNoAgreementsProvided) ||
+			errors.Is(err, ErrInvalidAgreementID) {
+			writeJSON(w, http.StatusBadRequest, map[string]string{
+				"error": err.Error(),
+			})
+			return
+		}
+
+		slog.Error(
+			"failed to accept agreements",
+			"user_id", userID,
+			"error", err,
+		)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{
+			"error": "failed to accept agreements",
+		})
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	writeJSON(w, http.StatusOK, map[string]string{
+		"message": "agreements accepted successfully",
+	})
 }

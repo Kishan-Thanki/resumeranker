@@ -18,7 +18,7 @@ func TestPostgresRepository_Integration(t *testing.T) {
 
 	dbURL := os.Getenv("TEST_DATABASE_URL")
 	if dbURL == "" {
-		dbURL = "postgres://postgres:postgres@localhost:5432/resumeranker?sslmode=disable"
+		t.Fatal("TEST_DATABASE_URL must be set for integration tests")
 	}
 
 	pool, err := pgxpool.New(context.Background(), dbURL)
