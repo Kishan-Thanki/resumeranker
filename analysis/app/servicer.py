@@ -36,10 +36,7 @@ ANALYZE_TIMEOUT_SECONDS = float(os.getenv("ANALYZE_TIMEOUT_SECONDS", "120"))
 
 
 spawn_context = mp.get_context("spawn")
-pdf_executor = ProcessPoolExecutor(
-    max_workers=_get_max_pdf_parsers(),
-    mp_context=spawn_context,
-)
+pdf_executor: ProcessPoolExecutor | None = None
 
 _pdf_bouncers: weakref.WeakValueDictionary[int, asyncio.Semaphore] = (
     weakref.WeakValueDictionary()
@@ -62,6 +59,25 @@ def _get_pdf_bouncer() -> asyncio.Semaphore:
     return bouncer
 
 
+def _get_pdf_executor() -> ProcessPoolExecutor:
+    """
+    Lazily creates the PDF worker pool.
+
+    Deferring creation avoids import-time failures in environments where the
+    process-pool limit checks are restricted, while keeping the production
+    execution model unchanged once parsing is actually needed.
+    """
+    global pdf_executor
+
+    if pdf_executor is None:
+        pdf_executor = ProcessPoolExecutor(
+            max_workers=_get_max_pdf_parsers(),
+            mp_context=spawn_context,
+        )
+
+    return pdf_executor
+
+
 async def shutdown_pdf_executor() -> None:
     """
     Shuts down the PDF worker process pool. Call this during application
@@ -69,10 +85,17 @@ async def shutdown_pdf_executor() -> None:
     stopped accepting new work.
     """
     logger.info("Shutting down PDF worker pool...")
+    if pdf_executor is None:
+        return
+
     loop = asyncio.get_running_loop()
     await loop.run_in_executor(
         None,
-        functools.partial(pdf_executor.shutdown, wait=True, cancel_futures=True),
+        functools.partial(
+            _get_pdf_executor().shutdown,
+            wait=True,
+            cancel_futures=True,
+        ),
     )
 
 
@@ -99,7 +122,7 @@ async def _parse_pdf_safely(
             parse_start = time.perf_counter()
             loop = asyncio.get_running_loop()
             text = await loop.run_in_executor(
-                pdf_executor,
+                _get_pdf_executor(),
                 extract_text_from_pdf_bytes,
                 pdf_bytes,
             )
