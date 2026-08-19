@@ -4,43 +4,54 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-IMAGE_NAME="resumeranker-analysis"
+IMAGE_NAME="resumeranker-analysis:latest"
 CONTAINER_NAME="resumeranker-analysis"
 NETWORK_NAME="resumeranker-net"
 
+if ! command -v docker >/dev/null 2>&1; then
+    echo "ERROR: Docker is not installed."
+    exit 1
+fi
+
 if ! docker info >/dev/null 2>&1; then
-    echo "Docker is not installed or the Docker daemon is not running."
+    echo "ERROR: Docker is installed but the Docker daemon is not running."
     exit 1
 fi
 
 if [[ ! -f ".env" ]]; then
-    echo ".env file not found."
+    echo "ERROR: .env file not found."
     exit 1
 fi
 
-# Read PORT from .env so the published host port matches the
-# port the application uses inside the container.
 PORT="$(grep -E '^PORT=' .env | tail -n1 | cut -d= -f2- | tr -d '\r' || true)"
 
 if [[ -z "${PORT}" ]]; then
-    echo "PORT not found in .env file."
+    echo "ERROR: PORT not found in .env file."
     exit 1
 fi
 
 if [[ ! "${PORT}" =~ ^[0-9]+$ ]]; then
-    echo "Invalid PORT in .env: ${PORT}"
+    echo "ERROR: Invalid PORT in .env: ${PORT}"
+    exit 1
+fi
+
+if (( PORT < 1 || PORT > 65535 )); then
+    echo "ERROR: PORT must be between 1 and 65535: ${PORT}"
     exit 1
 fi
 
 if ! docker network inspect "${NETWORK_NAME}" >/dev/null 2>&1; then
     echo "Creating Docker network: ${NETWORK_NAME}"
-    docker network create "${NETWORK_NAME}"
+    docker network create "${NETWORK_NAME}" >/dev/null
 fi
 
 if docker ps -a --format '{{.Names}}' | grep -Fxq "${CONTAINER_NAME}"; then
     echo "Removing existing container: ${CONTAINER_NAME}"
-    docker stop "${CONTAINER_NAME}" >/dev/null 2>&1 || true
-    docker rm "${CONTAINER_NAME}" >/dev/null 2>&1 || true
+
+    docker rm \
+        --force \
+        "${CONTAINER_NAME}" \
+        >/dev/null
 fi
 
 echo "Starting Analysis Engine..."
@@ -57,4 +68,5 @@ echo
 echo "Analysis Engine started successfully."
 echo "Container : ${CONTAINER_NAME}"
 echo "Image     : ${IMAGE_NAME}"
+echo "Network   : ${NETWORK_NAME}"
 echo "Port      : ${PORT}"

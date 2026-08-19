@@ -44,9 +44,14 @@ jobs:
 
       - name: Build Analysis Docker Image
         run: |
-          docker build -t resumeranker-analysis-ci .
+          docker build \
+            --tag resumeranker-analysis-ci:pr-${{ github.event.pull_request.number }} \
+            .
 
       - name: Verify Docker Image
         run: |
-          docker image inspect resumeranker-analysis-ci >/dev/null
+          docker image inspect \
+            "resumeranker-analysis-ci:pr-${{ github.event.pull_request.number }}" \
+            > /dev/null
+
           echo "Analysis Docker image built successfully."

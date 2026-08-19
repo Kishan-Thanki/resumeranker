@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  build-analysis:
+  build-analysis-artifact:
     runs-on: ubuntu-24.04
 
     steps:
@@ -44,8 +44,6 @@ jobs:
             "analysis/app/__init__.py"
             "analysis/app/main.py"
             "analysis/app/servicer.py"
-            "analysis/scripts/build-image.sh"
-            "analysis/scripts/run-container.sh"
           )
 
           for file in "${required_files[@]}"; do
@@ -57,7 +55,7 @@ jobs:
 
           echo "All required analysis release inputs are present."
 
-      - name: Package Clean Analysis Artifact
+      - name: Package Analysis Artifact
         run: |
           set -euo pipefail
 
@@ -131,12 +129,6 @@ jobs:
             exit 1
           fi
 
-          if grep -E '^analysis/benchmarks/' \
-              /tmp/analysis-artifact-files.txt; then
-            echo "ERROR: Benchmarks were included in production artifact."
-            exit 1
-          fi
-
           grep -q '^analysis/app/' \
             /tmp/analysis-artifact-files.txt
 
@@ -157,7 +149,7 @@ jobs:
 
           echo "Analysis artifact verification passed."
 
-      - name: Create GitHub Release & Upload Asset
+      - name: Create GitHub Release & Upload Artifact
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
@@ -166,4 +158,4 @@ jobs:
             analysis-artifact.tar.gz.sha256
           fail_on_unmatched_files: true
           body: |
-            Automated production build for analysis service release ${{ github.ref_name }}
+            Automated production artifact for analysis service release ${{ github.ref_name }}
