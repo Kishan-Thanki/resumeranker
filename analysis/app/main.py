@@ -4,6 +4,8 @@ import signal
 
 import grpc
 import uvloop
+from grpc_health.v1 import health_pb2, health_pb2_grpc
+from grpc_health.v1.health import HealthServicer
 
 from app.logger import logger
 from app.pb import analysis_pb2_grpc
@@ -49,6 +51,23 @@ async def serve() -> None:
     analysis_pb2_grpc.add_AnalysisEngineServicer_to_server(
         AnalysisEngineServicer(),
         server,
+    )
+
+    health_servicer = HealthServicer()
+
+    health_pb2_grpc.add_HealthServicer_to_server(
+        health_servicer,
+        server,
+    )
+
+    health_servicer.set(
+        "",
+        health_pb2.HealthCheckResponse.SERVING,
+    )
+
+    health_servicer.set(
+        "analysis.AnalysisEngine",
+        health_pb2.HealthCheckResponse.SERVING,
     )
 
     port = config["port"]
