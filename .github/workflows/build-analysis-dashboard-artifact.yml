@@ -1,6 +1,12 @@
 name: Build Analysis Dashboard Artifact
 
 on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Existing analysis dashboard release tag to publish"
+        required: true
+        type: string
   push:
     tags:
       - "analysis-dashboard-v*"
@@ -16,11 +22,12 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v7
         with:
+          ref: ${{ inputs.release_tag || github.ref }}
           persist-credentials: false
 
       - name: Validate Analysis Dashboard Release Tag
         env:
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ inputs.release_tag || github.ref_name }}
         run: |
           set -euo pipefail
 
@@ -147,10 +154,10 @@ jobs:
       - name: Create GitHub Release & Upload Artifact
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: ${{ github.ref_name }}
+          tag_name: ${{ inputs.release_tag || github.ref_name }}
           files: |
             analysis-dashboard-artifact.tar.gz
             analysis-dashboard-artifact.tar.gz.sha256
           fail_on_unmatched_files: true
           body: |
-            Automated production artifact for analysis dashboard release ${{ github.ref_name }}
+            Automated production artifact for analysis dashboard release ${{ inputs.release_tag || github.ref_name }}
