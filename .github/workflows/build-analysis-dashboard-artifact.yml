@@ -1,0 +1,156 @@
+name: Build Analysis Dashboard Artifact
+
+on:
+  push:
+    tags:
+      - "analysis-dashboard-v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-analysis-dashboard-artifact:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Validate Analysis Dashboard Release Tag
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          if [[ ! "$TAG" =~ ^analysis-dashboard-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "ERROR: Invalid analysis dashboard production release tag: $TAG"
+            echo "Expected format: analysis-dashboard-vX.Y.Z"
+            exit 1
+          fi
+
+          echo "Valid analysis dashboard production release tag: $TAG"
+
+      - name: Validate Analysis Dashboard Release Inputs
+        run: |
+          set -euo pipefail
+
+          required_files=(
+            "analysis_dashboard/Dockerfile"
+            "analysis_dashboard/README.md"
+            "analysis_dashboard/pyproject.toml"
+            "analysis_dashboard/uv.lock"
+            "analysis_dashboard/src/analysis_dashboard/__init__.py"
+            "analysis_dashboard/src/analysis_dashboard/app.py"
+            "analysis_dashboard/src/analysis_dashboard/main.py"
+            "analysis_dashboard/src/analysis_dashboard/grpc_client.py"
+          )
+
+          for file in "${required_files[@]}"; do
+            if [[ ! -f "$file" ]]; then
+              echo "ERROR: Required file missing: $file"
+              exit 1
+            fi
+          done
+
+          echo "All required analysis dashboard release inputs are present."
+
+      - name: Package Analysis Dashboard Artifact
+        run: |
+          set -euo pipefail
+
+          rm -rf build_stage
+          rm -f analysis-dashboard-artifact.tar.gz
+          rm -f analysis-dashboard-artifact.tar.gz.sha256
+
+          mkdir -p build_stage/analysis_dashboard
+
+          cp -r analysis_dashboard/src build_stage/analysis_dashboard/
+          cp -r analysis_dashboard/scripts build_stage/analysis_dashboard/
+          cp analysis_dashboard/Dockerfile build_stage/analysis_dashboard/
+          cp analysis_dashboard/README.md build_stage/analysis_dashboard/
+          cp analysis_dashboard/pyproject.toml build_stage/analysis_dashboard/
+          cp analysis_dashboard/uv.lock build_stage/analysis_dashboard/
+
+          find build_stage/analysis_dashboard \
+            -type d \
+            -name "__pycache__" \
+            -prune \
+            -exec rm -rf {} +
+
+          find build_stage/analysis_dashboard \
+            -type f \
+            \( -name "*.pyc" -o -name "*.pyo" \) \
+            -delete
+
+          tar \
+            --sort=name \
+            --mtime='UTC 1970-01-01' \
+            --owner=0 \
+            --group=0 \
+            --numeric-owner \
+            -czf analysis-dashboard-artifact.tar.gz \
+            -C build_stage \
+            analysis_dashboard/
+
+          sha256sum analysis-dashboard-artifact.tar.gz \
+            > analysis-dashboard-artifact.tar.gz.sha256
+
+      - name: Verify Analysis Dashboard Artifact
+        run: |
+          set -euo pipefail
+
+          sha256sum -c analysis-dashboard-artifact.tar.gz.sha256
+
+          tar -tzf analysis-dashboard-artifact.tar.gz \
+            > /tmp/analysis-dashboard-artifact-files.txt
+
+          if grep -E '(^|/)(__pycache__|[^/]+\.pyc|[^/]+\.pyo)($|/)' \
+              /tmp/analysis-dashboard-artifact-files.txt; then
+            echo "ERROR: Python cache files were included."
+            exit 1
+          fi
+
+          if grep -E '(^|/)\.env($|/)' \
+              /tmp/analysis-dashboard-artifact-files.txt; then
+            echo "ERROR: .env file was included."
+            exit 1
+          fi
+
+          if grep -E '^analysis_dashboard/tests/' \
+              /tmp/analysis-dashboard-artifact-files.txt; then
+            echo "ERROR: Tests were included in production artifact."
+            exit 1
+          fi
+
+          grep -q '^analysis_dashboard/src/' \
+            /tmp/analysis-dashboard-artifact-files.txt
+
+          grep -q '^analysis_dashboard/scripts/' \
+            /tmp/analysis-dashboard-artifact-files.txt
+
+          grep -q '^analysis_dashboard/Dockerfile$' \
+            /tmp/analysis-dashboard-artifact-files.txt
+
+          grep -q '^analysis_dashboard/README.md$' \
+            /tmp/analysis-dashboard-artifact-files.txt
+
+          grep -q '^analysis_dashboard/pyproject.toml$' \
+            /tmp/analysis-dashboard-artifact-files.txt
+
+          grep -q '^analysis_dashboard/uv.lock$' \
+            /tmp/analysis-dashboard-artifact-files.txt
+
+          echo "Analysis dashboard artifact verification passed."
+
+      - name: Create GitHub Release & Upload Artifact
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: |
+            analysis-dashboard-artifact.tar.gz
+            analysis-dashboard-artifact.tar.gz.sha256
+          fail_on_unmatched_files: true
+          body: |
+            Automated production artifact for analysis dashboard release ${{ github.ref_name }}

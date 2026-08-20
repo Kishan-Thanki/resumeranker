@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "resumeranker-analysis-dashboard"
+version = "0.1.0"
+description = "Streamlit analysis dashboard for ResumeRanker AI"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "grpcio>=1.74.0",
+    "grpcio-tools>=1.74.0",
+    "mypy-protobuf>=3.6.0",
+    "protobuf>=6.31.0",
+    "python-dotenv>=1.1.1",
+    "streamlit>=1.48.0",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+markers = [
+    "e2e: end-to-end tests that exercise the dashboard contract",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+]

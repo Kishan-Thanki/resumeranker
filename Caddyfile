@@ -1,23 +1,6 @@
-{$SCHEME:http}://{$DOMAIN:localhost} {
-	handle {
-		root * {$WEB_ROOT:/usr/share/caddy/public}
-		file_server
-		try_files {path} {path}/index.html {path}.html /index.html
-	}
-
-    handle /api/* {
-		reverse_proxy {$API_UPSTREAM:api:8080}
-	}
-    
-	handle /docs/* {
-		reverse_proxy {$API_UPSTREAM:api:8080}
-	}
-}
-
-{$SCHEME:http}://api.{$DOMAIN:localhost} {
-	reverse_proxy {$API_UPSTREAM:api:8080}
-}
-
-{$SCHEME:http}://analysis.{$DOMAIN:localhost} {
-	reverse_proxy h2c://{$ANALYSIS_UPSTREAM:analysis:50051}
+# Replace the default domain with the real dashboard hostname.
+{$DASHBOARD_DOMAIN:dashboard.example.com} {
+    # Use analysis-dashboard:8501 when Caddy runs in the Compose network.
+    # Use 127.0.0.1:8501 when Caddy runs on the host machine.
+    reverse_proxy {$DASHBOARD_UPSTREAM:127.0.0.1:8501}
 }

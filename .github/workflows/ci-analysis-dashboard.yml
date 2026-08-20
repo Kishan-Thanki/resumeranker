@@ -1,0 +1,57 @@
+name: CI Analysis Dashboard
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "analysis_dashboard/**"
+      - ".github/workflows/ci-analysis-dashboard.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test-analysis-dashboard:
+    runs-on: ubuntu-24.04
+
+    defaults:
+      run:
+        working-directory: analysis_dashboard
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v9
+        with:
+          enable-cache: true
+          cache-dependency-glob: "analysis_dashboard/uv.lock"
+
+      - name: Install Project Dependencies
+        run: |
+          uv sync --frozen
+
+      - name: Run Test Suite
+        run: |
+          uv run pytest -v
+
+      - name: Build Analysis Dashboard Docker Image
+        run: |
+          docker build \
+            --tag resumeranker-analysis-dashboard-ci:pr-${{ github.event.pull_request.number }} \
+            .
+
+      - name: Verify Docker Image
+        run: |
+          docker image inspect \
+            "resumeranker-analysis-dashboard-ci:pr-${{ github.event.pull_request.number }}" \
+            > /dev/null
+
+          echo "Analysis dashboard Docker image built successfully."
