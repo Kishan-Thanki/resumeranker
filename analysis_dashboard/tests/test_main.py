@@ -1,18 +1,17 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from typing import Any
-
-from analysis_dashboard.config import ConnectionConfig
+from typing import Any, Self
 
 from analysis_dashboard import main
+from analysis_dashboard.config import ConnectionConfig
 
 
 class _Context:
-    def __init__(self, owner: "FakeMainStreamlit") -> None:
+    def __init__(self, owner: FakeMainStreamlit) -> None:
         self.owner = owner
 
-    def __enter__(self) -> "_Context":
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, exc_type, exc, tb) -> None:
@@ -62,6 +61,8 @@ def _configure_app(monkeypatch, fake_st: FakeMainStreamlit, *, submit_pressed: b
 
     monkeypatch.setattr(main, "st", fake_st)
     monkeypatch.setattr(main, "apply_app_styles", lambda: None)
+    monkeypatch.setattr(main, "render_terms_gate", lambda: True)
+    monkeypatch.setattr(main, "render_terms_footer", lambda: None)
     monkeypatch.setattr(main, "render_sidebar", lambda _connection: (connection, *files, submit_pressed, False))
     monkeypatch.setattr(main, "render_empty_state", lambda _connection: None)
     monkeypatch.setattr(main, "validate_pdf_upload", lambda *_args: None)

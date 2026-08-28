@@ -4,6 +4,7 @@ import streamlit as st
 
 from analysis_dashboard.config import load_default_connection
 from analysis_dashboard.grpc_client import call_analysis_service
+from analysis_dashboard.legal import render_terms_footer, render_terms_gate
 from analysis_dashboard.parsing import (
     format_analysis_error,
     parse_analysis_result,
@@ -27,6 +28,10 @@ def run_app() -> None:
         reset_analysis_state()
 
     apply_app_styles()
+
+    if not render_terms_gate():
+        return
+
     connection, jd_file, resume_file, submit_pressed, clear_pressed = render_sidebar(
         DEFAULT_CONNECTION
     )
@@ -59,11 +64,15 @@ def run_app() -> None:
             except ValueError as exc:
                 st.error(str(exc))
             else:
-                with st.status("Running ResumeRanker analysis...", expanded=True) as status:
-                    response, grpc_error, request_id, elapsed_seconds = call_analysis_service(
-                        connection,
-                        jd_file,
-                        resume_file,
+                with st.status(
+                    "Running ResumeRanker analysis...", expanded=True
+                ) as status:
+                    response, grpc_error, request_id, elapsed_seconds = (
+                        call_analysis_service(
+                            connection,
+                            jd_file,
+                            resume_file,
+                        )
                     )
 
                     st.session_state["analysis_request_id"] = request_id
@@ -148,6 +157,8 @@ def run_app() -> None:
 
     else:
         render_empty_state(DEFAULT_CONNECTION)
+
+    render_terms_footer()
 
 
 def main() -> None:

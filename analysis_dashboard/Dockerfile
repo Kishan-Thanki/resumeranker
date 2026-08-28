@@ -14,4 +14,4 @@ RUN pip install --upgrade pip setuptools wheel \
 
 EXPOSE 8501
 
-CMD ["streamlit", "run", "src/analysis_dashboard/app.py", "--server.address=0.0.0.0", "--server.port=8501", "--server.maxUploadSize=10"]
+CMD ["streamlit", "run", "src/analysis_dashboard/app.py", "--server.address=0.0.0.0", "--server.port=8501", "--server.maxUploadSize=10", "--browser.gatherUsageStats=false"]
