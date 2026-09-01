@@ -11,6 +11,7 @@ from analysis_dashboard.parsing import (
     safe_str,
     validate_pdf_upload,
 )
+from analysis_dashboard.ratelimit import check_rate_limit
 from analysis_dashboard.rendering import (
     apply_app_styles,
     render_empty_state,
@@ -37,7 +38,7 @@ def run_app() -> None:
     )
 
     st.markdown(
-        f"""
+        """
         <div class="hero">
             <div class="hero-kicker">ResumeRanker analysis workspace</div>
             <h1 class="hero-title">Analyze a resume against a job description</h1>
@@ -58,6 +59,21 @@ def run_app() -> None:
         if jd_file is None or resume_file is None:
             st.error("Please upload both the job description and the resume.")
         else:
+            allowed, retry_after_seconds, requires_human_check = check_rate_limit()
+            if not allowed:
+                if requires_human_check:
+                    st.warning(
+                        "Your connection has been rate-limited repeatedly. "
+                        "Please complete the human verification check before trying again."
+                    )
+                    return
+
+                st.error(
+                    "Too many analysis requests from your connection. "
+                    f"Please try again in about {int(retry_after_seconds) + 1} seconds."
+                )
+                return
+
             try:
                 validate_pdf_upload(jd_file, "Job description")
                 validate_pdf_upload(resume_file, "Resume")

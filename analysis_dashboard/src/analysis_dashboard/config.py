@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 
-
 MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024
 SECTION_ORDER = ["skills", "experience", "education", "project"]
 SECTION_ORDER_INDEX = {section_id: index for index, section_id in enumerate(SECTION_ORDER)}
@@ -48,6 +47,13 @@ def parse_float_env(name: str, default: float) -> float:
     except ValueError:
         return default
     return value if value > 0 else default
+
+
+def parse_bool_env(name: str, default: bool) -> bool:
+    raw = os.getenv(name, "").strip().lower()
+    if not raw:
+        return default
+    return raw in {"1", "true", "yes", "on"}
 
 
 def load_default_connection() -> ConnectionConfig:

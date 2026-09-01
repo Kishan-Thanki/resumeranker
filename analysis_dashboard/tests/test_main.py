@@ -3,8 +3,10 @@ from __future__ import annotations
 from types import SimpleNamespace
 from typing import Any, Self
 
-from analysis_dashboard import main
 from analysis_dashboard.config import ConnectionConfig
+from analysis_dashboard.ratelimit import check_rate_limit
+
+from analysis_dashboard import main
 
 
 class _Context:
@@ -163,3 +165,64 @@ def test_run_app_stores_success_metadata(monkeypatch) -> None:
         "state": "complete",
         "expanded": False,
     }
+
+
+def test_check_rate_limit_enforces_daily_quota(monkeypatch) -> None:
+    import analysis_dashboard.ratelimit as ratelimit
+
+    monkeypatch.setattr(ratelimit, "_hits", {})
+    monkeypatch.setattr(ratelimit, "_daily_hits", {})
+    monkeypatch.setattr(
+        ratelimit,
+        "parse_int_env",
+        lambda name, default: {
+            "RATE_LIMIT_MAX_REQUESTS": 5,
+            "DAILY_REQUEST_LIMIT": 2,
+        }.get(name, default),
+    )
+    monkeypatch.setattr(
+        ratelimit,
+        "parse_float_env",
+        lambda name, default: {
+            "RATE_LIMIT_WINDOW_SECONDS": 600.0,
+            "DAILY_WINDOW_SECONDS": 86400.0,
+        }.get(name, default),
+    )
+
+    times = iter([0.0, 10.0, 20.0])
+    monkeypatch.setattr(ratelimit.time, "monotonic", lambda: next(times))
+    monkeypatch.setattr(
+        ratelimit.st,
+        "context",
+        SimpleNamespace(headers={"X-Forwarded-For": "203.0.113.9"}),
+    )
+
+    assert check_rate_limit() == (True, 0.0, False)
+    assert check_rate_limit() == (True, 0.0, False)
+    assert check_rate_limit() == (False, 86380.0, False)
+
+
+def test_should_require_human_check_only_when_enabled_and_suspicious(monkeypatch) -> None:
+    import analysis_dashboard.ratelimit as ratelimit
+
+    monkeypatch.setattr(ratelimit, "_blocked_attempts", {})
+    monkeypatch.setattr(
+        ratelimit,
+        "parse_bool_env",
+        lambda name, default: {"HUMAN_CHECK_ENABLED": True}.get(name, default),
+    )
+    monkeypatch.setattr(
+        ratelimit,
+        "parse_int_env",
+        lambda name, default: {"HUMAN_CHECK_THRESHOLD": 2}.get(name, default),
+    )
+    monkeypatch.setattr(
+        ratelimit.st,
+        "context",
+        SimpleNamespace(headers={"X-Forwarded-For": "198.51.100.7"}),
+    )
+
+    assert ratelimit.should_require_human_check() is False
+
+    ratelimit._blocked_attempts["198.51.100.7"] = 2
+    assert ratelimit.should_require_human_check() is True
