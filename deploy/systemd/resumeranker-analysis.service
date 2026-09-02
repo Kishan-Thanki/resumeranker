@@ -16,10 +16,10 @@ ExecStart=/opt/resumeranker/analysis/.venv/bin/python -m app.main
 Restart=on-failure
 RestartSec=2
 
-# --- Resource limits (replaces Docker mem_limit/cpus) ---
-MemoryMax=1G
-MemoryHigh=768M
-CPUQuota=150%
+# --- Resource limits tuned for a small 1 GB / 1/8 OCPU VM ---
+MemoryMax=768M
+MemoryHigh=512M
+CPUQuota=100%
 TasksMax=256
 
 # --- Hardening (replaces Docker non-root/no-new-privileges) ---

@@ -22,10 +22,10 @@ ExecStart=/opt/resumeranker/analysis_dashboard/.venv/bin/streamlit run \
 Restart=on-failure
 RestartSec=2
 
-# --- Resource limits (replaces Docker mem_limit/cpus) ---
-MemoryMax=768M
-MemoryHigh=512M
-CPUQuota=100%
+# --- Resource limits tuned for a small 1 GB / 1/8 OCPU VM ---
+MemoryMax=512M
+MemoryHigh=384M
+CPUQuota=80%
 TasksMax=256
 
 # --- Hardening (replaces Docker non-root/no-new-privileges) ---
