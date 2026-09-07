@@ -1,0 +1,82 @@
+name: "Build: Analysis"
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Existing analysis release tag to publish"
+        required: true
+        type: string
+  push:
+    tags:
+      - "analysis-v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-analysis-wheel:
+    runs-on: ubuntu-24.04
+
+    defaults:
+      run:
+        working-directory: analysis
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.release_tag || github.ref }}
+          persist-credentials: false
+
+      - name: Validate Analysis Release Tag
+        env:
+          TAG: ${{ inputs.release_tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          if [[ ! "$TAG" =~ ^analysis-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "ERROR: Invalid analysis production release tag: $TAG"
+            echo "Expected format: analysis-vX.Y.Z"
+            exit 1
+          fi
+
+          echo "Valid analysis production release tag: $TAG"
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: "analysis/uv.lock"
+
+      - name: Install Project Dependencies
+        run: |
+          uv sync --frozen --group dev
+
+      - name: Build Python Wheel
+        run: |
+          set -euo pipefail
+          uv build --wheel
+
+      - name: Prepare Release Asset
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          cp dist/*.whl release/
+          sha256sum release/*.whl > release/analysis.sha256
+
+      - name: Upload Binary Artifact
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ inputs.release_tag || github.ref_name }}
+          files: |
+            analysis/release/*.whl
+            analysis/release/*.sha256
+          fail_on_unmatched_files: true
+          body: |
+            Binary artifact for analysis service release ${{ inputs.release_tag || github.ref_name }}

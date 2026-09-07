@@ -1,0 +1,82 @@
+name: "Build: Analysis Dashboard"
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Existing analysis dashboard release tag to publish"
+        required: true
+        type: string
+  push:
+    tags:
+      - "analysis-dashboard-v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-analysis-dashboard:
+    runs-on: ubuntu-24.04
+
+    defaults:
+      run:
+        working-directory: analysis_dashboard
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.release_tag || github.ref }}
+          persist-credentials: false
+
+      - name: Validate Analysis Dashboard Release Tag
+        env:
+          TAG: ${{ inputs.release_tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          if [[ ! "$TAG" =~ ^analysis-dashboard-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "ERROR: Invalid analysis dashboard production release tag: $TAG"
+            echo "Expected format: analysis-dashboard-vX.Y.Z"
+            exit 1
+          fi
+
+          echo "Valid analysis dashboard production release tag: $TAG"
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: "analysis_dashboard/uv.lock"
+
+      - name: Install Project Dependencies
+        run: |
+          uv sync --frozen --group dev
+
+      - name: Build Python Wheel
+        run: |
+          set -euo pipefail
+          uv build --wheel
+
+      - name: Prepare Release Asset
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          cp dist/*.whl release/
+          sha256sum release/*.whl > release/analysis-dashboard.sha256
+
+      - name: Upload Binary Artifact
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ inputs.release_tag || github.ref_name }}
+          files: |
+            analysis_dashboard/release/*.whl
+            analysis_dashboard/release/*.sha256
+          fail_on_unmatched_files: true
+          body: |
+            Binary artifact for analysis dashboard release ${{ inputs.release_tag || github.ref_name }}

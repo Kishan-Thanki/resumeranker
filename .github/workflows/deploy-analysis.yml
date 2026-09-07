@@ -1,0 +1,56 @@
+name: "Deploy: Analysis"
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag to deploy (e.g. analysis-v1.0.3)"
+        required: true
+        type: string
+      target_host:
+        description: "Target server IP address"
+        required: true
+        type: string
+  workflow_run:
+    workflows: ["Build: Analysis"]
+    types:
+      - completed
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-analysis:
+    name: Deploy Analysis Backend
+    runs-on: ubuntu-24.04
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') }}
+
+    steps:
+      - name: Determine Deployment Tag and Host
+        id: prep
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "RELEASE_TAG=${{ inputs.release_tag }}" >> "$GITHUB_OUTPUT"
+            echo "TARGET_HOST=${{ inputs.target_host }}" >> "$GITHUB_OUTPUT"
+          else
+            # Triggered via workflow_run
+            TAG="${{ github.event.workflow_run.head_branch }}"
+            echo "RELEASE_TAG=${TAG}" >> "$GITHUB_OUTPUT"
+            echo "TARGET_HOST=${{ secrets.ANALYSIS_DEPLOY_HOST }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Trigger Remote Deployment Engine via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ steps.prep.outputs.TARGET_HOST }}
+          username: deployer
+          key: ${{ secrets.ANALYSIS_DEPLOYER_SSH_KEY }}
+          script: |
+            deploy \
+              --name resumeranker-analysis \
+              --type raw \
+              --artifact "https://github.com/${{ github.repository }}/releases/download/${{ steps.prep.outputs.RELEASE_TAG }}/analysis-*.whl" \
+              --post-deploy "cd analysis && uv sync --frozen" \
+              --health "tcp://127.0.0.1:50051" \
+              --keep-releases 3

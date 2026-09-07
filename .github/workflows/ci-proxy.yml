@@ -1,0 +1,33 @@
+name: CI Caddy
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "proxy/Caddyfile"
+      - ".github/workflows/ci-caddy.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate-caddy-config:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+
+      - name: Validate Caddyfile
+        run: |
+          docker run --rm \
+            -v "$PWD/proxy:/etc/caddy" \
+            caddy:2 \
+            caddy validate --config /etc/caddy/Caddyfile
+
+      - name: Confirm Caddy config is present
+        run: |
+          test -f proxy/Caddyfile
+          echo "Caddy configuration file is present and valid."

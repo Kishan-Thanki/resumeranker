@@ -1,0 +1,59 @@
+name: "Build: Proxy"
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Existing proxy release tag to publish"
+        required: true
+        type: string
+  push:
+    tags:
+      - "proxy-v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-proxy:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.release_tag || github.ref }}
+          persist-credentials: false
+
+      - name: Validate Proxy Release Tag
+        env:
+          TAG: ${{ inputs.release_tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          if [[ ! "$TAG" =~ ^proxy-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "ERROR: Invalid proxy production release tag: $TAG"
+            echo "Expected format: proxy-vX.Y.Z"
+            exit 1
+          fi
+
+          echo "Valid proxy production release tag: $TAG"
+
+      - name: Prepare Proxy Release Asset
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          tar -czf release/proxy.tar.gz -C proxy Caddyfile
+          sha256sum release/proxy.tar.gz > release/proxy.sha256
+
+      - name: Upload Proxy Artifact
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ inputs.release_tag || github.ref_name }}
+          files: |
+            release/*.tar.gz
+            release/*.sha256
+          fail_on_unmatched_files: true
+          body: |
+            Proxy artifact for release ${{ inputs.release_tag || github.ref_name }}
+
