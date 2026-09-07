@@ -1,106 +1,84 @@
 # ResumeRanker
 
-ResumeRanker compares a candidate resume with a job description and presents an evidence-backed fit report.
+ResumeRanker is an evidence-based hiring intelligence tool that compares a candidate resume against a job description and identifies how well the applicant matches the role.
 
-The project is organized as two independent Python applications connected through a shared gRPC contract:
+It helps recruiters, hiring teams, and hiring managers answer a simple but critical question: whether a candidate is a strong fit for the job based on concrete evidence from the resume and the requirements, not just keyword overlap.
+
+## What the product does
+
+ResumeRanker analyzes:
+
+- a candidate resume
+- a target job description
+- role-specific skills, requirements, and experience signals
+
+Then it produces a structured assessment that highlights:
+
+- skills match and gaps
+- experience alignment
+- strengths and weaknesses
+- role-fit confidence backed by extracted evidence
+
+The goal is to move hiring evaluation from intuition toward transparent, explainable comparison.
+
+## System overview
 
 ```text
 Browser
    |
    v
-Streamlit Analysis Dashboard :8501
+Caddy Reverse Proxy
    |
    v
-Analysis gRPC Service :50051
+Streamlit Analysis Dashboard
    |
    v
-PDF extraction + LLM analysis
+Analysis gRPC Service
+   |
+   v
+Resume + job analysis pipeline
 ```
 
-## Components
+## Core components
 
 ### Analysis Service
 
-[`analysis/`](analysis/) is the backend analysis engine. It receives one resume PDF and one job-description PDF, extracts requirements and candidate claims, scores their alignment, and returns a structured JSON report.
+[`analysis/`](analysis/) is the backend engine. It processes the resume and job description, extracts structured claims and requirements, compares them, and returns a scored fit result with supporting evidence.
 
 ### Analysis Dashboard
 
-[`analysis_dashboard/`](analysis_dashboard/) is the Streamlit application where users upload documents and view the report through an Overview and Sections view.
+[`analysis_dashboard/`](analysis_dashboard/) is the user-facing interface. It presents the analysis in a readable format and helps users explore candidate fit across sections and evidence points.
 
-### Shared Protocol
+### Caddy Proxy
 
-[`proto/analysis.proto`](proto/analysis.proto) defines the gRPC request and response used by the dashboard and analysis service.
+[`proxy/`](proxy/) is the public entry point and reverse proxy. It fronts the dashboard and handles secure HTTP routing for the deployed application.
 
-## Quick Start With Docker
+### Shared Contract
 
-Requirements:
+[`proto/analysis.proto`](proto/analysis.proto) defines the shared contract between the dashboard and analysis service, keeping the pipeline modular and consistent.
 
-- Docker with Compose
-- An LLM provider API key for real analysis
+## Why it matters
 
-Create the local environment files:
+Many hiring workflows are still driven by manual CV review, shallow keyword matching, or subjective interpretation. ResumeRanker introduces a more structured and evidence-backed approach to candidate evaluation.
 
-```bash
-cp analysis/.env.example analysis/.env
-cp analysis_dashboard/.env.example analysis_dashboard/.env
-```
+It is designed for teams that want:
 
-Set `LLM_PROVIDER`, `LLM_MODEL`, and `LLM_API_KEY` in `analysis/.env`.
+- faster screening
+- clearer alignment signals
+- less guesswork in early-stage hiring decisions
+- a more transparent candidate assessment workflow
 
-For Docker Compose, make sure `analysis_dashboard/.env` points to the service name:
+## Product focus
 
-```env
-ANALYSIS_GRPC_HOST=analysis
-ANALYSIS_GRPC_PORT=50051
-ANALYSIS_GRPC_ADDRESS=analysis:50051
-```
+This repository is centered on a practical hiring decision support product:
 
-Start the application:
+- analyze candidate fit against job requirements
+- expose the evidence behind the score
+- support streamlined review in a dashboard experience
+- keep the service architecture modular and extensible
 
-```bash
-docker compose up -d --build
-```
+---
 
-Open the dashboard:
+## License
 
-```text
-http://localhost:8501
-```
-
-Stop the application:
-
-```bash
-docker compose down
-```
-
-## Development
-
-Each component has its own dependencies, lockfile, scripts, and tests.
-
-Run analysis tests:
-
-```bash
-cd analysis
-uv sync
-uv run pytest -v -m "not e2e"
-```
-
-Run dashboard tests:
-
-```bash
-cd analysis_dashboard
-uv sync
-uv run pytest -v
-```
-
-The unit tests are local and do not require a real LLM request. The analysis E2E test requires a running service and external provider credentials.
-
-## Project Layout
-
-```text
-analysis/             gRPC analysis backend
-analysis_dashboard/   Streamlit user interface
-proto/                shared protobuf contract
-.github/workflows/    CI and release workflows
-docker-compose.yml    local full-stack deployment
-```
+See [LICENSE](LICENSE) for the repository licensing terms.

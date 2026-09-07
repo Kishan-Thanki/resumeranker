@@ -1,0 +1,26 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-merge-conflict
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+        files: \.(yaml|yml)$
+
+  - repo: local
+    hooks:
+      - id: workflow-yaml
+        name: Validate GitHub workflow YAML
+        entry: python3 scripts/check_workflows.py
+        language: system
+        pass_filenames: false
+        files: ^\.github/workflows/.*\.(yml|yaml)$
+
+      - id: docker-compose-config
+        name: Validate Docker Compose configuration
+        entry: docker compose config
+        language: system
+        pass_filenames: false
+        files: ^docker-compose\.yml$

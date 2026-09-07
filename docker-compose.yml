@@ -30,6 +30,24 @@ services:
       - resumeranker-net
     restart: unless-stopped
 
+  proxy:
+    build:
+      context: ./proxy
+      dockerfile: Dockerfile
+    image: resumeranker-proxy:latest
+    container_name: resumeranker-proxy
+    environment:
+      - DASHBOARD_DOMAIN=localhost
+      - DASHBOARD_UPSTREAM=analysis-dashboard:8501
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - analysis-dashboard
+    networks:
+      - resumeranker-net
+    restart: unless-stopped
+
 networks:
   resumeranker-net:
     name: resumeranker-net
