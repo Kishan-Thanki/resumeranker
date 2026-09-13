@@ -1,4 +1,4 @@
-name: CI Caddy
+name: CI Proxy
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ on:
       - main
     paths:
       - "proxy/Caddyfile"
-      - ".github/workflows/ci-caddy.yml"
+      - ".github/workflows/ci-proxy.yml"
 
 permissions:
   contents: read
@@ -20,14 +20,21 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v7
 
+      - name: Confirm Caddy config is present
+        run: |
+          pwd
+          ls -la proxy
+          test -f proxy/Caddyfile
+
       - name: Validate Caddyfile
         run: |
           docker run --rm \
-            -v "$PWD/proxy:/etc/caddy" \
+            -v "${{ github.workspace }}/proxy:/etc/caddy:ro" \
             caddy:2 \
-            caddy validate --config /etc/caddy/Caddyfile
+            caddy validate \
+            --config /etc/caddy/Caddyfile \
+            --adapter caddyfile
 
-      - name: Confirm Caddy config is present
+      - name: Confirm Caddy config is valid
         run: |
-          test -f proxy/Caddyfile
           echo "Caddy configuration file is present and valid."

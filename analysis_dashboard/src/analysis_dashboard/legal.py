@@ -3,15 +3,23 @@ from __future__ import annotations
 import streamlit as st
 
 # Bump this whenever the terms text changes materially to force re-acceptance.
-TERMS_VERSION = "2026-08-28-v2"
+TERMS_VERSION = "2026-09-02-v3"
 
 TERMS_MARKDOWN = """
 **ResumeRanker** analyzes an uploaded resume against an uploaded job description and returns a
 structured alignment report. Please read the notice below before uploading any documents.
 
+**Operator**
+ResumeRanker is operated by Kishan Thanki. For questions or concerns, contact:
+kishanthanki@gmail.com
+
 **How your documents are processed**
-- The resume and job description you upload are parsed in memory and analyzed by an AI model to
-  generate your report.
+- The resume and job description you upload are parsed in memory and analyzed by an AI language
+  model to generate your report.
+- Resume analysis is performed using a configurable AI language model provider (e.g. OpenAI,
+  Anthropic, or another provider). Your uploaded document content is transmitted to that
+  provider's API solely to generate the analysis report. Please refer to the applicable
+  provider's privacy policy for information on how API data is handled on their end.
 - This application does not persist your uploaded files or their extracted text to a database or
   disk. Documents exist only for the duration of your analysis request.
 - Operational logs may record non-content metadata (e.g. request ID, token counts, latency,
@@ -32,6 +40,9 @@ structured alignment report. Please read the notice below before uploading any d
 - This service is provided "as is", without warranties of any kind, express or implied. To the
   maximum extent permitted by law, the operator is not liable for any damages arising from use of
   this tool or reliance on its output.
+
+**Governing law**
+These terms are governed by the laws of India, without regard to conflict-of-law principles.
 
 By checking the box below and continuing, you confirm you have read this notice, agree to these
 terms, and accept the disclaimer above.

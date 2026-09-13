@@ -15,7 +15,7 @@ for path in files:
     try:
         yaml.safe_load(path.read_text())
         print(f"OK {path.relative_to(root)}")
-    except Exception as exc:
+    except yaml.YAMLError as exc:
         print(f"FAIL {path.relative_to(root)}: {exc}")
         sys.exit(1)
 
