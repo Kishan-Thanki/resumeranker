@@ -4,13 +4,14 @@ on:
   workflow_dispatch:
     inputs:
       artifact_url:
-        description: "Public URL to the proxy artifact, e.g. https://github.com/org/repo/releases/download/proxy-v1.2.3/proxy.tar.gz"
+        description: "Public URL to the Caddyfile artifact"
         required: true
         type: string
       target_host:
         description: "Target server IP address"
         required: true
         type: string
+
   workflow_run:
     workflows: ["Build: Proxy"]
     types:
@@ -23,32 +24,60 @@ jobs:
   deploy-proxy:
     name: Deploy Proxy Config
     runs-on: ubuntu-24.04
-    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') }}
+
+    if: >-
+      ${{
+        github.event_name == 'workflow_dispatch' ||
+        (
+          github.event_name == 'workflow_run' &&
+          github.event.workflow_run.conclusion == 'success'
+        )
+      }}
 
     steps:
       - name: Determine Deployment Artifact URL and Host
         id: prep
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_ARTIFACT_URL: ${{ inputs.artifact_url }}
+          INPUT_HOST: ${{ inputs.target_host }}
+          WORKFLOW_TAG: ${{ github.event.workflow_run.head_branch }}
+          SECRET_HOST: ${{ secrets.PROXY_DEPLOY_HOST }}
         run: |
           set -euo pipefail
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "ARTIFACT_URL=${{ inputs.artifact_url }}" >> "$GITHUB_OUTPUT"
-            echo "TARGET_HOST=${{ inputs.target_host }}" >> "$GITHUB_OUTPUT"
+
+          if [ "${EVENT_NAME}" = "workflow_dispatch" ]; then
+            ARTIFACT_URL="${INPUT_ARTIFACT_URL}"
+            TARGET_HOST="${INPUT_HOST}"
           else
-            TAG="${{ github.event.workflow_run.head_branch }}"
-            echo "ARTIFACT_URL=https://github.com/${{ github.repository }}/releases/download/${TAG}/proxy.tar.gz" >> "$GITHUB_OUTPUT"
-            echo "TARGET_HOST=${{ secrets.PROXY_DEPLOY_HOST }}" >> "$GITHUB_OUTPUT"
+            ARTIFACT_URL="https://github.com/${{ github.repository }}/releases/download/${WORKFLOW_TAG}/Caddyfile"
+            TARGET_HOST="${SECRET_HOST}"
           fi
 
-      - name: Deploy proxy artifact to target host
+          if [ -z "${ARTIFACT_URL}" ]; then
+            echo "ERROR: Artifact URL is empty."
+            exit 1
+          fi
+
+          if [ -z "${TARGET_HOST}" ]; then
+            echo "ERROR: Target host is empty."
+            exit 1
+          fi
+
+          echo "ARTIFACT_URL=${ARTIFACT_URL}" >> "${GITHUB_OUTPUT}"
+          echo "TARGET_HOST=${TARGET_HOST}" >> "${GITHUB_OUTPUT}"
+
+      - name: Deploy Proxy Artifact
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ steps.prep.outputs.TARGET_HOST }}
           username: deployer
           key: ${{ secrets.PROXY_DEPLOYER_SSH_KEY }}
           script: |
+            set -euo pipefail
+
             deployproxy \
               --name resumeranker \
-              --type raw \
               --artifact "${{ steps.prep.outputs.ARTIFACT_URL }}" \
               --proxy-ext caddyfile \
               --validator-check "command -v caddy" \

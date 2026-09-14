@@ -11,6 +11,7 @@ on:
         description: "Target server IP address"
         required: true
         type: string
+
   workflow_run:
     workflows: ["Build: Analysis"]
     types:
@@ -23,22 +24,73 @@ jobs:
   deploy-analysis:
     name: Deploy Analysis Backend
     runs-on: ubuntu-24.04
-    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') }}
+
+    if: >-
+      ${{
+        github.event_name == 'workflow_dispatch' ||
+        (
+          github.event_name == 'workflow_run' &&
+          github.event.workflow_run.conclusion == 'success'
+        )
+      }}
 
     steps:
       - name: Determine Deployment Tag and Host
         id: prep
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_TAG: ${{ inputs.release_tag }}
+          INPUT_HOST: ${{ inputs.target_host }}
+          WORKFLOW_TAG: ${{ github.event.workflow_run.head_branch }}
+          SECRET_HOST: ${{ secrets.ANALYSIS_DEPLOY_HOST }}
         run: |
           set -euo pipefail
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "RELEASE_TAG=${{ inputs.release_tag }}" >> "$GITHUB_OUTPUT"
-            echo "TARGET_HOST=${{ inputs.target_host }}" >> "$GITHUB_OUTPUT"
+
+          if [ "${EVENT_NAME}" = "workflow_dispatch" ]; then
+            RELEASE_TAG="${INPUT_TAG}"
+            TARGET_HOST="${INPUT_HOST}"
           else
-            # Triggered via workflow_run
-            TAG="${{ github.event.workflow_run.head_branch }}"
-            echo "RELEASE_TAG=${TAG}" >> "$GITHUB_OUTPUT"
-            echo "TARGET_HOST=${{ secrets.ANALYSIS_DEPLOY_HOST }}" >> "$GITHUB_OUTPUT"
+            RELEASE_TAG="${WORKFLOW_TAG}"
+            TARGET_HOST="${SECRET_HOST}"
           fi
+
+          if [[ ! "${RELEASE_TAG}" =~ ^analysis-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "ERROR: Invalid release tag: ${RELEASE_TAG}"
+            echo "Expected format: analysis-vX.Y.Z"
+            exit 1
+          fi
+
+          if [ -z "${TARGET_HOST}" ]; then
+            echo "ERROR: Target host is empty."
+            exit 1
+          fi
+
+          echo "RELEASE_TAG=${RELEASE_TAG}" >> "${GITHUB_OUTPUT}"
+          echo "TARGET_HOST=${TARGET_HOST}" >> "${GITHUB_OUTPUT}"
+
+      - name: Determine Wheel Asset
+        id: asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.prep.outputs.RELEASE_TAG }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          ASSET_URL="$(
+            gh release view "${RELEASE_TAG}" \
+              --repo "${REPOSITORY}" \
+              --json assets \
+              --jq '.assets[] | select(.name | endswith(".whl")) | .url' |
+            head -n 1
+          )"
+
+          if [ -z "${ASSET_URL}" ]; then
+            echo "ERROR: No wheel asset found for release ${RELEASE_TAG}."
+            exit 1
+          fi
+
+          echo "ARTIFACT_URL=${ASSET_URL}" >> "${GITHUB_OUTPUT}"
 
       - name: Trigger Remote Deployment Engine via SSH
         uses: appleboy/ssh-action@v1.2.0
@@ -47,10 +99,12 @@ jobs:
           username: deployer
           key: ${{ secrets.ANALYSIS_DEPLOYER_SSH_KEY }}
           script: |
+            set -euo pipefail
+
+            # Health check will be enabled when application startup is implemented.
+            # --health "tcp://127.0.0.1:50051"
+
             deploy \
               --name resumeranker-analysis \
-              --type raw \
-              --artifact "https://github.com/${{ github.repository }}/releases/download/${{ steps.prep.outputs.RELEASE_TAG }}/analysis-*.whl" \
-              --post-deploy "cd analysis && uv sync --frozen" \
-              --health "tcp://127.0.0.1:50051" \
+              --artifact "${{ steps.asset.outputs.ARTIFACT_URL }}" \
               --keep-releases 3

@@ -7,6 +7,7 @@ on:
         description: "Existing proxy release tag to publish"
         required: true
         type: string
+
   push:
     tags:
       - "proxy-v*"
@@ -42,18 +43,20 @@ jobs:
       - name: Prepare Proxy Release Asset
         run: |
           set -euo pipefail
+
           mkdir -p release
-          tar -czf release/proxy.tar.gz -C proxy Caddyfile
-          sha256sum release/proxy.tar.gz > release/proxy.sha256
+
+          cp proxy/Caddyfile release/Caddyfile
+
+          sha256sum release/Caddyfile > release/Caddyfile.sha256
 
       - name: Upload Proxy Artifact
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ inputs.release_tag || github.ref_name }}
           files: |
-            release/*.tar.gz
-            release/*.sha256
+            release/Caddyfile
+            release/Caddyfile.sha256
           fail_on_unmatched_files: true
           body: |
-            Proxy artifact for release ${{ inputs.release_tag || github.ref_name }}
-
+            Proxy configuration artifact for release ${{ inputs.release_tag || github.ref_name }}
