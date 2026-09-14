@@ -7,6 +7,7 @@ on:
         description: "Existing analysis dashboard release tag to publish"
         required: true
         type: string
+
   push:
     tags:
       - "analysis-dashboard-v*"

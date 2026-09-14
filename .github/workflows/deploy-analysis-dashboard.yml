@@ -7,15 +7,11 @@ on:
         description: "Release tag to deploy (e.g. analysis-dashboard-v1.0.1)"
         required: true
         type: string
+
       target_host:
         description: "Target server IP address"
         required: true
         type: string
-
-  workflow_run:
-    workflows: ["Build: Analysis Dashboard"]
-    types:
-      - completed
 
 permissions:
   contents: read
@@ -25,37 +21,18 @@ jobs:
     name: Deploy Analysis Dashboard UI
     runs-on: ubuntu-24.04
 
-    if: >-
-      ${{
-        github.event_name == 'workflow_dispatch' ||
-        (
-          github.event_name == 'workflow_run' &&
-          github.event.workflow_run.conclusion == 'success'
-        )
-      }}
-
     steps:
       - name: Determine Deployment Tag and Host
         id: prep
         env:
-          EVENT_NAME: ${{ github.event_name }}
-          INPUT_TAG: ${{ inputs.release_tag }}
-          INPUT_HOST: ${{ inputs.target_host }}
-          WORKFLOW_TAG: ${{ github.event.workflow_run.head_branch }}
-          SECRET_HOST: ${{ secrets.ANALYSIS_DASHBOARD_DEPLOY_HOST }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          TARGET_HOST: ${{ inputs.target_host }}
         run: |
           set -euo pipefail
 
-          if [ "${EVENT_NAME}" = "workflow_dispatch" ]; then
-            RELEASE_TAG="${INPUT_TAG}"
-            TARGET_HOST="${INPUT_HOST}"
-          else
-            RELEASE_TAG="${WORKFLOW_TAG}"
-            TARGET_HOST="${SECRET_HOST}"
-          fi
-
           if [[ ! "${RELEASE_TAG}" =~ ^analysis-dashboard-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "ERROR: Invalid release tag: ${RELEASE_TAG}"
+            echo "Expected format: analysis-dashboard-vX.Y.Z"
             exit 1
           fi
 
@@ -102,7 +79,7 @@ jobs:
 
             # Health check will be enabled when application startup is implemented.
             # --health "http://127.0.0.1:8501/_stcore/health"
-            
+
             deploy \
               --name resumeranker-analysis-dashboard \
               --artifact "${{ steps.asset.outputs.ARTIFACT_URL }}" \
