@@ -7,6 +7,7 @@ on:
         description: "Existing analysis release tag to publish"
         required: true
         type: string
+
   push:
     tags:
       - "analysis-v*"
