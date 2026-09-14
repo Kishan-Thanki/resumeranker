@@ -3,19 +3,14 @@ name: "Deploy: Proxy"
 on:
   workflow_dispatch:
     inputs:
-      artifact_url:
-        description: "Public URL to the Caddyfile artifact"
+      release_tag:
+        description: "Release tag to deploy (e.g. proxy-v1.0.1)"
         required: true
         type: string
       target_host:
         description: "Target server IP address"
         required: true
         type: string
-
-  workflow_run:
-    workflows: ["Build: Proxy"]
-    types:
-      - completed
 
 permissions:
   contents: read
@@ -25,37 +20,18 @@ jobs:
     name: Deploy Proxy Config
     runs-on: ubuntu-24.04
 
-    if: >-
-      ${{
-        github.event_name == 'workflow_dispatch' ||
-        (
-          github.event_name == 'workflow_run' &&
-          github.event.workflow_run.conclusion == 'success'
-        )
-      }}
-
     steps:
       - name: Determine Deployment Artifact URL and Host
         id: prep
         env:
-          EVENT_NAME: ${{ github.event_name }}
-          INPUT_ARTIFACT_URL: ${{ inputs.artifact_url }}
-          INPUT_HOST: ${{ inputs.target_host }}
-          WORKFLOW_TAG: ${{ github.event.workflow_run.head_branch }}
-          SECRET_HOST: ${{ secrets.PROXY_DEPLOY_HOST }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          TARGET_HOST: ${{ inputs.target_host }}
         run: |
           set -euo pipefail
 
-          if [ "${EVENT_NAME}" = "workflow_dispatch" ]; then
-            ARTIFACT_URL="${INPUT_ARTIFACT_URL}"
-            TARGET_HOST="${INPUT_HOST}"
-          else
-            ARTIFACT_URL="https://github.com/${{ github.repository }}/releases/download/${WORKFLOW_TAG}/Caddyfile"
-            TARGET_HOST="${SECRET_HOST}"
-          fi
-
-          if [ -z "${ARTIFACT_URL}" ]; then
-            echo "ERROR: Artifact URL is empty."
+          if [[ ! "${RELEASE_TAG}" =~ ^proxy-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "ERROR: Invalid release tag: ${RELEASE_TAG}"
+            echo "Expected format: proxy-vX.Y.Z"
             exit 1
           fi
 
@@ -64,6 +40,9 @@ jobs:
             exit 1
           fi
 
+          ARTIFACT_URL="https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/Caddyfile"
+
+          echo "RELEASE_TAG=${RELEASE_TAG}" >> "${GITHUB_OUTPUT}"
           echo "ARTIFACT_URL=${ARTIFACT_URL}" >> "${GITHUB_OUTPUT}"
           echo "TARGET_HOST=${TARGET_HOST}" >> "${GITHUB_OUTPUT}"
 
