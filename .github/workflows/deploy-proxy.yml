@@ -47,7 +47,7 @@ jobs:
           echo "TARGET_HOST=${TARGET_HOST}" >> "${GITHUB_OUTPUT}"
 
       - name: Deploy Proxy Artifact
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ steps.prep.outputs.TARGET_HOST }}
           username: deployer
